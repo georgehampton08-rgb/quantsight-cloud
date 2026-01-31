@@ -1,0 +1,126 @@
+.drift-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    max-width: 420px;
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    z-index: 9999;
+}
+
+.drift-toast.entering {
+    animation: slide-in 0.3s ease-out forwards;
+}
+
+.drift-toast.exiting {
+    animation: slide-out 0.3s ease-in forwards;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-out {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+.drift-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(139, 92, 246, 0.15);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.drift-content {
+    flex: 1;
+}
+
+.drift-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #a78bfa;
+    margin-bottom: 4px;
+}
+
+.drift-message {
+    font-size: 13px;
+    color: #cbd5e1;
+    line-height: 1.4;
+}
+
+.delta-value {
+    font-weight: 600;
+    color: #4ade80;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.game-ref {
+    font-weight: 500;
+    color: #f1f5f9;
+}
+
+.drift-details {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.adjustment-chip {
+    font-size: 10px;
+    padding: 3px 8px;
+    background: rgba(100, 116, 139, 0.2);
+    color: #94a3b8;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.drift-dismiss {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.drift-dismiss:hover {
+    background: rgba(100, 116, 139, 0.2);
+    color: #f1f5f9;
+}

@@ -1,0 +1,122 @@
+{
+  "hustle": {
+    "success": true,
+    "rows": 567,
+    "columns": [
+      "PLAYER_ID",
+      "PLAYER_NAME",
+      "TEAM_ID",
+      "TEAM_ABBREVIATION",
+      "AGE",
+      "G",
+      "MIN",
+      "CONTESTED_SHOTS",
+      "CONTESTED_SHOTS_2PT",
+      "CONTESTED_SHOTS_3PT",
+      "DEFLECTIONS",
+      "CHARGES_DRAWN",
+      "SCREEN_ASSISTS",
+      "SCREEN_AST_PTS",
+      "OFF_LOOSE_BALLS_RECOVERED",
+      "DEF_LOOSE_BALLS_RECOVERED",
+      "LOOSE_BALLS_RECOVERED",
+      "PCT_LOOSE_BALLS_RECOVERED_OFF",
+      "PCT_LOOSE_BALLS_RECOVERED_DEF",
+      "OFF_BOXOUTS"
+    ]
+  },
+  "defense": {
+    "success": true,
+    "rows": 568,
+    "columns": [
+      "CLOSE_DEF_PERSON_ID",
+      "PLAYER_NAME",
+      "PLAYER_LAST_TEAM_ID",
+      "PLAYER_LAST_TEAM_ABBREVIATION",
+      "PLAYER_POSITION",
+      "AGE",
+      "GP",
+      "G",
+      "FREQ",
+      "D_FGM",
+      "D_FGA",
+      "D_FG_PCT",
+      "NORMAL_FG_PCT",
+      "PCT_PLUSMINUS"
+    ]
+  },
+  "shot_clock": {
+    "success": true,
+    "rows": 566,
+    "columns": [
+      "PLAYER_ID",
+      "PLAYER_NAME",
+      "PLAYER_LAST_TEAM_ID",
+      "PLAYER_LAST_TEAM_ABBREVIATION",
+      "AGE",
+      "GP",
+      "G",
+      "FGA_FREQUENCY",
+      "FGM",
+      "FGA",
+      "FG_PCT",
+      "EFG_PCT",
+      "FG2A_FREQUENCY",
+      "FG2M",
+      "FG2A",
+      "FG2_PCT",
+      "FG3A_FREQUENCY",
+      "FG3M",
+      "FG3A",
+      "FG3_PCT"
+    ]
+  },
+  "advanced": {
+    "success": true,
+    "rows": 569,
+    "columns": [
+      "PLAYER_ID",
+      "PLAYER_NAME",
+      "NICKNAME",
+      "TEAM_ID",
+      "TEAM_ABBREVIATION",
+      "AGE",
+      "GP",
+      "W",
+      "L",
+      "W_PCT",
+      "MIN",
+      "E_OFF_RATING",
+      "OFF_RATING",
+      "sp_work_OFF_RATING",
+      "E_DEF_RATING",
+      "DEF_RATING",
+      "sp_work_DEF_RATING",
+      "E_NET_RATING",
+      "NET_RATING",
+      "sp_work_NET_RATING"
+    ]
+  },
+  "player_specific": [
+    {
+      "player": "LeBron James",
+      "success": false
+    },
+    {
+      "player": "Kevin Durant",
+      "success": false
+    },
+    {
+      "player": "Giannis Antetokounmpo",
+      "success": false
+    },
+    {
+      "player": "Luka Doncic",
+      "success": false
+    },
+    {
+      "player": "Joel Embiid",
+      "success": false
+    }
+  ]
+}

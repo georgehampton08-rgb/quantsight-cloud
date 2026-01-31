@@ -1,0 +1,79 @@
+{
+  "hustle": {
+    "success": true,
+    "row_count": 511,
+    "headers": [
+      "PLAYER_ID",
+      "PLAYER_NAME",
+      "TEAM_ID",
+      "TEAM_ABBREVIATION",
+      "AGE",
+      "G",
+      "MIN",
+      "CONTESTED_SHOTS",
+      "CONTESTED_SHOTS_2PT",
+      "CONTESTED_SHOTS_3PT",
+      "DEFLECTIONS",
+      "CHARGES_DRAWN",
+      "SCREEN_ASSISTS",
+      "SCREEN_AST_PTS",
+      "OFF_LOOSE_BALLS_RECOVERED"
+    ]
+  },
+  "tracking_speed": {
+    "success": false,
+    "row_count": null,
+    "headers": []
+  },
+  "tracking_passing": {
+    "success": false,
+    "row_count": null,
+    "headers": []
+  },
+  "defense": {
+    "success": true,
+    "row_count": 511,
+    "headers": [
+      "CLOSE_DEF_PERSON_ID",
+      "PLAYER_NAME",
+      "PLAYER_LAST_TEAM_ID",
+      "PLAYER_LAST_TEAM_ABBREVIATION",
+      "PLAYER_POSITION",
+      "AGE",
+      "GP",
+      "G",
+      "FREQ",
+      "D_FGM",
+      "D_FGA",
+      "D_FG_PCT",
+      "NORMAL_FG_PCT",
+      "PCT_PLUSMINUS"
+    ]
+  },
+  "catch_shoot": {
+    "success": false,
+    "row_count": null,
+    "headers": []
+  },
+  "shot_clock_player": {
+    "success": true,
+    "row_count": 513,
+    "headers": [
+      "PLAYER_ID",
+      "PLAYER_NAME",
+      "PLAYER_LAST_TEAM_ID",
+      "PLAYER_LAST_TEAM_ABBREVIATION",
+      "AGE",
+      "GP",
+      "G",
+      "FGA_FREQUENCY",
+      "FGM",
+      "FGA",
+      "FG_PCT",
+      "EFG_PCT",
+      "FG2A_FREQUENCY",
+      "FG2M",
+      "FG2A"
+    ]
+  }
+}

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantSight - Injury Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card h2 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .injury-list {
+            list-style: none;
+        }
+
+        .injury-item {
+            background: rgba(15, 23, 42, 0.6);
+            border-left: 4px solid#ef4444;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .injury-info {
+            flex: 1;
+        }
+
+        .injury-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .injury-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .status-out {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-questionable {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .status-probable {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+
+        .success-message {
+            background: rgba(16, 185, 129, 0.2);
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>⚕️ Injury Management</h1>
+        <p class="subtitle">Manage player injuries and status updates</p>
+
+        <div id="success" class="success-message"></div>
+        <div id="error" class="error-message"></div>
+
+        <!-- Add Injury Form -->
+        <div class="card">
+            <h2>Add/Update Injury</h2>
+            <form id="addInjuryForm">
+                <div class="grid">
+                    <div class="form-group">
+                        <label>Player ID</label>
+                        <input type="text" id="playerId" required placeholder="e.g. 1628983">
+                    </div>
+                    <div class="form-group">
+                        <label>Player Name</label>
+                        <input type="text" id="playerName" required placeholder="e.g. Austin Reaves">
+                    </div>
+                </div>
+
+                <div class="grid">
+                    <div class="form-group">
+                        <label>Team</label>
+                        <input type="text" id="team" required placeholder="e.g. LAL" maxlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="status" required>
+                            <option value="OUT">OUT</option>
+                            <option value="QUESTIONABLE">QUESTIONABLE</option>
+                            <option value="PROBABLE">PROBABLE</option>
+                            <option value="DOUBTFUL">DOUBTFUL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Injury Description</label>
+                    <input type="text" id="injuryDesc" required placeholder="e.g. Left calf strain">
+                </div>
+
+                <button type="submit" class="btn">Add Injury</button>
+            </form>
+        </div>
+
+        <!-- Current Injuries List -->
+        <div class="card">
+            <h2>Current Injuries</h2>
+            <button onclick="loadInjuries()" class="btn btn-small" style="margin-bottom: 20px;">Refresh List</button>
+            <ul id="injuryList" class="injury-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+
+        // Add injury
+        document.getElementById('addInjuryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const injury = {
+                player_id: document.getElementById('playerId').value,
+                player_name: document.getElementById('playerName').value,
+                team: document.getElementById('team').value.toUpperCase(),
+                status: document.getElementById('status').value,
+                injury_desc: document.getElementById('injuryDesc').value
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/admin/injuries/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(injury)
+                });
+
+                if (res.ok) {
+                    showSuccess('Injury added successfully!');
+                    document.getElementById('addInjuryForm').reset();
+                    loadInjuries();
+                } else {
+                    showError('Failed to add injury');
+                }
+            } catch (err) {
+                showError('Error: ' + err.message);
+            }
+        });
+
+        // Load injuries
+        async function loadInjuries() {
+            try {
+                const res = await fetch(`${API_BASE}/admin/injuries/all`);
+                const data = await res.json();
+
+                const list = document.getElementById('injuryList');
+
+                if (data.injuries && data.injuries.length > 0) {
+                    list.innerHTML = data.injuries.map(inj => `
+                        <li class="injury-item">
+                            <div class="injury-info">
+                                <div class="injury-name">${inj.player_name} (${inj.team_abbr})</div>
+                                <span class="injury-status status-${inj.status.toLowerCase()}">${inj.status}</span>
+                                <span>${inj.injury_desc}</span>
+                            </div>
+                            <button onclick="removeInjury('${inj.player_id}')" class="btn btn-danger btn-small">Remove</button>
+                        </li>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<li style="color: #94a3b8;">No injuries to display</li>';
+                }
+            } catch (err) {
+                showError('Failed to load injuries: ' + err.message);
+            }
+        }
+
+        // Remove injury
+        async function removeInjury(playerId) {
+            if (!confirm('Remove this injury?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/admin/injuries/remove/${playerId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showSuccess('Injury removed!');
+                    loadInjuries();
+                } else {
+                    showError('Failed to remove injury');
+                }
+            } catch (err) {
+                showError('Error: ' + err.message);
+            }
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('success');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        // Load on page load
+        loadInjuries();
+    </script>
+</body>
+
+</html>

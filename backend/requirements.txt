@@ -1,0 +1,45 @@
+# QuantSight Engine - Cloud Deployment Dependencies
+# Core ML & Analytics Libraries
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
+
+# Deep Learning (optional, for advanced models)
+# torch>=2.0.0  # Uncomment if using PyTorch models
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# NBA Data API
+nba_api>=1.4.1
+
+# HTTP & Web Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+urllib3>=2.0.0
+
+# Circuit Breaker & Resilience
+pybreaker>=1.0.0
+
+# System Monitoring (container-aware)
+psutil>=5.9.0
+
+# Google AI (Gemini)
+google-generativeai>=0.3.0
+
+# Cloud SQL (PostgreSQL) - NEW for GCP deployment
+sqlalchemy>=2.0.0
+pg8000>=1.30.0
+cloud-sql-python-connector>=1.5.0
+
+# Google Cloud Pub/Sub - for real-time mobile sync
+google-cloud-pubsub>=2.18.0
+
+# Utilities
+python-dateutil>=2.8.0
+aiohttp>=3.9.0
+
+# NOTE: pyinstaller REMOVED - not needed for containerized deployment

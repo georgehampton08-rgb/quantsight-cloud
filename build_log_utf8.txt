@@ -1,0 +1,6 @@
+﻿
+> quantsight-dashboard-v1@1.0.0 build
+> tsc && vite build
+
+src/pages/CommandCenterPage.tsx(25,34): error TS2339: Property 'games' does not exist on type 'any[]'.
+src/pages/CommandCenterPage.tsx(26,35): error TS2339: Property 'games' does not exist on type 'any[]'.

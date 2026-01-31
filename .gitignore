@@ -1,0 +1,30 @@
+# QuantSight Cloud Build - Git Ignore
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Build artifacts
+dist/
+build/
+release/
+*.exe
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+.env.local
+*.log
+
+# Database files (keep for testing, remove for production)
+# *.db
+
+# OS files
+.DS_Store
+Thumbs.db

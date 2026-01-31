@@ -1,0 +1,63 @@
+{
+    "name": "quantsight-mobile",
+    "private": true,
+    "version": "2.0.0",
+    "author": "QuantSight Team",
+    "description": "QuantSight Mobile - AI-Powered Sports Analytics (React Native / Web)",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "web:start": "vite",
+        "web:build": "vite build"
+    },
+    "dependencies": {
+        "clsx": "^2.1.1",
+        "fuse.js": "^7.1.0",
+        "lucide-react": "^0.563.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-router-dom": "^7.13.0",
+        "tailwind-merge": "^3.4.0",
+        "uuid": "^13.0.0",
+        "react-native": "^0.73.0",
+        "react-native-reanimated": "^3.6.0",
+        "react-native-safe-area-context": "^4.8.0",
+        "react-native-screens": "^3.29.0",
+        "victory-native": "^41.0.0",
+        "nativewind": "^4.0.0",
+        "@react-navigation/native": "^6.1.0",
+        "@react-navigation/native-stack": "^6.9.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "@types/react": "^18.2.43",
+        "@types/react-dom": "^18.2.17",
+        "@vitejs/plugin-react": "^4.2.1",
+        "autoprefixer": "^10.4.16",
+        "postcss": "^8.4.33",
+        "tailwindcss": "^3.4.1",
+        "typescript": "^5.2.2",
+        "vite": "^5.0.8"
+    },
+    "_migration_notes": {
+        "removed": [
+            "electron",
+            "electron-builder",
+            "concurrently",
+            "wait-on",
+            "framer-motion (replaced by react-native-reanimated)",
+            "recharts (replaced by victory-native)",
+            "get-port",
+            "kill-port"
+        ],
+        "added": [
+            "react-native",
+            "react-native-reanimated",
+            "victory-native",
+            "nativewind",
+            "@react-navigation/native",
+            "@react-navigation/native-stack"
+        ]
+    }
+}
