@@ -1,50 +1,31 @@
-# QuantSight Cloud - Firebase Studio Environment Configuration
+# QuantSight Cloud - Firebase Studio Environment
 # To learn more: https://developers.google.com/idx/guides/customize-idx-env
-{ pkgs, ... }: {
-  # Firebase Studio channel (Nix packages version)
+{
+  # Nix packages channel
   channel = "stable-24.05";
   
-  # Packages available in the development environment
+  # Development packages
   packages = [
-    # Python ecosystem
-    pkgs.python312
-    pkgs.python312Packages.pip
-    pkgs.python312Packages.virtualenv
-    
-    # Node.js for frontend
-    pkgs.nodejs_20
-    
-    # PostgreSQL client (for Cloud SQL connections)
-    pkgs.postgresql
-    
-    # Build tools
-    pkgs.gcc
-    pkgs.gnumake
-    
-    # Cloud tools
-    pkgs.google-cloud-sdk
+    "python312"
+    "python312Packages.pip"
+    "nodejs_20"
+    "postgresql"
   ];
   
-  # Environment variables
-  env = {
-    PYTHON_VERSION = "3.12";
-  };
+  # IDE extensions
+  idx.extensions = [
+    "ms-python.python"
+  ];
   
-  # IDE configuration
-  idx = {
-    # Workspace lifecycle hooks
-    onStart = {
-      # Install Python dependencies
-      install-python-deps = "cd backend && pip install -r requirements.txt";
-    };
-    
-    # Preview configuration for Cloud Run
+  # Preview configuration
+  idx.previews = {
+    enable = true;
     previews = {
-      enable = true;
-      previews = {
-        web = {
-          command = ["uvicorn" "backend.server:app" "--host" "0.0.0.0" "--port" "$PORT"];
-          manager = "web";
+      web = {
+        command = ["python" "backend/server.py"];
+        manager = "web";
+        env = {
+          PORT = "$PORT";
         };
       };
     };
