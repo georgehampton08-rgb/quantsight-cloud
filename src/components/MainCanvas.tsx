@@ -6,6 +6,7 @@ import MatchupLabPage from '../pages/MatchupLabPage'
 import TeamCentralPage from '../pages/TeamCentralPage'
 import SettingsPage from '../pages/SettingsPage'
 import InjuryAdmin from '../pages/InjuryAdmin'
+import PulsePage from '../pages/PulsePage'
 
 export default function MainCanvas() {
     return (
@@ -22,6 +23,7 @@ export default function MainCanvas() {
                 <Route path="/team" element={<TeamCentralPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/injury-admin" element={<InjuryAdmin />} />
+                <Route path="/pulse" element={<PulsePage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>

@@ -6,6 +6,7 @@ const NAV_ITEMS = [
     { name: 'Home', icon: '🏠', path: '/' },
     { name: 'Player Lab', icon: '🧬', path: '/player' },
     { name: 'Matchup Engine', icon: '⚔️', path: '/matchup' },
+    { name: 'The Pulse', icon: '❤️', path: '/pulse' },
     { name: 'Matchup Lab', icon: '🔬', path: '/matchup-lab' },
     { name: 'Team Central', icon: '🛡️', path: '/team' },
     { name: 'Settings', icon: '⚙️', path: '/settings' },
