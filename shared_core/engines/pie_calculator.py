@@ -139,10 +139,6 @@ def calculate_live_pie(
     
     Returns:
         PIE value as float (typically 0.0 to 0.5 for live)
-    
-    Example:
-        >>> calculate_live_pie(28, 10, 20, 6, 8, 2, 6, 9, 2, 1, 3, 3)
-        0.255  # Dominant performance
     """
     # True PIE numerator with all positive and negative contributions
     pie_numerator = (

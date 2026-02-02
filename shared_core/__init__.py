@@ -12,13 +12,12 @@ NO PLATFORM-SPECIFIC IMPORTS ALLOWED:
 All functions must be pure: data-in, data-out.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.0.0"
 __author__ = "QuantSight Team"
 
 from shared_core.engines import (
     CrucibleCore,
     calculate_pie,
-    calculate_live_pie,
     calculate_fatigue_adjustment,
     calculate_defense_friction,
 )
@@ -30,18 +29,10 @@ from shared_core.calculators import (
     calculate_matchup_grade,
 )
 
-from shared_core.utils import (
-    normalize_game_status,
-    is_game_active,
-    is_game_completed,
-    is_game_upcoming,
-)
-
 __all__ = [
     # Engines
     "CrucibleCore",
     "calculate_pie",
-    "calculate_live_pie",
     "calculate_fatigue_adjustment",
     "calculate_defense_friction",
     # Calculators
@@ -49,10 +40,4 @@ __all__ = [
     "calculate_effective_fg",
     "calculate_usage_rate",
     "calculate_matchup_grade",
-    # Utils
-    "normalize_game_status",
-    "is_game_active",
-    "is_game_completed",
-    "is_game_upcoming",
 ]
-

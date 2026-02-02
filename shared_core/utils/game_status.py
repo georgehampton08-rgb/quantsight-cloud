@@ -26,12 +26,6 @@ def normalize_game_status(status_code: int) -> GameStatus:
     
     Returns:
         Canonical status string: 'UPCOMING', 'LIVE', 'FINAL', or 'UNKNOWN'
-    
-    Example:
-        >>> normalize_game_status(2)
-        'LIVE'
-        >>> normalize_game_status(3)
-        'FINAL'
     """
     status_map = {
         1: 'UPCOMING',
@@ -42,39 +36,15 @@ def normalize_game_status(status_code: int) -> GameStatus:
 
 
 def is_game_active(status_code: int) -> bool:
-    """
-    Check if a game is currently in progress.
-    
-    Args:
-        status_code: Integer status from NBA API
-    
-    Returns:
-        True if game is LIVE, False otherwise
-    """
+    """Check if a game is currently in progress."""
     return status_code == 2
 
 
 def is_game_completed(status_code: int) -> bool:
-    """
-    Check if a game has finished.
-    
-    Args:
-        status_code: Integer status from NBA API
-    
-    Returns:
-        True if game is FINAL, False otherwise
-    """
+    """Check if a game has finished."""
     return status_code == 3
 
 
 def is_game_upcoming(status_code: int) -> bool:
-    """
-    Check if a game hasn't started yet.
-    
-    Args:
-        status_code: Integer status from NBA API
-    
-    Returns:
-        True if game is UPCOMING, False otherwise
-    """
+    """Check if a game hasn't started yet."""
     return status_code == 1

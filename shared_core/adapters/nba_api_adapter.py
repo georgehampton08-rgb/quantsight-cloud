@@ -227,7 +227,8 @@ class NBAApiAdapter:
             away_score=away.get(self.TEAM_SCORE_FIELD, 0) or 0,
             period=game.get(self.PERIOD_FIELD, 0),
             clock=game.get(self.GAME_CLOCK_FIELD, ''),
-            status_text=game.get(self.GAME_STATUS_TEXT_FIELD, '')
+            status_text=game.get(self.GAME_STATUS_TEXT_FIELD, ''),
+            game_date=game.get('gameDate', '')  # Added gameDate
         )
     
     # ========================================================================

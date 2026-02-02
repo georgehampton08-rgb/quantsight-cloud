@@ -1,31 +1,56 @@
 # QuantSight Cloud Build - Git Ignore
 
-# Dependencies
-node_modules/
-venv/
-.venv/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+venv_cloud/
+.venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment files (NEVER commit credentials!)
+.env
+.env.local
+.env.production
+backend/.env.cloud
+firebase_credentials.json
+**/service-account*.json
+
+# Testing artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+backend/tests/__pycache__/
+
+# Database files (local testing only)
+backend/data/*.db
+backend/data/*.db-journal
+*.sqlite
+*.sqlite3
 
 # Build artifacts
 dist/
 build/
 release/
 *.exe
-
-# IDE
-.idea/
-.vscode/
-
-# Environment
-.env
-.env.local
-.env.cloud
-firebase_credentials.json
-*.log
-
-# Database files (keep for testing, remove for production)
-# *.db
 
 # OS files
 .DS_Store

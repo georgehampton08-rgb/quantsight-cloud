@@ -14,5 +14,5 @@ COPY backend/main_test.py .
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 
-# Run - use exec form and run uvicorn directly
-CMD ["uvicorn", "main_test:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run
+CMD ["python", "-m", "uvicorn", "main_test:app", "--host", "0.0.0.0", "--port", "8080"]
