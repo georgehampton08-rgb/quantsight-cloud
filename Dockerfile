@@ -33,6 +33,15 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY backend/ ./backend/
 
+# Copy shared_core (platform-agnostic engine)
+COPY shared_core/ ./shared_core/
+
+# Firebase credentials (mounted via Secret Manager in Cloud Run)
+# Note: Use --set-secrets flag when deploying:
+#   gcloud run deploy --set-secrets=/app/firebase_credentials.json=firebase-credentials:latest
+# For local testing, uncomment:
+# COPY firebase_credentials.json /app/firebase_credentials.json
+
 # Set working directory to backend
 WORKDIR /app/backend
 

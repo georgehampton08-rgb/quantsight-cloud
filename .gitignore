@@ -20,6 +20,8 @@ release/
 # Environment
 .env
 .env.local
+.env.cloud
+firebase_credentials.json
 *.log
 
 # Database files (keep for testing, remove for production)
