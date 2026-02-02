@@ -240,6 +240,65 @@ class CloudAsyncPulseProducer:
             # Determine opponent for matchup context
             opponent_team = away_team if player.team_tricode == home_team else home_team
             
+            # =================================================================
+            # TODO [ALPHA PATCHER]: USAGE VACUUM DETECTION
+            # =================================================================
+            # When Cloud SQL is online, inject the following:
+            #
+            # usage_rate = calculate_in_game_usage(
+            #     player_pts=player.pts,
+            #     player_fga=player.fga,
+            #     player_fta=player.fta,
+            #     player_tov=player.tov,
+            #     team_fga=boxscore.get_team_stats(player.team_tricode).fga,
+            #     team_fta=boxscore.get_team_stats(player.team_tricode).fta,
+            #     team_tov=boxscore.get_team_stats(player.team_tricode).tov
+            # )
+            #
+            # Query Cloud SQL for season baseline:
+            #   SELECT usage_rate FROM player_stats 
+            #   WHERE player_id = {player.player_id} AND season = '2024-25'
+            #
+            # usage_vacuum = usage_rate > (season_avg_usage * 1.25)
+            # =================================================================
+            usage_rate = None  # Placeholder until Cloud SQL integration
+            usage_vacuum = False  # Placeholder
+            
+            # =================================================================
+            # TODO [ALPHA PATCHER]: MATCHUP DIFFICULTY DETECTION
+            # =================================================================
+            # When Cloud SQL is online, inject the following:
+            #
+            # Query Cloud SQL or Firestore cache:
+            #   SELECT defensive_rating FROM team_defense 
+            #   WHERE team_abbreviation = {opponent_team} AND season = '2024-25'
+            #
+            # opponent_def_rating = _TEAM_DEFENSE_CACHE.get(opponent_team, LEAGUE_AVG_DEF_RATING)
+            #
+            # Classify matchup:
+            #   matchup_difficulty = 'elite' if opponent_def_rating < 108 else (
+            #       'soft' if opponent_def_rating > 115 else 'average'
+            #   )
+            # =================================================================
+            opponent_def_rating = LEAGUE_AVG_DEF_RATING  # Placeholder
+            matchup_difficulty = 'average'  # Placeholder
+            
+            # =================================================================
+            # TODO [ALPHA PATCHER]: HEAT SCALE CALCULATION (TS% Alpha Gap)
+            # =================================================================
+            # When Cloud SQL is online, inject the following:
+            #
+            # Query Cloud SQL for rolling TS%:
+            #   SELECT rolling_ts_pct FROM player_rolling_averages 
+            #   WHERE player_id = {player.player_id} AND season = '2024-25'
+            #
+            # Calculate alpha gap:
+            #   alpha_gap = ts_pct - season_avg_ts
+            #   heat_scale = min(100, max(0, int(alpha_gap * 500)))
+            # =================================================================
+            season_avg_ts = None  # Placeholder - requires Cloud SQL
+            heat_scale = None  # Placeholder
+            
             # Detect garbage time
             game_info = boxscore.game_info
             player_is_garbage_time = is_garbage_time(
@@ -260,6 +319,13 @@ class CloudAsyncPulseProducer:
                 'opponent': opponent_team,
                 'minutes': player.minutes,
                 'is_garbage_time': player_is_garbage_time,
+                # Alpha metrics (placeholders until Cloud SQL)
+                'usage_rate': usage_rate,
+                'usage_vacuum': usage_vacuum,
+                'opponent_def_rating': opponent_def_rating,
+                'matchup_difficulty': matchup_difficulty,
+                'season_avg_ts': season_avg_ts,
+                'heat_scale': heat_scale,
                 'stats': {
                     'pts': player.pts,
                     'reb': player.reb,
@@ -268,6 +334,7 @@ class CloudAsyncPulseProducer:
                     'blk': player.blk
                 }
             })
+
         
         # Sort by PIE descending
         leaders.sort(key=lambda x: x['pie'], reverse=True)
