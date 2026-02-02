@@ -53,6 +53,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Cloud Run sets PORT environment variable
+# Cloud Run will call this on PORT environment variable
 # Using shell form to expand $PORT at runtime
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
