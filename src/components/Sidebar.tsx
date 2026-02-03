@@ -18,7 +18,7 @@ export default function Sidebar() {
     const location = useLocation();
 
     return (
-        <div className={`${collapsed ? 'w-20' : 'w-64'} h-full border-r border-slate-700/50 bg-slate-900/30 backdrop-blur-md flex flex-col p-4 transition-all duration-300 relative`}>
+        <div className={`sidebar ${collapsed ? 'w-20' : 'w-64'} h-full border-r border-slate-700/50 bg-slate-900/30 backdrop-blur-md flex flex-col p-4 transition-all duration-300 relative`}>
 
             {/* Collapse Toggle */}
             <button

@@ -17,27 +17,47 @@
         overflow-x: hidden;
       }
 
-      /* Hide sidebar on mobile by default */
+      /* Hide sidebar on mobile by default, show when 'open' class is added */
       .sidebar {
-        position: fixed;
-        left: -100%;
-        transition: left 0.3s ease;
-        z-index: 1000;
+        position: fixed !important;
+        left: -100% !important;
+        transition: left 0.3s ease !important;
+        z-index: 1000 !important;
+        width: 16rem !important;
+        /* 64 in tailwind = 16rem */
+        max-width: 80vw !important;
       }
 
       .sidebar.open {
+        left: 0 !important;
+      }
+
+      /* Mobile overlay */
+      .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
         left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+      }
+
+      .sidebar.open~.mobile-overlay,
+      body:has(.sidebar.open) .mobile-overlay {
+        display: block;
       }
 
       /* Make main content full width on mobile */
-      .main-layout {
+      .flex.h-screen>div:first-child:not(.sidebar) {
         margin-left: 0 !important;
-        width: 100% !important;
       }
 
       /* Stack cards vertically */
       .glass-card {
         width: 100% !important;
+        max-width: 100% !important;
         margin: 0.5rem 0 !important;
       }
 
@@ -69,6 +89,11 @@
       /* Make grid layouts single column */
       .grid {
         grid-template-columns: 1fr !important;
+      }
+
+      /* Hide desktop collapse button on mobile */
+      .sidebar button[class*="absolute"] {
+        display: none !important;
       }
     }
   </style>

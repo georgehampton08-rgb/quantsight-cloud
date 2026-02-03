@@ -43,6 +43,14 @@ except ImportError as e:
     logger.warning(f"⚠️ Admin routes not available: {e}")
     ADMIN_ROUTES_AVAILABLE = False
 
+# Import public API routes
+try:
+    from api.public_routes import router as public_router
+    PUBLIC_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ Public routes not available: {e}")
+    PUBLIC_ROUTES_AVAILABLE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -81,6 +89,11 @@ app = FastAPI(
 if ADMIN_ROUTES_AVAILABLE:
     app.include_router(admin_router)
     logger.info("✅ Admin routes registered")
+
+# Include public routes if available
+if PUBLIC_ROUTES_AVAILABLE:
+    app.include_router(public_router)
+    logger.info("✅ Public routes registered")
 
 # CORS configuration for web/mobile clients
 app.add_middleware(
