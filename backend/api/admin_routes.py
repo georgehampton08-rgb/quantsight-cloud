@@ -415,3 +415,95 @@ async def bulk_seed_players(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/bulk-seed-game-logs")
+async def bulk_seed_game_logs(data: dict):
+    """Seed game logs from local client (box scores)"""
+    db_url = get_database_url()
+    if not db_url:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    
+    game_logs = data.get('game_logs', [])
+    if not game_logs:
+        raise HTTPException(status_code=400, detail="No game logs provided")
+    
+    logger.info(f"Bulk seeding {len(game_logs)} game logs...")
+    
+    try:
+        from datetime import datetime, date
+        
+        engine = create_engine(db_url)
+        inserted_count = 0
+        errors = []
+        
+        with engine.connect() as conn:
+            for log in game_logs:
+                try:
+                    # Parse minutes (from "MM:SS" to integer minutes)
+                    minutes_str = log.get('minutes', '0')
+                    minutes_int = 0
+                    if ':' in str(minutes_str):
+                        parts = str(minutes_str).split(':')
+                        minutes_int = int(parts[0])
+                    
+                    # Extract game date
+                    game_date_str = log.get('game_date')
+                    if game_date_str:
+                        game_date = datetime.strptime(game_date_str, '%Y-%m-%d').date()
+                    else:
+                        game_date = datetime.utcnow().date()
+                    
+                    conn.execute(text("""
+                        INSERT INTO game_logs (
+                            player_id, game_id, game_date, season,
+                            is_home, minutes, points, rebounds, assists,
+                            steals, blocks, turnovers, fgm, fga,
+                            fg3m, fg3a, ftm, fta, plus_minus
+                        )
+                        VALUES (
+                            :player_id, :game_id, :game_date, '2024-25',
+                            :is_home, :minutes, :points, :rebounds, :assists,
+                            :steals, :blocks, :turnovers, :fgm, :fga,
+                            :fg3m, :fg3a, :ftm, :fta, :plus_minus
+                        )
+                        ON CONFLICT (player_id, game_id) DO UPDATE SET
+                            points = EXCLUDED.points,
+                            rebounds = EXCLUDED.rebounds,
+                            assists = EXCLUDED.assists
+                    """), {
+                        "player_id": log.get('player_id'),
+                        "game_id": log.get('game_id'),
+                        "game_date": game_date,
+                        "is_home": log.get('is_home', False),
+                        "minutes": minutes_int,
+                        "points": int(log.get('points', 0)),
+                        "rebounds": int(log.get('rebounds', 0)),
+                        "assists": int(log.get('assists', 0)),
+                        "steals": int(log.get('steals', 0)),
+                        "blocks": int(log.get('blocks', 0)),
+                        "turnovers": int(log.get('turnovers', 0)),
+                        "fgm": int(log.get('fgm', 0)),
+                        "fga": int(log.get('fga', 0)),
+                        "fg3m": int(log.get('tpm', 0)),
+                        "fg3a": int(log.get('tpa', 0)),
+                        "ftm": int(log.get('ftm', 0)),
+                        "fta": int(log.get('fta', 0)),
+                        "plus_minus": int(float(log.get('plus_minus', 0)))
+                    })
+                    inserted_count += 1
+                except Exception as pe:
+                    errors.append(str(pe)[:50])
+            
+            conn.commit()
+        
+        engine.dispose()
+        
+        return {
+            "status": "success",
+            "message": f"Seeded {inserted_count} game logs",
+            "total": inserted_count,
+            "errors": len(errors)
+        }
+        
+    except Exception as e:
+        logger.error(f"Bulk game log seeding failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
