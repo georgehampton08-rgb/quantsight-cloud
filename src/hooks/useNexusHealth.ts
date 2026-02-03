@@ -152,13 +152,13 @@ export const useNexusHealth = (options: UseNexusHealthOptions = {}): UseNexusHea
 
     // Check if service is in cooldown
     const isInCooldown = useCallback((service: string): boolean => {
-        if (!state.cooldowns) return false;
+        if (!state.cooldowns || !state.cooldowns.active_cooldowns) return false;
         return service in state.cooldowns.active_cooldowns;
     }, [state.cooldowns]);
 
     // Get remaining cooldown seconds
     const getCooldownRemaining = useCallback((service: string): number => {
-        if (!state.cooldowns) return 0;
+        if (!state.cooldowns || !state.cooldowns.active_cooldowns) return 0;
         const info = state.cooldowns.active_cooldowns[service];
         return info ? info.remaining_seconds : 0;
     }, [state.cooldowns]);
