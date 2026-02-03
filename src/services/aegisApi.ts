@@ -101,7 +101,7 @@ export const AegisApi = {
      */
     getHealth: async (): Promise<AegisHealthStatus> => {
         try {
-            const res = await fetch(`${API_BASE}/aegis/health`);
+            const res = await fetch(`${API_BASE}/health`);
             return await res.json();
         } catch (error) {
             console.error('Aegis health check failed:', error);
