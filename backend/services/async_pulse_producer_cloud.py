@@ -213,10 +213,11 @@ class CloudAsyncPulseProducer:
     
     def _extract_leaders_from_normalized(
         self, 
-        boxscore: NormalizedBoxScore,
+        boxscore: 'NormalizedBoxScore',  # String annotation to avoid import-time NameError
         home_team: str = '',
         away_team: str = ''
     ) -> List[Dict]:
+
         """
         Extract player stats from normalized boxscore.
         Simplified cloud version - no rolling averages (for now).
