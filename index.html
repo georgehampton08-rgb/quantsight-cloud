@@ -3,10 +3,75 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:5000 http://localhost:5000 ws://localhost:5173; img-src 'self' data: blob: https:;" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quantsight Dashboard</title>
+    content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://quantsight-cloud-458498663186.us-central1.run.app http://127.0.0.1:5000 http://localhost:5000 ws://localhost:5173; img-src 'self' data: blob: https:;" />
+  <title>QuantSight</title>
+  <style>
+    /* Mobile-first responsive overrides */
+    @media (max-width: 768px) {
+      body {
+        overflow-x: hidden;
+      }
+
+      /* Hide sidebar on mobile by default */
+      .sidebar {
+        position: fixed;
+        left: -100%;
+        transition: left 0.3s ease;
+        z-index: 1000;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      /* Make main content full width on mobile */
+      .main-layout {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+
+      /* Stack cards vertically */
+      .glass-card {
+        width: 100% !important;
+        margin: 0.5rem 0 !important;
+      }
+
+      /* Reduce padding on mobile */
+      .p-8 {
+        padding: 1rem !important;
+      }
+
+      .p-6 {
+        padding: 0.75rem !important;
+      }
+
+      /* Make tables scrollable */
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      /* Adjust font sizes */
+      h1 {
+        font-size: 1.5rem !important;
+      }
+
+      h2 {
+        font-size: 1.25rem !important;
+      }
+
+      /* Make grid layouts single column */
+      .grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
 </head>
 
 <body>
