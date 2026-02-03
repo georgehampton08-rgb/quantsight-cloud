@@ -5,6 +5,7 @@ Provides endpoints for frontend consumption
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text, create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 import os
 import logging
 
@@ -12,19 +13,41 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Database session
+# Shared database engine - create once
+_engine = None
+_SessionLocal = None
+
+def get_db_engine():
+    """Get or create database engine"""
+    global _engine, _SessionLocal
+    
+    if _engine is None:
+        db_url = os.getenv('DATABASE_URL', '')
+        if not db_url:
+            raise Exception("DATABASE_URL not set")
+        
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        
+        # Use NullPool for Cloud Run (connection lifecycle per request)
+        _engine = create_engine(
+            db_url,
+            poolclass=NullPool,
+            connect_args={"connect_timeout": 10}
+        )
+        _SessionLocal = sessionmaker(bind=_engine)
+        logger.info("✅ Database engine initialized")
+    
+    return _engine
+
 def get_db_session():
     """Get database session"""
-    db_url = os.getenv('DATABASE_URL', '')
-    if not db_url:
+    try:
+        get_db_engine()  # Ensure engine exists
+        return _SessionLocal()
+    except Exception as e:
+        logger.error(f"Failed to create database session: {e}")
         return None
-    
-    if db_url.startswith('postgres://'):
-        db_url = db_url.replace('postgres://', 'postgresql://', 1)
-    
-    engine = create_engine(db_url, pool_pre_ping=True)
-    Session = sessionmaker(bind=engine)
-    return Session()
 
 
 @router.get("/teams")

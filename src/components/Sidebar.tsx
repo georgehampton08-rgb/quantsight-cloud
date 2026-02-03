@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const NAV_ITEMS = [
     { name: 'Home', icon: '🏠', path: '/' },
@@ -17,13 +17,27 @@ export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const location = useLocation();
 
-    return (
-        <div className={`sidebar ${collapsed ? 'w-20' : 'w-64'} h-full border-r border-slate-700/50 bg-slate-900/30 backdrop-blur-md flex flex-col p-4 transition-all duration-300 relative`}>
+    const closeMobileSidebar = () => {
+        const sidebar = document.querySelector('.sidebar');
+        sidebar?.classList.remove('open');
+    };
 
-            {/* Collapse Toggle */}
+    return (
+        <div className={`sidebar ${collapsed ? 'w-20' : 'w-64'} h-full border-r border-slate-700/50 bg-slate-900/95 backdrop-blur-md flex flex-col p-4 transition-all duration-300 relative`}>
+
+            {/* Mobile Close Button - Top Right */}
+            <button
+                onClick={closeMobileSidebar}
+                className="md:hidden absolute top-4 right-4 p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors z-10"
+                title="Close Menu"
+            >
+                <X size={20} />
+            </button>
+
+            {/* Desktop Collapse Toggle */}
             <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="absolute -right-3 top-8 bg-slate-800 border border-slate-600 rounded-full p-1 text-slate-400 hover:text-white"
+                className="hidden md:block absolute -right-3 top-8 bg-slate-800 border border-slate-600 rounded-full p-1 text-slate-400 hover:text-white"
             >
                 {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
@@ -40,6 +54,7 @@ export default function Sidebar() {
                     <NavLink
                         key={item.name}
                         to={item.path}
+                        onClick={closeMobileSidebar}
                         className={({ isActive }) => {
                             // For exact matching on home, otherwise check if current path matches
                             const isCurrentPath = item.path === '/'

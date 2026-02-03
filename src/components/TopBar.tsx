@@ -11,16 +11,39 @@ export default function TopBar() {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    const toggleMobileMenu = () => {
+        const sidebar = document.querySelector('.sidebar');
+        const isOpen = sidebar?.classList.contains('open');
+
+        if (isOpen) {
+            sidebar?.classList.remove('open');
+            setMobileMenuOpen(false);
+        } else {
+            sidebar?.classList.add('open');
+            setMobileMenuOpen(true);
+        }
+    };
+
+    const closeMobileMenu = () => {
+        const sidebar = document.querySelector('.sidebar');
+        sidebar?.classList.remove('open');
+        setMobileMenuOpen(false);
+    };
+
     return (
         <>
-            <div className="h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 justify-between relative z-40 overflow-visible">
+            {/* Mobile Overlay - Click to close sidebar */}
+            {mobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-[999] md:hidden"
+                    onClick={closeMobileMenu}
+                />
+            )}
+
+            <div className="h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 justify-between relative z-[1000] overflow-visible">
                 {/* Mobile Menu Button */}
                 <button
-                    onClick={() => {
-                        const sidebar = document.querySelector('.sidebar');
-                        sidebar?.classList.toggle('open');
-                        setMobileMenuOpen(!mobileMenuOpen);
-                    }}
+                    onClick={toggleMobileMenu}
                     className="md:hidden p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                     title="Menu"
                 >
@@ -48,16 +71,11 @@ export default function TopBar() {
                     <h1 className="text-lg font-bold text-white">QuantSight</h1>
                 </div>
 
-                {/* Status LEDs - Hide on mobile, show on tablet+ */}
-                <div className="hidden lg:flex items-center gap-4">
+                {/* Status LEDs - Always visible, compact on mobile */}
+                <div className="flex items-center gap-2 md:gap-4">
                     <StatusLed label="NBA" status={health.nba} />
                     <StatusLed label="AI" status={health.gemini} />
                     <StatusLed label="DB" status={health.database} />
-                </div>
-
-                {/* Mobile: Just show a simple status dot */}
-                <div className="lg:hidden">
-                    <div className={`w-3 h-3 rounded-full ${health.nba === 'healthy' && health.database === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
                 </div>
             </div>
 

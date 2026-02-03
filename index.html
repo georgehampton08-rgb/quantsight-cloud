@@ -17,41 +17,22 @@
         overflow-x: hidden;
       }
 
-      /* Hide sidebar on mobile by default, show when 'open' class is added */
+      /* Hide sidebar on mobile by default */
       .sidebar {
         position: fixed !important;
+        top: 0 !important;
         left: -100% !important;
+        bottom: 0 !important;
         transition: left 0.3s ease !important;
-        z-index: 1000 !important;
+        z-index: 1001 !important;
+        /* Above overlay */
         width: 16rem !important;
-        /* 64 in tailwind = 16rem */
         max-width: 80vw !important;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3) !important;
       }
 
       .sidebar.open {
         left: 0 !important;
-      }
-
-      /* Mobile overlay */
-      .mobile-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
-      }
-
-      .sidebar.open~.mobile-overlay,
-      body:has(.sidebar.open) .mobile-overlay {
-        display: block;
-      }
-
-      /* Make main content full width on mobile */
-      .flex.h-screen>div:first-child:not(.sidebar) {
-        margin-left: 0 !important;
       }
 
       /* Stack cards vertically */
@@ -68,6 +49,11 @@
 
       .p-6 {
         padding: 0.75rem !important;
+      }
+
+      .px-6 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
       }
 
       /* Make tables scrollable */
@@ -91,9 +77,9 @@
         grid-template-columns: 1fr !important;
       }
 
-      /* Hide desktop collapse button on mobile */
-      .sidebar button[class*="absolute"] {
-        display: none !important;
+      /* Compact status LEDs on mobile */
+      .flex.items-center.gap-4>div {
+        font-size: 0.75rem !important;
       }
     }
   </style>
