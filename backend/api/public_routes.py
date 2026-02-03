@@ -134,13 +134,77 @@ async def get_roster(team_id: str):
 @router.get("/schedule")
 async def get_schedule():
     """
-    Get today's schedule
-    NOTE: This is a placeholder since we don't have game schedule in Cloud SQL yet
+    Get today's NBA schedule from NBA API
+    Returns live, upcoming, and completed games for today
     """
-    return {
-        "message": "Schedule endpoint under construction",
-        "games": []
-    }
+    try:
+        import requests
+        from datetime import datetime
+        
+        # NBA API endpoint for today's scoreboard
+        url = "https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://www.nba.com/'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        games_data = data.get('scoreboard', {}).get('games', [])
+        
+        games = []
+        for game in games_data:
+            games.append({
+                'game_id': game.get('gameId'),
+                'game_date': game.get('gameTimeUTC', '')[:10],
+                'game_time': game.get('gameTimeUTC'),
+                'home_team': {
+                    'team_id': game.get('homeTeam', {}).get('teamId'),
+                    'name': game.get('homeTeam', {}).get('teamName'),
+                    'tricode': game.get('homeTeam', {}).get('teamTricode'),
+                    'score': game.get('homeTeam', {}).get('score', 0),
+                    'wins': game.get('homeTeam', {}).get('wins', 0),
+                    'losses': game.get('homeTeam', {}).get('losses', 0)
+                },
+                'away_team': {
+                    'team_id': game.get('awayTeam', {}).get('teamId'),
+                    'name': game.get('awayTeam', {}).get('teamName'),
+                    'tricode': game.get('awayTeam', {}).get('teamTricode'),
+                    'score': game.get('awayTeam', {}).get('score', 0),
+                    'wins': game.get('awayTeam', {}).get('wins', 0),
+                    'losses': game.get('awayTeam', {}).get('losses', 0)
+                },
+                'status': game.get('gameStatus'),  # 1=scheduled, 2=live, 3=final
+                'status_text': game.get('gameStatusText', ''),
+                'period': game.get('period', 0),
+                'game_clock': game.get('gameClock', ''),
+                'arena': game.get('arenaName', ''),
+                'city': game.get('arenaCity', '')
+            })
+        
+        return {
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "total_games": len(games),
+            "games": games
+        }
+        
+    except requests.RequestException as e:
+        logger.error(f"NBA API error: {e}")
+        # Return empty games list if NBA API fails
+        return {
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "total_games": 0,
+            "games": [],
+            "error": "Unable to fetch schedule from NBA API"
+        }
+    except Exception as e:
+        logger.error(f"Schedule endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get("/injuries")
