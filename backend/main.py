@@ -16,9 +16,10 @@ Environment:
 import asyncio
 import logging
 import os
+from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORS Middleware
 
 # Configure logging for Cloud Run
 logging.basicConfig(
