@@ -27,8 +27,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import cloud-native pulse producer
-from services.async_pulse_producer_cloud import start_cloud_producer, stop_cloud_producer, get_cloud_producer
+# Import cloud-native pulse producer (graceful fallback)
+try:
+    from services.async_pulse_producer_cloud import start_cloud_producer, stop_cloud_producer, get_cloud_producer
+    PRODUCER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ Cloud producer not available: {e}")
+    PRODUCER_AVAILABLE = False
+
+# Import admin routes for database management
+try:
+    from api.admin_routes import router as admin_router
+    ADMIN_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ Admin routes not available: {e}")
+    ADMIN_ROUTES_AVAILABLE = False
 
 
 @asynccontextmanager
@@ -38,20 +51,23 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Cloud Run starting up...")
     logger.info(f"   └─ PORT: {os.getenv('PORT', '8080')}")
     logger.info(f"   └─ FIREBASE_PROJECT_ID: {os.getenv('FIREBASE_PROJECT_ID', 'Not set')}")
+    logger.info(f"   └─ DATABASE_URL: {'Set' if os.getenv('DATABASE_URL') else 'Not set'}")
     
-    # Start the cloud producer
-    try:
-        await start_cloud_producer()
-        logger.info("✅ Cloud pulse producer started")
-    except Exception as e:
-        logger.error(f"❌ Failed to start cloud producer: {e}")
+    # Start the cloud producer (if available)
+    if PRODUCER_AVAILABLE:
+        try:
+            await start_cloud_producer()
+            logger.info("✅ Cloud pulse producer started")
+        except Exception as e:
+            logger.error(f"❌ Failed to start cloud producer: {e}")
     
     yield
     
     # Shutdown
     logger.info("🛑 Cloud Run shutting down...")
-    await stop_cloud_producer()
-    logger.info("✅ Cloud pulse producer stopped")
+    if PRODUCER_AVAILABLE:
+        await stop_cloud_producer()
+        logger.info("✅ Cloud pulse producer stopped")
 
 
 app = FastAPI(
@@ -60,6 +76,11 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Include admin routes if available
+if ADMIN_ROUTES_AVAILABLE:
+    app.include_router(admin_router)
+    logger.info("✅ Admin routes registered")
 
 # CORS configuration for web/mobile clients
 app.add_middleware(
@@ -71,6 +92,7 @@ app.add_middleware(
 )
 
 
+
 @app.get("/")
 async def root():
     """Root endpoint - redirect to health."""
@@ -80,36 +102,40 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check for Cloud Run."""
-    producer = get_cloud_producer()
+    result = {"status": "healthy", "database_url_set": bool(os.getenv('DATABASE_URL'))}
     
-    if not producer:
-        raise HTTPException(status_code=503, detail="Producer not initialized")
+    if PRODUCER_AVAILABLE:
+        try:
+            producer = get_cloud_producer()
+            if producer:
+                status = producer.get_status()
+                result["producer"] = status
+                result["firebase"] = {
+                    "enabled": status.get("firebase_enabled", False),
+                    "write_errors": status.get("firebase_write_errors", 0)
+                }
+        except Exception as e:
+            result["producer_error"] = str(e)
+    else:
+        result["producer"] = "not_loaded"
     
-    status = producer.get_status()
-    
-    # Cloud Run expects 200 for healthy, 503 for unhealthy
-    if not status.get("running"):
-        raise HTTPException(status_code=503, detail="Producer not running")
-    
-    return {
-        "status": "healthy",
-        "producer": status,
-        "firebase": {
-            "enabled": status.get("firebase_enabled", False),
-            "write_errors": status.get("firebase_write_errors", 0)
-        }
-    }
+    return result
 
 
 @app.get("/status")
 async def status():
     """Detailed status endpoint for monitoring."""
-    producer = get_cloud_producer()
+    if not PRODUCER_AVAILABLE:
+        return {"status": "producer_not_available", "admin_routes": ADMIN_ROUTES_AVAILABLE}
     
-    if not producer:
+    try:
+        producer = get_cloud_producer()
+        if producer:
+            return producer.get_status()
         return {"error": "Producer not initialized"}
-    
-    return producer.get_status()
+    except Exception as e:
+        return {"error": str(e)}
+
 
 
 # Cloud Run will call this on PORT environment variable

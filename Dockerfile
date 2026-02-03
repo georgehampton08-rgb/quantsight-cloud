@@ -1,18 +1,39 @@
-# Simple single-stage Dockerfile for debugging
-FROM python:3.12-slim
+# QuantSight Cloud Backend - Production Dockerfile
+# =================================================
+# Full FastAPI deployment with admin routes and database support
+
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir fastapi uvicorn
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy only what we need for the test
-COPY backend/main_test.py .
+# Copy requirements first for layer caching
+COPY backend/requirements.txt .
+
+# Install Python dependencies (including SQLAlchemy for PostgreSQL)
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir sqlalchemy psycopg2-binary
+
+# Copy shared_core for math parity with desktop
+COPY shared_core /app/shared_core
+
+# Copy backend application code
+COPY backend /app
+
+# Create data directory
+RUN mkdir -p /app/data
 
 # Environment
-ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    PORT=8080
 
-# Run - use exec form and run uvicorn directly
-CMD ["uvicorn", "main_test:app", "--host", "0.0.0.0", "--port", "8080"]
+EXPOSE 8080
+
+# Run with Uvicorn
+CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers 1 --log-level info
