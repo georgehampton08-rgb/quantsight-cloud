@@ -192,6 +192,112 @@ async def seed_team_defense():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/seed-players")
+async def seed_players():
+    """Seed all active NBA players from NBA Stats API"""
+    db_url = get_database_url()
+    if not db_url:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    
+    logger.info("🔧 Fetching players from NBA Stats API...")
+    
+    try:
+        import requests
+        from datetime import datetime
+        
+        # Fetch all active players from NBA API
+        url = "https://stats.nba.com/stats/commonallplayers"
+        headers = {
+            'User-Agent': 'Mozilla/5.0',
+            'Accept': 'application/json',
+            'Referer': 'https://stats.nba.com/',
+            'Origin': 'https://stats.nba.com'
+        }
+        params = {
+            'LeagueID': '00',
+            'Season': '2024-25',
+            'IsOnlyCurrentSeason': '1'
+        }
+        
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        
+        players_data = data['resultSets'][0]
+        headers_list = players_data['headers']
+        rows = players_data['rowSet']
+        
+        # Find column indices
+        person_id_idx = headers_list.index('PERSON_ID')
+        display_name_idx = headers_list.index('DISPLAY_FIRST_LAST')
+        team_id_idx = headers_list.index('TEAM_ID')
+        team_abbr_idx = headers_list.index('TEAM_ABBREVIATION')
+        
+        logger.info(f"✅ Fetched {len(rows)} players from NBA API")
+        
+        # Insert into database
+        engine = create_engine(db_url)
+        inserted_count = 0
+        
+        with engine.connect() as conn:
+            for row in rows:
+                player_id = row[person_id_idx]
+                full_name = row[display_name_idx]
+                team_id = row[team_id_idx]
+                team_abbr = row[team_abbr_idx]
+                
+                # Skip if no team (free agents)
+                if not team_id or team_id == 0:
+                    continue
+                
+                # Split name into first name, last name
+                parts = full_name.split(' ', 1)
+                first_name = parts[0] if parts else ''
+                last_name = parts[1] if len(parts) > 1 else parts[0]
+                
+                conn.execute(text("""
+                    INSERT INTO players (
+                        player_id, full_name, first_name, last_name,
+                        team_id, team_abbreviation, is_active, last_updated
+                    )
+                    VALUES (
+                        :player_id, :full_name, :first_name, :last_name,
+                        :team_id, :team_abbr, TRUE, :now
+                    )
+                    ON CONFLICT (player_id) DO UPDATE SET
+                        full_name = EXCLUDED.full_name,
+                        team_id = EXCLUDED.team_id,
+                        team_abbreviation = EXCLUDED.team_abbreviation,
+                        last_updated = EXCLUDED.last_updated
+                """), {
+                    "player_id": player_id,
+                    "full_name": full_name,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "team_id": team_id,
+                    "team_abbr": team_abbr,
+                    "now": datetime.utcnow()
+                })
+                inserted_count += 1
+            
+            conn.commit()
+        
+        engine.dispose()
+        
+        logger.info(f"✅ Successfully seeded {inserted_count} players")
+        
+        return {
+            "status": "success",
+            "message": f"Seeded {inserted_count} active NBA players",
+            "total_fetched": len(rows),
+            "total_inserted": inserted_count
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Player seeding failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/db-status")
 async def database_status():
     """Check database connection and table counts."""

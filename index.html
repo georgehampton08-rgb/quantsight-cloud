@@ -17,7 +17,7 @@
         overflow-x: hidden;
       }
 
-      /* Hide sidebar on mobile by default */
+      /* Sidebar slides from left on mobile */
       .sidebar {
         position: fixed !important;
         top: 0 !important;
@@ -25,10 +25,9 @@
         bottom: 0 !important;
         transition: left 0.3s ease !important;
         z-index: 1001 !important;
-        /* Above overlay */
         width: 16rem !important;
         max-width: 80vw !important;
-        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3) !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5) !important;
       }
 
       .sidebar.open {
@@ -63,6 +62,34 @@
         white-space: nowrap;
       }
 
+      /* Pulse Page - Make table container scrollable */
+      .matchup-lab-page .overflow-x-auto {
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      /* Pulse Page - Single column grid on mobile */
+      .matchup-lab-page .grid.lg\:grid-cols-12 {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Pulse Page - Reduce featured game padding */
+      .matchup-lab-page .glass-card {
+        padding: 1rem !important;
+      }
+
+      /* Pulse Page - Smaller text sizes */
+      .matchup-lab-page h1 {
+        font-size: 1.5rem !important;
+      }
+
+      .matchup-lab-page .text-5xl {
+        font-size: 2.5rem !important;
+      }
+
+      .matchup-lab-page .text-4xl {
+        font-size: 2rem !important;
+      }
+
       /* Adjust font sizes */
       h1 {
         font-size: 1.5rem !important;
@@ -80,6 +107,12 @@
       /* Compact status LEDs on mobile */
       .flex.items-center.gap-4>div {
         font-size: 0.75rem !important;
+      }
+
+      /* Compact CascadingSelector on mobile */
+      .cascading-selector {
+        max-width: 180px !important;
+        font-size: 0.875rem !important;
       }
     }
   </style>

@@ -24,22 +24,8 @@ export default function TopBar() {
         }
     };
 
-    const closeMobileMenu = () => {
-        const sidebar = document.querySelector('.sidebar');
-        sidebar?.classList.remove('open');
-        setMobileMenuOpen(false);
-    };
-
     return (
         <>
-            {/* Mobile Overlay - Click to close sidebar */}
-            {mobileMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-[999] md:hidden"
-                    onClick={closeMobileMenu}
-                />
-            )}
-
             <div className="h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 justify-between relative z-[1000] overflow-visible">
                 {/* Mobile Menu Button */}
                 <button
@@ -50,8 +36,8 @@ export default function TopBar() {
                     {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </button>
 
+                {/* Desktop: Back Button + Full Layout */}
                 <div className="hidden md:flex items-center gap-6 flex-1 overflow-visible">
-                    {/* Back Button - Desktop */}
                     <button
                         onClick={() => navigate(-1)}
                         className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -59,19 +45,20 @@ export default function TopBar() {
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
-
                     <CascadingSelector />
                     <div className="flex-1">
                         <OmniSearchBar />
                     </div>
                 </div>
 
-                {/* Mobile: Just show app title */}
-                <div className="md:hidden flex-1 text-center">
-                    <h1 className="text-lg font-bold text-white">QuantSight</h1>
+                {/* Mobile: Compact Select Context + Title */}
+                <div className="md:hidden flex-1 flex items-center justify-center gap-2 px-2">
+                    <div className="flex-1 max-w-[200px]">
+                        <CascadingSelector />
+                    </div>
                 </div>
 
-                {/* Status LEDs - Always visible, compact on mobile */}
+                {/* Status LEDs - Always visible */}
                 <div className="flex items-center gap-2 md:gap-4">
                     <StatusLed label="NBA" status={health.nba} />
                     <StatusLed label="AI" status={health.gemini} />
