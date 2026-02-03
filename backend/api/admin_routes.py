@@ -350,38 +350,54 @@ async def bulk_seed_players(data: dict):
         
         engine = create_engine(db_url)
         inserted_count = 0
+        errors = []
         
         with engine.connect() as conn:
             for p in players:
-                full_name = p.get('full_name', '')
-                parts = full_name.split(' ', 1)
-                first_name = parts[0] if parts else ''
-                last_name = parts[1] if len(parts) > 1 else parts[0]
-                
-                conn.execute(text("""
-                    INSERT INTO players (
-                        player_id, full_name, first_name, last_name,
-                        team_id, team_abbreviation, is_active, last_updated
-                    )
-                    VALUES (
-                        :player_id, :full_name, :first_name, :last_name,
-                        :team_id, :team_abbr, TRUE, :now
-                    )
-                    ON CONFLICT (player_id) DO UPDATE SET
-                        full_name = EXCLUDED.full_name,
-                        team_id = EXCLUDED.team_id,
-                        team_abbreviation = EXCLUDED.team_abbreviation,
-                        last_updated = EXCLUDED.last_updated
-                """), {
-                    "player_id": p.get('player_id'),
-                    "full_name": full_name,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "team_id": p.get('team_id'),
-                    "team_abbr": p.get('team_abbreviation', 'FA'),
-                    "now": datetime.utcnow()
-                })
-                inserted_count += 1
+                try:
+                    full_name = str(p.get('full_name', '') or p.get('name', 'Unknown'))
+                    parts = full_name.split(' ', 1)
+                    first_name = parts[0] if parts else ''
+                    last_name = parts[1] if len(parts) > 1 else parts[0]
+                    
+                    # Handle team_id - can be int or None
+                    team_id_raw = p.get('team_id')
+                    team_id = None
+                    if team_id_raw is not None:
+                        try:
+                            team_id = int(team_id_raw) if str(team_id_raw).isdigit() else None
+                        except (ValueError, TypeError):
+                            team_id = None
+                    
+                    # Get team abbreviation - handle various column names
+                    team_abbr = str(p.get('team_abbreviation') or p.get('team') or 'FA')[:3]
+                    
+                    conn.execute(text("""
+                        INSERT INTO players (
+                            player_id, full_name, first_name, last_name,
+                            team_id, team_abbreviation, is_active, last_updated
+                        )
+                        VALUES (
+                            :player_id, :full_name, :first_name, :last_name,
+                            :team_id, :team_abbr, TRUE, :now
+                        )
+                        ON CONFLICT (player_id) DO UPDATE SET
+                            full_name = EXCLUDED.full_name,
+                            team_id = EXCLUDED.team_id,
+                            team_abbreviation = EXCLUDED.team_abbreviation,
+                            last_updated = EXCLUDED.last_updated
+                    """), {
+                        "player_id": p.get('player_id'),
+                        "full_name": full_name,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "team_id": team_id,
+                        "team_abbr": team_abbr,
+                        "now": datetime.utcnow()
+                    })
+                    inserted_count += 1
+                except Exception as pe:
+                    errors.append(str(pe)[:50])
             
             conn.commit()
         
@@ -390,10 +406,12 @@ async def bulk_seed_players(data: dict):
         return {
             "status": "success",
             "message": f"Seeded {inserted_count} players",
-            "total": inserted_count
+            "total": inserted_count,
+            "errors": len(errors)
         }
         
     except Exception as e:
         logger.error(f"Bulk player seeding failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
