@@ -88,9 +88,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="QuantSight Live Pulse (Cloud)",
-    description="Headless live data producer for Firebase",
-    version="1.0.0",
+    title="QuantSight Cloud API",
+    description="NBA Analytics &amp; Prediction Platform",
+    version="2.0.0",
+    docs_url=None,  # Disable /docs in production
+    redoc_url=None, # Disable /redoc in production
     lifespan=lifespan
 )
 
