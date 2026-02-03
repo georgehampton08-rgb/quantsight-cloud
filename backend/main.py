@@ -113,26 +113,36 @@ async def root():
 
 
 @app.get("/health")
-async def health():
-    """Health check for Cloud Run."""
-    result = {"status": "healthy", "database_url_set": bool(os.getenv('DATABASE_URL'))}
+async def health_check():
+    """Enhanced health check with Gemini and Firebase status"""
+    result = {
+        "status": "healthy",
+        "database_url_set": bool(os.getenv('DATABASE_URL')),
+        "gemini": {
+            "enabled": bool(os.getenv('GEMINI_API_KEY')),
+            "configured": os.getenv('GEMINI_API_KEY') is not None
+        },
+        "firebase": {
+            "enabled": bool(os.getenv('FIREBASE_PROJECT_ID')),
+            "project_id": os.getenv('FIREBASE_PROJECT_ID') or "not-configured"
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
     
     if PRODUCER_AVAILABLE:
         try:
             producer = get_cloud_producer()
             if producer:
-                status = producer.get_status()
-                result["producer"] = status
-                result["firebase"] = {
-                    "enabled": status.get("firebase_enabled", False),
-                    "write_errors": status.get("firebase_write_errors", 0)
-                }
+                status_data = producer.get_status()
+                result["producer"] = status_data
+                result["firebase"]["write_errors"] = status_data.get("firebase_write_errors", 0)
         except Exception as e:
             result["producer_error"] = str(e)
     else:
         result["producer"] = "not_loaded"
     
     return result
+
 
 
 @app.get("/status")

@@ -25,8 +25,35 @@ export const HealthProvider = ({ children }: { children: ReactNode }) => {
 
     const checkHealth = async () => {
         try {
-            const result = await window.electronAPI.checkSystemHealth();
-            setHealth(result);
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://quantsight-cloud-458498663186.us-central1.run.app';
+
+            // Measure API latency
+            const startTime = performance.now();
+            const response = await fetch(`${API_BASE}/health`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const latency = performance.now() - startTime;
+
+            if (!response.ok) {
+                throw new Error(`Health check failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Determine status based on latency and response
+            const getLatencyStatus = (ms: number): SystemStatus => {
+                if (ms < 200) return 'healthy';      // Good: < 200ms
+                if (ms < 500) return 'warning';      // OK: 200-500ms
+                return 'critical';                    // Bad: > 500ms
+            };
+
+            setHealth({
+                nba: data.firebase?.enabled ? getLatencyStatus(latency) : 'warning',
+                gemini: data.gemini?.enabled ? 'healthy' : 'warning',
+                database: data.database_url_set ? getLatencyStatus(latency) : 'critical'
+            });
+
         } catch (error) {
             console.error("Health check failed:", error);
             setHealth({ nba: 'critical', gemini: 'critical', database: 'critical' });
