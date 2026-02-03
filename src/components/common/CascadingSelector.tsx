@@ -49,7 +49,7 @@ export default function CascadingSelector() {
                     data = await window.electronAPI.getTeams();
                 } else {
                     console.log('[CascadingSelector] Loading teams via direct HTTP');
-                    const res = await fetch('http://localhost:5000/teams');
+                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams');
                     data = await res.json();
                 }
 
@@ -75,7 +75,7 @@ export default function CascadingSelector() {
             if (!isDev && window.electronAPI) {
                 data = await window.electronAPI.getRoster(team.id);
             } else {
-                const res = await fetch(`http://localhost:5000/roster/${team.id}`);
+                const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/roster/${team.id}`);
                 data = await res.json();
             }
 

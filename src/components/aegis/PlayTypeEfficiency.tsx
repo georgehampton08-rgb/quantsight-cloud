@@ -52,7 +52,7 @@ export default function PlayTypeEfficiency({ playerId }: Props) {
             setLoading(true);
             setError(null);
             try {
-                const res = await fetch(`http://localhost:5000/players/${playerId}/play-types`);
+                const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/${playerId}/play-types`);
                 if (!res.ok) {
                     throw new Error('No play type data available');
                 }

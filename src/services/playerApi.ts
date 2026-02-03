@@ -81,7 +81,7 @@ export const PlayerApi = {
         }
         // Browser fallback
         try {
-            const res = await fetch(`http://localhost:5000/players/search?q=${encodeURIComponent(query)}`);
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=${encodeURIComponent(query)}`);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             return res.json();
         } catch (error) {
@@ -95,7 +95,7 @@ export const PlayerApi = {
         }
         // Browser fallback
         try {
-            const res = await fetch(`http://localhost:5000/players/${id}`);
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/${id}`);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             return res.json();
         } catch (error) {
@@ -109,7 +109,7 @@ export const PlayerApi = {
         }
         // Browser fallback
         try {
-            const res = await fetch(`http://localhost:5000/matchup/${playerId}/${opponent}`);
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/matchup/${playerId}/${opponent}`);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             return res.json();
         } catch (error) {
@@ -123,7 +123,7 @@ export const PlayerApi = {
         }
         // Browser fallback
         try {
-            const res = await fetch('http://localhost:5000/settings/keys', {
+            const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/settings/keys', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gemini_api_key: apiKey })
@@ -162,7 +162,7 @@ export const PlayerApi = {
         }
         // Browser fallback - call backend directly
         try {
-            const res = await fetch(`http://localhost:5000/players/${playerId}/refresh`, {
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/${playerId}/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ playerName, cachedLastGame })

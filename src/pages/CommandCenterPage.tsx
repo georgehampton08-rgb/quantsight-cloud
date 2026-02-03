@@ -31,14 +31,14 @@ const ScheduleWidget = () => {
                     // Fallback to HTTP if IPC returns nothing
                     if (!data || !data.games) {
                         console.warn('[Schedule] IPC returned no data, falling back to direct HTTP');
-                        const res = await fetch('http://localhost:5000/schedule');
+                        const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/schedule');
                         if (res.ok) {
                             data = await res.json();
                         }
                     }
                 } else {
                     console.log('[Schedule] Loading via direct HTTP');
-                    const res = await fetch('http://localhost:5000/schedule');
+                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/schedule');
                     data = await res.json();
                 }
 

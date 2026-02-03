@@ -12,7 +12,7 @@ type ConnectionState = 'connected' | 'degraded' | 'disconnected' | 'checking';
 
 const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     checkInterval = 30000,
-    apiUrl = 'http://localhost:5000/health',
+    apiUrl = 'https://quantsight-cloud-458498663186.us-central1.run.app/health',
     showLabel = true,
     className = ''
 }) => {

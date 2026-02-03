@@ -46,7 +46,7 @@ const NextDayDriftToast: React.FC<NextDayDriftToastProps> = ({
 
     const fetchAudit = async () => {
         try {
-            const response = await fetch('http://localhost:5000/auto-tuner/last-audit');
+            const response = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/auto-tuner/last-audit');
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.audit_date) {

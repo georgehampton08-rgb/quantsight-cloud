@@ -48,7 +48,7 @@ export function useCrucibleSimulation(): UseCrucibleSimulationReturn {
 
         try {
             // Use EventSource for SSE progress updates
-            const response = await fetch('http://localhost:5000/matchup-lab/crucible-sim', {
+            const response = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/matchup-lab/crucible-sim', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

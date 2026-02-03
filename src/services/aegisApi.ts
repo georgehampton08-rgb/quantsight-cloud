@@ -3,7 +3,7 @@
  * Frontend interface for Aegis-Sovereign Data Router
  */
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 // Types
 export interface AegisHealthStatus {

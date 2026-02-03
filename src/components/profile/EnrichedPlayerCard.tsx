@@ -47,7 +47,7 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
         setLoadingHustle(true);
         setHustleError(false);
         try {
-            const res = await fetch(`http://localhost:5000/data/player-hustle/${playerId}`);
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/data/player-hustle/${playerId}`);
             if (res.status === 404) {
                 setHustleError(true);
             } else if (res.ok) {
@@ -64,7 +64,7 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
         setLoadingTrace(true);
         setShowTrace(true);
         try {
-            const res = await fetch(`http://localhost:5000/aegis/ledger/trace/${playerId}`);
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/aegis/ledger/trace/${playerId}`);
             if (res.ok) {
                 setTrace(await res.json());
             }

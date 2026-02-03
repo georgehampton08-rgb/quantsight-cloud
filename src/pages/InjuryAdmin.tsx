@@ -9,7 +9,7 @@ import { Trash2, RefreshCw, Plus, User } from 'lucide-react';
 import { useOrbital } from '@/context/OrbitalContext';
 import { PlayerApi, PlayerProfile } from '@/services/playerApi';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 const NBA_TEAMS = [
     'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW',

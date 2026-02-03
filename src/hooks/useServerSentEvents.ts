@@ -141,7 +141,7 @@ export function useSimulationProgress(simulationId: string | null) {
 
     const { isConnected, error } = useServerSentEvents({
         url: simulationId
-            ? `http://localhost:5000/events/simulation/${simulationId}`
+            ? `https://quantsight-cloud-458498663186.us-central1.run.app/events/simulation/${simulationId}`
             : '',
         onMessage: (data) => {
             if (data.type === 'progress') {

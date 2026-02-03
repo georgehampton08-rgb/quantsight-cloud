@@ -11,7 +11,7 @@
 export const CLOUD_API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 // Local development backend
-export const LOCAL_API_BASE = 'http://localhost:5000';
+export const LOCAL_API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 // Detect mobile device
 const isMobile = typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent);

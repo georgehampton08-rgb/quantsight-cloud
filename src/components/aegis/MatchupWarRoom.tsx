@@ -67,7 +67,7 @@ interface TodaysGame {
 }
 
 // API Base URL
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 // Health Light Component
 const HealthLight: React.FC<{ status: 'green' | 'yellow' | 'red' }> = ({ status }) => {

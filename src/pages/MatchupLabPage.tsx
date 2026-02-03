@@ -114,7 +114,7 @@ const MatchupLabPage: React.FC = () => {
     const fetchGames = async () => {
         try {
             setLoadingGames(true);
-            const res = await fetch('http://localhost:5000/matchup-lab/games');
+            const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/matchup-lab/games');
             const data = await res.json();
             setGames(data.games || []);
             if (data.games?.length > 0) {
@@ -151,7 +151,7 @@ const MatchupLabPage: React.FC = () => {
             });
 
             const res = await fetch(
-                `http://localhost:5000/matchup/analyze?${params.toString()}`
+                `https://quantsight-cloud-458498663186.us-central1.run.app/matchup/analyze?${params.toString()}`
             );
             const data = await res.json();
 

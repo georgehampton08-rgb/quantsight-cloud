@@ -44,7 +44,7 @@ export default function PlayerProfilePage() {
     useEffect(() => {
         const fetchTeams = async () => {
             try {
-                const res = await fetch('http://localhost:5000/teams');
+                const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams');
                 if (res.ok) {
                     const data = await res.json();
                     setTeams(data.teams || []);
@@ -84,7 +84,7 @@ export default function PlayerProfilePage() {
 
         const fetchRadar = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/radar/${targetId}?opponent_id=${currentOpponent}`);
+                const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/radar/${targetId}?opponent_id=${currentOpponent}`);
                 const data = await res.json();
                 if (data.player_stats && data.opponent_defense) {
                     setRadarData({
@@ -131,7 +131,7 @@ export default function PlayerProfilePage() {
                 let opponent = 'NBA'; // Default fallback
 
                 try {
-                    const scheduleRes = await fetch('http://localhost:5000/schedule');
+                    const scheduleRes = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/schedule');
                     const schedule = await scheduleRes.json();
 
                     if (schedule?.games?.length > 0) {

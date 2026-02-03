@@ -47,7 +47,7 @@ export function useUsageVacuum(
         setError(null);
 
         try {
-            const response = await fetch('http://localhost:5000/usage-vacuum/analyze', {
+            const response = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/usage-vacuum/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

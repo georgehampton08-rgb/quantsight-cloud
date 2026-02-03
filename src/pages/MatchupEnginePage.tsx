@@ -40,7 +40,7 @@ export default function MatchupEnginePage() {
                 if (window.electronAPI?.getTeams) {
                     data = await window.electronAPI.getTeams();
                 } else {
-                    const res = await fetch('http://localhost:5000/teams');
+                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams');
                     data = await res.json();
                 }
                 if (data?.teams) {
@@ -64,14 +64,14 @@ export default function MatchupEnginePage() {
                 if (window.electronAPI?.analyzeMatchup) {
                     data = await window.electronAPI.analyzeMatchup(selectedPlayer.id, opponentId);
                 } else {
-                    const res = await fetch(`http://localhost:5000/matchup/analyze?player_id=${selectedPlayer.id}&opponent=${opponentId}`);
+                    const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/matchup/analyze?player_id=${selectedPlayer.id}&opponent=${opponentId}`);
                     data = await res.json();
                 }
                 setAnalysis(data);
 
                 // Fetch REAL radar dimensions from the API (not hardcoded!)
                 try {
-                    const radarRes = await fetch(`http://localhost:5000/radar/${selectedPlayer.id}?opponent_id=${opponentId}`);
+                    const radarRes = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/radar/${selectedPlayer.id}?opponent_id=${opponentId}`);
                     const radarResult = await radarRes.json();
                     if (radarResult.player_stats && radarResult.opponent_defense) {
                         setRadarData({
@@ -232,7 +232,7 @@ export default function MatchupEnginePage() {
                                         setOpponentSearch(e.target.value);
                                         // Search for players - use correct endpoint
                                         if (e.target.value.length > 2) {
-                                            fetch(`http://localhost:5000/players/search?q=${encodeURIComponent(e.target.value)}`)
+                                            fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=${encodeURIComponent(e.target.value)}`)
                                                 .then(res => res.json())
                                                 .then(data => setSearchResults(Array.isArray(data) ? data : []))
                                                 .catch(() => setSearchResults([]));

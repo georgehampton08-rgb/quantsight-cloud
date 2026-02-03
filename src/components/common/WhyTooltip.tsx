@@ -41,7 +41,7 @@ const WhyTooltip: React.FC<WhyTooltipProps> = ({
         setIsLoading(true);
         try {
             const response = await fetch(
-                `http://localhost:5000/explain/${stat}/${playerId}`
+                `https://quantsight-cloud-458498663186.us-central1.run.app/explain/${stat}/${playerId}`
             );
             if (response.ok) {
                 const data = await response.json();

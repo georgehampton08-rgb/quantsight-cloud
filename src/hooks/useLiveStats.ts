@@ -84,7 +84,7 @@ export interface UseLiveStatsReturn {
     disconnect: () => void;
 }
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 export function useLiveStats(): UseLiveStatsReturn {
     const [games, setGames] = useState<LiveGame[]>([]);

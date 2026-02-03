@@ -39,7 +39,7 @@ export default function OmniSearchBar() {
                     // Fallback to HTTP if IPC returns nothing
                     if (!response || (Array.isArray(response) && response.length === 0)) {
                         console.warn('[OmniSearch] IPC returned no data, falling back to direct HTTP');
-                        const res = await fetch('http://localhost:5000/players/search?q=');
+                        const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=');
                         if (res.ok) {
                             response = await res.json();
                         }
@@ -47,7 +47,7 @@ export default function OmniSearchBar() {
                 } else {
                     // Browser/Dev mode - direct API call
                     console.log('[OmniSearch] Loading players via direct HTTP');
-                    const res = await fetch('http://localhost:5000/players/search?q=');
+                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=');
                     if (!res.ok) {
                         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                     }

@@ -26,14 +26,14 @@ export default function TeamCentralPage() {
                 // Load Injuries
                 const injuryData = window.electronAPI?.getInjuries
                     ? await window.electronAPI.getInjuries()
-                    : await (await fetch('http://localhost:5000/injuries')).json();
+                    : await (await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/injuries')).json();
 
                 if (injuryData?.injuries) setInjuries(injuryData.injuries);
 
                 // Load Teams
                 const teamData = window.electronAPI?.getTeams
                     ? await window.electronAPI.getTeams()
-                    : await (await fetch('http://localhost:5000/teams')).json();
+                    : await (await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams')).json();
 
                 if (teamData?.teams) setTeams(teamData.teams);
 
@@ -57,7 +57,7 @@ export default function TeamCentralPage() {
             try {
                 const data = window.electronAPI?.getRoster
                     ? await window.electronAPI.getRoster(selectedTeam)
-                    : await (await fetch(`http://localhost:5000/roster/${selectedTeam}`)).json();
+                    : await (await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/roster/${selectedTeam}`)).json();
 
                 console.log(`[TeamCentral] Roster API response:`, data);
                 console.log(`[TeamCentral] data.roster exists:`, !!data?.roster);
