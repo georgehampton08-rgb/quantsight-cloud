@@ -256,11 +256,7 @@ async def get_injuries():
 
 @router.get("/players/search")
 async def search_players(q: str = ""):
-    """Search players by name"""
-    # If no query or too short, return empty
-    if not q or len(q) < 2:
-        return []
-    
+    """Search players by name - returns ALL if q is empty"""
     db_url = get_database_url()
     if not db_url:
         return []
@@ -269,7 +265,17 @@ async def search_players(q: str = ""):
         engine = create_engine(db_url)
         
         with engine.connect() as conn:
-            result = conn.execute(text("""
+            # If query empty, return ALL active players
+            # Otherwise search by name
+            if not q or len(q.strip()) == 0:
+                result = conn.execute(text("""
+                    SELECT player_id, full_name, team_abbreviation, position
+                    FROM players
+                    ORDER BY full_name
+                    LIMIT 500
+                """))
+            else:
+                result = conn.execute(text("""
                 SELECT player_id, full_name, team_abbreviation, position
                 FROM players
                 WHERE LOWER(full_name) LIKE LOWER(:query)
