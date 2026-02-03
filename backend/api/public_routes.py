@@ -293,3 +293,51 @@ async def search_players(q: str = ""):
     except Exception as e:
         logger.error(f"Error searching players: {e}")
         return []  # Return empty array on error instead of 500
+
+
+# === NEW ENDPOINTS FOR PWA COMPATIBILITY ===
+
+@router.post("/settings/keys")
+async def save_gemini_key(data: dict):
+    """Save Gemini API key to Cloud Secret Manager (placeholder)"""
+    api_key = data.get("gemini_api_key", "")
+    
+    if not api_key:
+        raise HTTPException(status_code=400, detail="gemini_api_key required")
+    
+    # TODO: In production, save to Google Secret Manager
+    # For now, return success (key would need to be set via gcloud or .env.yaml)
+    logger.info(f"Gemini API key save requested (length: {len(api_key)})")
+    
+    return {
+        "status": "success",
+        "message": "Gemini API key configuration received. For Cloud Run, please set GEMINI_API_KEY via: gcloud run services update quantsight-cloud --set-env-vars GEMINI_API_KEY=your_key --region us-central1"
+    }
+
+
+@router.get("/matchup-lab/games")
+async def get_matchup_lab_games():
+    """Get today's games for Matchup Lab - reuses schedule endpoint"""
+    return await get_schedule()
+
+
+@router.get("/usage-vacuum/analyze")
+async def analyze_usage_vacuum(player_ids: str = ""):
+    """Analyze usage vacuum for players when teammates are out (placeholder)"""
+    # TODO: Implement usage vacuum analysis
+    # Would analyze player usage rate changes when key teammates are injured
+    return {
+        "status": "not_implemented",
+        "message": "Usage Vacuum analysis feature coming soon",
+        "player_ids": player_ids.split(",") if player_ids else []
+    }
+
+
+@router.post("/matchup-lab/crucible-sim")
+async def crucible_simulation(data: dict = None):
+    """Run Crucible simulation for matchup scenarios (placeholder)"""
+    # TODO: Implement or redirect to /aegis/crucible/simulate endpoint
+    return {
+        "status": "not_implemented",
+        "message": "Crucible simulation coming soon - use /aegis/simulate/{player_id} for basic projections"
+    }
