@@ -95,7 +95,42 @@ async def get_teams():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/players")
+async def get_all_players():
+    """Get all players for OmniSearch"""
+    db_url = get_database_url()
+    if not db_url:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    
+    try:
+        engine = create_engine(db_url)
+        
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT player_id, full_name, position, team_abbreviation
+                FROM players
+                ORDER BY full_name
+            """))
+            
+            players = []
+            for row in result:
+                players.append({
+                    "id": str(row[0]),
+                    "name": row[1],
+                    "position": row[2] or "G",
+                    "team": row[3] or "FA"
+                })
+        
+        engine.dispose()
+        return players
+        
+    except Exception as e:
+        logger.error(f"Error fetching players: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/roster/{team_id}")
+
 async def get_roster(team_id: str):
     """Get team roster from players table"""
     db_url = get_database_url()
