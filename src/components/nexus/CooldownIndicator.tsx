@@ -131,7 +131,7 @@ export const DataSourceBadge: React.FC<DataSourceBadgeProps> = ({
  */
 interface ShadowRaceStatusProps {
     patientResult: {
-        source: 'live' | 'cache' | 'timeout' | 'error';
+        source: 'live' | 'cache' | 'stale' | 'fallback' | 'timeout';
         lateArrivalPending: boolean;
         executionTimeMs: number;
     };
