@@ -330,3 +330,70 @@ async def database_status():
         
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.post("/bulk-seed-players")
+async def bulk_seed_players(data: dict):
+    """Seed players from local client (bypasses NBA API blocking)"""
+    db_url = get_database_url()
+    if not db_url:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    
+    players = data.get('players', [])
+    if not players:
+        raise HTTPException(status_code=400, detail="No players provided")
+    
+    logger.info(f"Bulk seeding {len(players)} players...")
+    
+    try:
+        from datetime import datetime
+        
+        engine = create_engine(db_url)
+        inserted_count = 0
+        
+        with engine.connect() as conn:
+            for p in players:
+                full_name = p.get('full_name', '')
+                parts = full_name.split(' ', 1)
+                first_name = parts[0] if parts else ''
+                last_name = parts[1] if len(parts) > 1 else parts[0]
+                
+                conn.execute(text("""
+                    INSERT INTO players (
+                        player_id, full_name, first_name, last_name,
+                        team_id, team_abbreviation, is_active, last_updated
+                    )
+                    VALUES (
+                        :player_id, :full_name, :first_name, :last_name,
+                        :team_id, :team_abbr, TRUE, :now
+                    )
+                    ON CONFLICT (player_id) DO UPDATE SET
+                        full_name = EXCLUDED.full_name,
+                        team_id = EXCLUDED.team_id,
+                        team_abbreviation = EXCLUDED.team_abbreviation,
+                        last_updated = EXCLUDED.last_updated
+                """), {
+                    "player_id": p.get('player_id'),
+                    "full_name": full_name,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "team_id": p.get('team_id'),
+                    "team_abbr": p.get('team_abbreviation', 'FA'),
+                    "now": datetime.utcnow()
+                })
+                inserted_count += 1
+            
+            conn.commit()
+        
+        engine.dispose()
+        
+        return {
+            "status": "success",
+            "message": f"Seeded {inserted_count} players",
+            "total": inserted_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Bulk player seeding failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
