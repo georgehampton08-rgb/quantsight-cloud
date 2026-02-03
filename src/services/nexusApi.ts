@@ -9,10 +9,11 @@
  * - Late arrival handling via polling
  */
 
-const API_BASE = 'http://localhost:5000';
+import { API_BASE } from '../config/apiConfig';
 
 // Admin key - in production, this would be handled differently
 const NEXUS_ADMIN_KEY = 'nexus_dev_key_2024';
+
 
 // =============================================================================
 // Types

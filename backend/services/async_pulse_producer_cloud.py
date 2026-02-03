@@ -46,13 +46,17 @@ except ImportError as e:
 # Firebase service
 from services.firebase_admin_service import get_firebase_service
 
-logger = logging.getLogger(__name__)
+# Cloud SQL data service for Alpha metrics
+from services.cloud_sql_data_service import (
+    get_team_defense_rating,
+    get_player_season_usage,
+    get_player_rolling_ts,
+    calculate_usage_vacuum,
+    calculate_heat_scale,
+    LEAGUE_AVG_DEF_RATING
+)
 
-# Team defense cache (same as desktop)
-_TEAM_DEFENSE_CACHE: Dict[str, float] = {}
-_TEAM_DEFENSE_CACHE_EXPIRY: Optional[datetime] = None
-TEAM_DEFENSE_CACHE_TTL_HOURS = 24
-LEAGUE_AVG_DEF_RATING = 112.0
+logger = logging.getLogger(__name__)
 
 
 class CloudAsyncPulseProducer:
@@ -242,63 +246,41 @@ class CloudAsyncPulseProducer:
             opponent_team = away_team if player.team_tricode == home_team else home_team
             
             # =================================================================
-            # TODO [ALPHA PATCHER]: USAGE VACUUM DETECTION
+            # ALPHA PATCHER: USAGE VACUUM DETECTION (LIVE)
             # =================================================================
-            # When Cloud SQL is online, inject the following:
-            #
-            # usage_rate = calculate_in_game_usage(
-            #     player_pts=player.pts,
-            #     player_fga=player.fga,
-            #     player_fta=player.fta,
-            #     player_tov=player.tov,
-            #     team_fga=boxscore.get_team_stats(player.team_tricode).fga,
-            #     team_fta=boxscore.get_team_stats(player.team_tricode).fta,
-            #     team_tov=boxscore.get_team_stats(player.team_tricode).tov
-            # )
-            #
-            # Query Cloud SQL for season baseline:
-            #   SELECT usage_rate FROM player_stats 
-            #   WHERE player_id = {player.player_id} AND season = '2024-25'
-            #
-            # usage_vacuum = usage_rate > (season_avg_usage * 1.25)
-            # =================================================================
-            usage_rate = None  # Placeholder until Cloud SQL integration
-            usage_vacuum = False  # Placeholder
+            usage_rate = None
+            usage_vacuum = False
+            
+            try:
+                # Calculate current in-game usage rate
+                team_stats = boxscore.get_team_stats(player.team_tricode)
+                if team_stats and ADAPTER_AVAILABLE:
+                    usage_rate = calculate_in_game_usage(
+                        player_pts=player.pts,
+                        player_fga=player.fga,
+                        player_fta=player.fta,
+                        player_tov=player.tov,
+                        team_fga=team_stats.fga,
+                        team_fta=team_stats.fta,
+                        team_tov=team_stats.tov
+                    )
+                    
+                    # Query season baseline from Cloud SQL
+                    season_avg_usage = get_player_season_usage(player.player_id)
+                    usage_vacuum = calculate_usage_vacuum(usage_rate, season_avg_usage)
+            except Exception as e:
+                logger.debug(f"Usage calculation failed for {player.name}: {e}")
             
             # =================================================================
-            # TODO [ALPHA PATCHER]: MATCHUP DIFFICULTY DETECTION
+            # ALPHA PATCHER: MATCHUP DIFFICULTY DETECTION (LIVE)
             # =================================================================
-            # When Cloud SQL is online, inject the following:
-            #
-            # Query Cloud SQL or Firestore cache:
-            #   SELECT defensive_rating FROM team_defense 
-            #   WHERE team_abbreviation = {opponent_team} AND season = '2024-25'
-            #
-            # opponent_def_rating = _TEAM_DEFENSE_CACHE.get(opponent_team, LEAGUE_AVG_DEF_RATING)
-            #
-            # Classify matchup:
-            #   matchup_difficulty = 'elite' if opponent_def_rating < 108 else (
-            #       'soft' if opponent_def_rating > 115 else 'average'
-            #   )
-            # =================================================================
-            opponent_def_rating = LEAGUE_AVG_DEF_RATING  # Placeholder
-            matchup_difficulty = 'average'  # Placeholder
+            opponent_def_rating, matchup_difficulty = get_team_defense_rating(opponent_team)
             
             # =================================================================
-            # TODO [ALPHA PATCHER]: HEAT SCALE CALCULATION (TS% Alpha Gap)
+            # ALPHA PATCHER: HEAT SCALE CALCULATION (LIVE)
             # =================================================================
-            # When Cloud SQL is online, inject the following:
-            #
-            # Query Cloud SQL for rolling TS%:
-            #   SELECT rolling_ts_pct FROM player_rolling_averages 
-            #   WHERE player_id = {player.player_id} AND season = '2024-25'
-            #
-            # Calculate alpha gap:
-            #   alpha_gap = ts_pct - season_avg_ts
-            #   heat_scale = min(100, max(0, int(alpha_gap * 500)))
-            # =================================================================
-            season_avg_ts = None  # Placeholder - requires Cloud SQL
-            heat_scale = None  # Placeholder
+            season_avg_ts = get_player_rolling_ts(player.player_id)
+            heat_scale = calculate_heat_scale(ts_pct, season_avg_ts)
             
             # Detect garbage time
             game_info = boxscore.game_info
