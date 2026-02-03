@@ -19,7 +19,7 @@ import os
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORS Middleware
+from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging for Cloud Run
 logging.basicConfig(
@@ -51,6 +51,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Public routes not available: {e}")
     PUBLIC_ROUTES_AVAILABLE = False
+
+# Import nexus routes for endpoint management
+try:
+    from api.nexus_routes import router as nexus_router
+    NEXUS_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ Nexus routes not available: {e}")
+    NEXUS_ROUTES_AVAILABLE = False
 
 
 @asynccontextmanager
@@ -95,6 +103,11 @@ if ADMIN_ROUTES_AVAILABLE:
 if PUBLIC_ROUTES_AVAILABLE:
     app.include_router(public_router)
     logger.info("✅ Public routes registered")
+
+# Include nexus routes if available
+if NEXUS_ROUTES_AVAILABLE:
+    app.include_router(nexus_router)
+    logger.info("✅ Nexus routes registered")
 
 # CORS configuration for web/mobile clients
 app.add_middleware(
