@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.sw
+
+p
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Test output
+test_output.txt
+test_results.txt
+*.html
+*.json
+
+# Logs
+*.log
+
+# Backup files
+*_backup.txt
+*.bak
+
+# Cache
+nba_cache.py
+.cache/
+backup_cache/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data directories
+data/
+backup/
