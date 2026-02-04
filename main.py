@@ -18,7 +18,7 @@ import logging
 import os
 from datetime import datetime
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging for Cloud Run (MUST BE FIRST)
@@ -329,6 +329,29 @@ async def status():
     except Exception as e:
         return {"error": str(e)}
 
+
+
+# Static file handlers to prevent 404 noise
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Return empty favicon to prevent 404 errors."""
+    # 1x1 transparent PNG
+    return Response(
+        content=b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82',
+        media_type="image/png"
+    )
+
+@app.get("/manifest.json", include_in_schema=False)
+async def manifest():
+    """Return minimal web app manifest."""
+    return {
+        "name": "QuantSight",
+        "short_name": "QS",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#1a1a2e",
+        "theme_color": "#16213e"
+    }
 
 
 # Cloud Run will call this on PORT environment variable
