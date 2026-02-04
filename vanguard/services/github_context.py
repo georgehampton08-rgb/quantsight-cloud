@@ -95,6 +95,7 @@ class GitHubContextFetcher:
             logger.warning("No GITHUB_TOKEN set - skipping code context")
             return []
             
+            
         try:
             # 1. Map endpoint to primary file
             primary_file = self._get_primary_file(endpoint)
@@ -108,22 +109,54 @@ class GitHubContextFetcher:
             primary = self._fetch_file(primary_file)
             if primary:
                 contexts.append(primary)
+                logger.info(f"Fetched primary file: {primary_file}")
             
-            # 3. For ImportError, fetch the imported file
-            if error_type == 'ImportError' and primary:
-                imported = self._extract_failing_import(primary.content)
-                if imported:
-                    import_context = self._fetch_file(imported)
-                    if import_context:
-                        contexts.append(import_context)
+            # 3. Smart multi-file fetching based on error type
             
-            # 4. Fetch related config (requirements.txt, Dockerfile) for dependency errors
-            if 'ModuleNotFoundError' in error_type or 'ImportError' in error_type:
+            # For ImportError/ModuleNotFoundError: fetch imported modules + requirements
+            if 'ImportError' in error_type or 'ModuleNotFoundError' in error_type:
+                if primary:
+                    imported = self._extract_failing_import(primary.content)
+                    if imported:
+                        import_context = self._fetch_file(imported)
+                        if import_context:
+                            contexts.append(import_context)
+                            logger.info(f"Fetched imported file: {imported}")
+                
+                # Also fetch requirements.txt
                 req_context = self._fetch_file('requirements.txt', max_lines=50)
                 if req_context:
                     contexts.append(req_context)
+                    logger.info("Fetched requirements.txt")
             
-            return contexts[:self.MAX_FILES]
+            # For 404 errors: fetch routes file to verify endpoint exists
+            if '404' in error_type or 'HTTPError404' in error_type:
+                if 'routes.py' not in primary_file:
+                    routes_file = 'api/public_routes.py' if '/api/' in endpoint else 'vanguard/api/admin_routes.py'
+                    routes_context = self._fetch_file(routes_file, max_lines=300)
+                    if routes_context:
+                        contexts.append(routes_context)
+                        logger.info(f"Fetched routes file: {routes_file}")
+            
+            # For 500 errors: fetch common dependencies (models, utils)
+            if '500' in error_type or 'HTTPError500' in error_type:
+                # Try to fetch related model file
+                if 'vanguard' in endpoint:
+                    storage_context = self._fetch_file('vanguard/archivist/storage.py', max_lines=200)
+                    if storage_context:
+                        contexts.append(storage_context)
+                        logger.info("Fetched storage.py for 500 error")
+            
+            # For database/Firestore errors: fetch storage layer
+            if 'Firestore' in error_type or 'database' in error_type.lower():
+                storage_context = self._fetch_file('vanguard/archivist/storage.py', max_lines=300)
+                if storage_context:
+                    contexts.append(storage_context)
+                    logger.info("Fetched storage.py for database error")
+            
+            final_contexts = contexts[:self.MAX_FILES]
+            logger.info(f"Total files fetched: {len(final_contexts)}/{self.MAX_FILES}")
+            return final_contexts
             
         except Exception as e:
             logger.error(f"GitHub context fetch failed: {e}")
