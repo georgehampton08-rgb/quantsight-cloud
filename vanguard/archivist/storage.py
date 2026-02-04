@@ -301,8 +301,40 @@ class IncidentStorage:
                 async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                     return json.loads(await f.read())
         except Exception: pass
-        
         return self._memory_cache.get(fingerprint)
+    
+    async def update_incident(self, fingerprint: str, update_data: Dict[str, Any]) -> bool:
+        """Update specific fields in an incident (Firestore update or File rewrite)."""
+        # Firestore
+        if self.config.storage_mode == "FIRESTORE":
+            try:
+                import firebase_admin
+                from firebase_admin import firestore
+                db = firestore.client()
+                ref = db.collection('vanguard_incidents').document(fingerprint)
+                if ref.get().exists():
+                    ref.update(update_data)
+                    return True
+            except Exception as e:
+                logger.warning(f"firestore_update_failed: {e}")
+
+        # File
+        try:
+            file_path = self._get_incident_path(fingerprint)
+            if file_path.exists():
+                async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+                    incident = json.loads(await f.read())
+                
+                # Apply updates
+                incident.update(update_data)
+                
+                async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+                    await f.write(json.dumps(incident, indent=2))
+                return True
+        except Exception as e:
+            logger.warning(f"file_update_failed: {e}")
+            
+        return False
     
     async def resolve(self, fingerprint: str) -> bool:
         """Mark an incident as resolved instead of deleting it (Learning mode)."""

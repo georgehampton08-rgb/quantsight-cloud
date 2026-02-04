@@ -263,12 +263,15 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
     async def _cache_analysis(self, analysis: IncidentAnalysis, storage):
         """Store analysis in the incident's ai_analysis field"""
         try:
-            # Update the incident with the analysis
-            incident = await storage.load(analysis.fingerprint)
-            if incident:
-                incident['ai_analysis'] = analysis.dict()
-                await storage.save(incident)
+            # Update the incident with the analysis using the new update_incident method
+            success = await storage.update_incident(
+                analysis.fingerprint, 
+                {'ai_analysis': analysis.dict()}
+            )
+            if success:
                 logger.info(f"Saved analysis to incident {analysis.fingerprint} (expires: {analysis.expires_at})")
+            else:
+                logger.warning(f"Failed to update incident {analysis.fingerprint} with analysis")
         except Exception as e:
             logger.warning(f"Failed to cache analysis: {e}")
     
