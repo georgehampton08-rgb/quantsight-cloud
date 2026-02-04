@@ -258,36 +258,20 @@ async def get_injuries():
 
 
 @router.get("/schedule")
-async def get_schedule(date: Optional[str] = Query(None)):
+async def get_schedule(date: Optional[str] = Query(None), force_refresh: bool = Query(False)):
     """
-    Get NBA game schedule from NBA API (VPC-enabled with caching)
-    Cache TTL: 10 minutes
+    Get NBA game schedule from NBA API (VPC-enabled)
     Query params:
         date: Date in YYYY-MM-DD format (default: today)
+        force_refresh: Force fresh data, bypass cache
     """
     try:
-        # Import cache
-        import sys
-        import os
-        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-        from nba_cache import nba_cache
-        import asyncio
-        
         target_date = date or str(datetime.now().date())
-        cache_key = f"schedule_{target_date}"
         
-        # Check cache first (10 min TTL)
-        cached_data = nba_cache.get(cache_key)
-        if cached_data:
-            logger.info(f"✅ [CACHE HIT] Schedule for {target_date} ({len(cached_data.get('games', []))} games)")
-            return cached_data
-        
-        # Cache miss - fetch from NBA API via CDN (NBAScheduleService)
-        logger.info(f"⏳ [CDN] Fetching schedule from NBA CDN for {target_date}")
-        
+        # Use NBAScheduleService directly (has built-in caching)
         from services.nba_schedule import get_schedule_service
         service = get_schedule_service()
-        games_raw = service.get_todays_games() # This uses the CDN
+        games_raw = service.get_todays_games(force_refresh=force_refresh)
         
         games = []
         for game in games_raw:
@@ -305,7 +289,7 @@ async def get_schedule(date: Optional[str] = Query(None)):
                 "home_team": {
                     "tricode": home_tricode,
                     "score": home_score,
-                    "wins": 0, # CDN doesn't provide wins/losses easily here
+                    "wins": 0,
                     "losses": 0
                 },
                 "away_team": {
@@ -328,58 +312,34 @@ async def get_schedule(date: Optional[str] = Query(None)):
                 "volatility": "High" if status == "live" else "Normal"
             })
         
-        result = {
+        logger.info(f"✅ [CDN] Fetched {len(games)} games for {target_date}")
+        return {
             "games": games,
             "date": target_date,
             "total": len(games),
-            "cached": False,
             "source": "nba_cdn"
         }
         
-        # Cache for 10 minutes
-        nba_cache.set(cache_key, result, ttl_minutes=10)
-        logger.info(f"✅ [CDN] Fetched {len(games)} games, cached for 10min")
-        return result
-        
     except Exception as e:
-        logger.error(f"❌ [VPC] Schedule error: {e}")
+        logger.error(f"❌ Schedule error: {e}")
         return {
             "games": [],
             "date": date or str(datetime.now().date()),
-            "error": str(e),
-            "note": "VPC connector required for NBA API access"
+            "error": str(e)
         }
 
 
 @router.get("/matchup-lab/games")
-async def get_matchup_lab_games():
+async def get_matchup_lab_games(force_refresh: bool = Query(False)):
     """
-    Get today's games for Matchup Lab (VPC-enabled with caching)
+    Get today's games for Matchup Lab (VPC-enabled)
     Returns games in frontend-compatible format
-    Cache TTL: 5 minutes
     """
     try:
-        # Import cache
-        import sys
-        import os
-        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-        from nba_cache import nba_cache
-        import asyncio
-        
-        cache_key = "matchup_lab_games"
-        
-        # Check cache (5 min for live updates)
-        cached_data = nba_cache.get(cache_key)
-        if cached_data:
-            logger.info(f"✅ [CACHE HIT] Matchup Lab ({len(cached_data.get('games', []))} games)")
-            return cached_data
-        
-        # Fetch from NBA API via CDN
-        logger.info("⏳ [CDN] Fetching matchup lab games from NBA CDN")
-        
+        # Use NBAScheduleService directly (has built-in caching)
         from services.nba_schedule import get_schedule_service
         service = get_schedule_service()
-        games_raw = service.get_todays_games() # This uses the CDN
+        games_raw = service.get_todays_games(force_refresh=force_refresh)
         
         games = []
         for game in games_raw:
@@ -398,21 +358,15 @@ async def get_matchup_lab_games():
                 "period": game.get("period", 0)
             })
         
-        # Wrap in object with games key (frontend expects data.games)
-        result = {
+        logger.info(f"✅ [CDN] Fetched {len(games)} matchup games")
+        return {
             "games": games,
             "count": len(games),
-            "cached": False,
             "source": "nba_cdn"
         }
         
-        # Cache for 5 minutes
-        nba_cache.set(cache_key, result, ttl_minutes=5)
-        logger.info(f"✅ [CDN] Fetched {len(games)} matchup games, cached for 5min")
-        return result
-        
     except Exception as e:
-        logger.error(f"❌ [VPC] Matchup lab error: {e}")
+        logger.error(f"❌ Matchup lab error: {e}")
         return {"games": [], "count": 0, "error": str(e)}
 
 

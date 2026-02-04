@@ -124,7 +124,8 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
         self,
         incident: Dict,
         storage,
-        force_regenerate: bool = False
+        force_regenerate: bool = False,
+        **kwargs  # Accept system_context and other parameters
     ) -> IncidentAnalysis:
         """
         Generate AI analysis for an incident

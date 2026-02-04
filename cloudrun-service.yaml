@@ -9,6 +9,8 @@ spec:
     metadata:
       annotations:
         run.googleapis.com/cloudsql-instances: quantsight-prod:us-central1:quantsight-db
+        run.googleapis.com/vpc-access-connector: projects/quantsight-prod/locations/us-central1/connectors/nba-api-connector
+        run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       containers:
       - image: us-central1-docker.pkg.dev/quantsight-prod/cloud-run-source-deploy/quantsight-cloud
