@@ -282,79 +282,63 @@ async def get_schedule(date: Optional[str] = Query(None)):
             logger.info(f"✅ [CACHE HIT] Schedule for {target_date} ({len(cached_data.get('games', []))} games)")
             return cached_data
         
-        # Cache miss - fetch from NBA API via VPC
-        logger.info(f"⏳ [VPC] Fetching schedule from NBA API for {target_date}")
+        # Cache miss - fetch from NBA API via CDN (NBAScheduleService)
+        logger.info(f"⏳ [CDN] Fetching schedule from NBA CDN for {target_date}")
         
-        def fetch_nba_schedule():
-            """NBA API call (runs through VPC connector)"""
-            from nba_api.live.nba.endpoints import scoreboard
-            import time
-            time.sleep(0.6)  # Rate limit
-            return scoreboard.ScoreBoard().get_dict()
-        
-        # Async execution
-        loop = asyncio.get_event_loop()
-        scoreboard_data = await loop.run_in_executor(None, fetch_nba_schedule)
+        from services.nba_schedule import get_schedule_service
+        service = get_schedule_service()
+        games_raw = service.get_todays_games() # This uses the CDN
         
         games = []
-        if 'scoreboard' in scoreboard_data and 'games' in scoreboard_data['scoreboard']:
-            for game in scoreboard_data['scoreboard']['games']:
-                home_tricode = game.get("homeTeam", {}).get("teamTricode", "")
-                away_tricode = game.get("awayTeam", {}).get("teamTricode", "")
-                home_score = game.get("homeTeam", {}).get("score", 0)
-                away_score = game.get("awayTeam", {}).get("score", 0)
-                game_status = game.get("gameStatus", 1)
-                game_status_text = game.get("gameStatusText", "Scheduled")
+        for game in games_raw:
+            home_tricode = game.get("home_team", "")
+            away_tricode = game.get("away_team", "")
+            home_score = game.get("home_score", 0)
+            away_score = game.get("away_score", 0)
+            status_text = game.get("status_text", "Scheduled")
+            status = game.get("status", "scheduled")
+            
+            games.append({
+                "gameId": game.get("game_id"),
+                "game_code": f"{target_date.replace('-', '')}/{away_tricode}{home_tricode}",
+                "status": status_text,
+                "home_team": {
+                    "tricode": home_tricode,
+                    "score": home_score,
+                    "wins": 0, # CDN doesn't provide wins/losses easily here
+                    "losses": 0
+                },
+                "away_team": {
+                    "tricode": away_tricode,
+                    "score": away_score,
+                    "wins": 0,
+                    "losses": 0
+                },
+                "period": game.get("period", 0),
+                "game_time_utc": game.get("game_time"),
+                "arena": "",
                 
-                # Determine status string
-                status_str = "SCHEDULED"
-                if game_status == 2:
-                    status_str = "LIVE"
-                elif game_status == 3:
-                    status_str = "FINAL"
-                
-                games.append({
-                    # NBA API format (nested)
-                    "gameId": game.get("gameId"),
-                    "game_code": game.get("gameCode"),
-                    "status": game_status_text,
-                    "home_team": {
-                        "tricode": home_tricode,
-                        "score": home_score,
-                        "wins": game.get("homeTeam", {}).get("wins", 0),
-                        "losses": game.get("homeTeam", {}).get("losses", 0)
-                    },
-                    "away_team": {
-                        "tricode": away_tricode,
-                        "score": away_score,
-                        "wins": game.get("awayTeam", {}).get("wins", 0),
-                        "losses": game.get("awayTeam", {}).get("losses", 0)
-                    },
-                    "period": game.get("period", 0),
-                    "game_time_utc": game.get("gameTimeUTC"),
-                    "arena": game.get("arenaName", ""),
-                    
-                    # Flat format for Command Center compatibility
-                    "home": home_tricode,
-                    "away": away_tricode,
-                    "home_score": home_score,
-                    "away_score": away_score,
-                    "time": game_status_text,
-                    "started": game_status >= 2,
-                    "volatility": "High" if game_status == 2 else "Normal"
-                })
+                # Flat format for Command Center compatibility
+                "home": home_tricode,
+                "away": away_tricode,
+                "home_score": home_score,
+                "away_score": away_score,
+                "time": status_text,
+                "started": status in ["live", "final"],
+                "volatility": "High" if status == "live" else "Normal"
+            })
         
         result = {
             "games": games,
             "date": target_date,
             "total": len(games),
             "cached": False,
-            "source": "nba_api_vpc"
+            "source": "nba_cdn"
         }
         
         # Cache for 10 minutes
         nba_cache.set(cache_key, result, ttl_minutes=10)
-        logger.info(f"✅ [VPC] Fetched {len(games)} games, cached for 10min")
+        logger.info(f"✅ [CDN] Fetched {len(games)} games, cached for 10min")
         return result
         
     except Exception as e:
@@ -390,68 +374,41 @@ async def get_matchup_lab_games():
             logger.info(f"✅ [CACHE HIT] Matchup Lab ({len(cached_data.get('games', []))} games)")
             return cached_data
         
-        # Fetch from NBA API via VPC
-        logger.info("⏳ [VPC] Fetching matchup lab games from NBA API")
+        # Fetch from NBA API via CDN
+        logger.info("⏳ [CDN] Fetching matchup lab games from NBA CDN")
         
-        def fetch_games():
-            from nba_api.live.nba.endpoints import scoreboard
-            import time
-            time.sleep(0.6)
-            return scoreboard.ScoreBoard().get_dict()
-        
-        loop = asyncio.get_event_loop()
-        scoreboard_data = await loop.run_in_executor(None, fetch_games)
+        from services.nba_schedule import get_schedule_service
+        service = get_schedule_service()
+        games_raw = service.get_todays_games() # This uses the CDN
         
         games = []
-        if 'scoreboard' in scoreboard_data and 'games' in scoreboard_data['scoreboard']:
-            for game in scoreboard_data['scoreboard']['games']:
-                home_tricode = game.get("homeTeam", {}).get("teamTricode", "")
-                away_tricode = game.get("awayTeam", {}).get("teamTricode", "")
-                game_status = game.get("gameStatus", 1)
-                game_time = game.get("gameStatusText", "")
-                
-                # Determine status
-                status = "scheduled"
-                if game_status == 2:
-                    status = "live"
-                elif game_status == 3:
-                    status = "final"
-                
-                # Create display string (matches frontend expectation)
-                home_score = game.get("homeTeam", {}).get("score", 0)
-                away_score = game.get("awayTeam", {}).get("score", 0)
-                
-                if status == "live":
-                    display = f"{away_tricode} @ {home_tricode} - {game_time}"
-                elif status == "final":
-                    display = f"{away_tricode} {away_score} @ {home_tricode} {home_score} (F)"
-                else:
-                    display = f"{away_tricode} @ {home_tricode} - {game_time}"
-                
-                games.append({
-                    "game_id": game.get("gameId", ""),
-                    "home_team": home_tricode,
-                    "away_team": away_tricode,
-                    "game_time": game_time,
-                    "status": status,
-                    "display": display,
-                    # Additional data for analysis
-                    "home_score": home_score,
-                    "away_score": away_score,
-                    "period": game.get("period", 0)
-                })
+        for game in games_raw:
+            status = game.get("status", "scheduled")
+            display = game.get("display", "")
+            
+            games.append({
+                "game_id": game.get("game_id", ""),
+                "home_team": game.get("home_team", ""),
+                "away_team": game.get("away_team", ""),
+                "game_time": game.get("status_text", ""),
+                "status": status,
+                "display": display,
+                "home_score": game.get("home_score", 0),
+                "away_score": game.get("away_score", 0),
+                "period": game.get("period", 0)
+            })
         
         # Wrap in object with games key (frontend expects data.games)
         result = {
             "games": games,
             "count": len(games),
             "cached": False,
-            "source": "nba_api_vpc"
+            "source": "nba_cdn"
         }
         
         # Cache for 5 minutes
         nba_cache.set(cache_key, result, ttl_minutes=5)
-        logger.info(f"✅ [VPC] Fetched {len(games)} matchup games, cached for 5min")
+        logger.info(f"✅ [CDN] Fetched {len(games)} matchup games, cached for 5min")
         return result
         
     except Exception as e:
