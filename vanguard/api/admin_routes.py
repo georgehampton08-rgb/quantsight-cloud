@@ -159,6 +159,58 @@ async def bulk_resolve_incidents(request: BulkResolveRequest):
     }
 
 
+@router.post("/vanguard/admin/incidents/analyze-all")
+async def batch_analyze_incidents():
+    """Batch analyze all active incidents without AI analysis."""
+    try:
+        from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
+        
+        storage = get_incident_storage()
+        analyzer = VanguardAIAnalyzer()
+        
+        fingerprints = await storage.list_incidents(limit=2000)
+        to_analyze = []
+        
+        for fp in fingerprints:
+            incident = await storage.load(fp)
+            if not incident or incident.get('status') != 'active':
+                continue
+            if 'ai_analysis' not in incident and 'ai_analyses' not in incident:
+                to_analyze.append((fp, incident))
+        
+        if not to_analyze:
+            return {"success": True, "message": "All incidents already analyzed", "analyzed": 0}
+        
+        analyzed, failed = 0, 0
+        limit = min(10, len(to_analyze))
+        
+        for fp, incident in to_analyze[:limit]:
+            try:
+                analysis = await analyzer.analyze_incident(
+                    fingerprint=fp,
+                    endpoint=incident.get("endpoint", "unknown"),
+                    error_type=incident.get("error_type", "unknown"),
+                    incident_data=incident,
+                    storage=storage
+                )
+                analyzed += 1 if analysis else 0
+                failed += 0 if analysis else 1
+            except Exception as e:
+                logger.error(f"Failed to analyze {fp}: {e}")
+                failed += 1
+        
+        return {
+            "success": True,
+            "analyzed": analyzed,
+            "failed": failed,
+            "remaining": max(0, len(to_analyze) - limit),
+            "message": f"Analyzed {analyzed}/{limit} incidents"
+        }
+    except Exception as e:
+        logger.error(f"Batch analysis failed: {e}")
+        raise HTTPException(500, str(e))
+
+
 @router.post("/vanguard/admin/incidents/resolve-all")
 async def resolve_all_incidents(request: ResolveAllRequest):
     """
