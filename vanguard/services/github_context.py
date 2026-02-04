@@ -193,10 +193,12 @@ class GitHubContextFetcher:
                 return []
             
             commits = response.json()
-            return [
-                f"{c['sha'][:7]}: {c['commit']['message'].split('\\n')[0]}"
-                for c in commits
-            ]
+            # Extract commit messages (split on newline outside f-string to avoid syntax error)
+            result = []
+            for c in commits:
+                commit_msg = c['commit']['message'].split('\n')[0]
+                result.append(f"{c['sha'][:7]}: {commit_msg}")
+            return result
             
         except Exception as e:
             logger.error(f"Failed to fetch commits for {file_path}: {e}")
