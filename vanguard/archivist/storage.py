@@ -312,7 +312,7 @@ class IncidentStorage:
                 from firebase_admin import firestore
                 db = firestore.client()
                 ref = db.collection('vanguard_incidents').document(fingerprint)
-                if ref.get().exists():
+                if ref.get().exists:
                     ref.update(update_data)
                     return True
             except Exception as e:
