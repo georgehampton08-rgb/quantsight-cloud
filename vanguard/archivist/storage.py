@@ -171,7 +171,7 @@ class IncidentStorage:
         # Auto-label the incident
         labels = self._auto_label_incident(incident)
         incident["labels"] = labels
-        incident["status"] = incident.get("status", "active")
+        incident["status"] = incident.get("status", "active").lower()
         
         now = datetime.now(timezone.utc).isoformat()
         
@@ -339,7 +339,7 @@ class IncidentStorage:
         """Legacy alias for resolve (to maintain compatibility)."""
         return await self.resolve(fingerprint)
     
-    async def list_incidents(self, limit: int = 20) -> List[str]:
+    async def list_incidents(self, limit: int = 100) -> List[str]:
         """List recent incident fingerprints (Firestore or FileSystem)."""
         incidents = []
         
