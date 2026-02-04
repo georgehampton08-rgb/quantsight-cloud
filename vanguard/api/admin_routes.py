@@ -186,12 +186,11 @@ async def batch_analyze_incidents():
         
         for fp, incident in to_analyze[:limit]:
             try:
+                # Call analyzer with correct signature: analyze_incident(incident, storage)
                 analysis = await analyzer.analyze_incident(
-                    fingerprint=fp,
-                    endpoint=incident.get("endpoint", "unknown"),
-                    error_type=incident.get("error_type", "unknown"),
-                    incident_data=incident,
-                    storage=storage
+                    incident=incident,
+                    storage=storage,
+                    force_regenerate=False
                 )
                 analyzed += 1 if analysis else 0
                 failed += 0 if analysis else 1
