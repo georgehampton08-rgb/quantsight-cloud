@@ -99,6 +99,12 @@ async def vanguard_lifespan(app: FastAPI) -> AsyncIterator[None]:
             sampler = get_sampler()
             logger.info("inquisitor_initialized", sampling_rate=config.sampling_rate)
             
+            # Step 5: Start Escalation Engine
+            from ..surgeon.escalation import get_escalation_engine
+            escalation = get_escalation_engine()
+            await escalation.start()
+            logger.info("escalation_engine_started")
+            
         except Exception as e:
             logger.error("subsystem_initialization_failed", error=str(e))
             # Continue - subsystems will lazy-load on first use
@@ -116,6 +122,8 @@ async def vanguard_lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("vanguard_shutting_down")
     
     try:
+        from ..surgeon.escalation import get_escalation_engine
+        await get_escalation_engine().stop()
         await close_redis()
         logger.info("vanguard_shutdown_complete")
     except Exception as e:

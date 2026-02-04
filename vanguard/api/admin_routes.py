@@ -33,6 +33,32 @@ class ResolveAllRequest(BaseModel):
     resolution_notes: Optional[str] = "Batch resolution"
 
 
+class ModeRequest(BaseModel):
+    mode: str  # "SILENT_OBSERVER", "CIRCUIT_BREAKER", "FULL_SOVEREIGN"
+
+
+@router.post("/vanguard/admin/mode")
+async def toggle_vanguard_mode(request: ModeRequest):
+    """Manually toggle Vanguard operational mode."""
+    from vanguard.core.config import get_vanguard_config, VanguardMode
+    config = get_vanguard_config()
+    
+    try:
+        new_mode = VanguardMode(request.mode.upper())
+        old_mode = config.mode
+        config.mode = new_mode
+        
+        logger.warning(f"Vanguard mode manually changed: {old_mode} -> {new_mode}")
+        return {
+            "success": True, 
+            "old_mode": old_mode,
+            "new_mode": new_mode,
+            "message": f"Vanguard switched to {new_mode}"
+        }
+    except ValueError:
+        raise HTTPException(400, f"Invalid mode: {request.mode}. Use SILENT_OBSERVER, CIRCUIT_BREAKER, or FULL_SOVEREIGN.")
+
+
 @router.get("/vanguard/admin/incidents")
 async def list_all_incidents(status: Optional[str] = None, limit: int = 100):
     """
