@@ -352,3 +352,14 @@ Recent commits:
             sections.append(section.strip())
         
         return "\n\n".join(sections)
+
+
+# Singleton Instance
+_ai_analyzer = None
+
+def get_ai_analyzer() -> VanguardAIAnalyzer:
+    "Get the global AI Analyzer instance."
+    global _ai_analyzer
+    if _ai_analyzer is None:
+        _ai_analyzer = VanguardAIAnalyzer()
+    return _ai_analyzer
