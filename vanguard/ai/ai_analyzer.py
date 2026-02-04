@@ -133,7 +133,7 @@ class VanguardAIAnalyzer:
             logger.error(f"AI analysis failed: {e}")
             return self._create_fallback_analysis(incident)
     
-    async def _build_analysis_prompt(self, incident: Dict, context: str) -> str:
+    async def _build_analysis_prompt(self, incident: Dict, context: str, code_contexts: List[Dict] = None) -> str:
         """Build comprehensive analysis prompt for Gemini"""
         
         # Get metadata
