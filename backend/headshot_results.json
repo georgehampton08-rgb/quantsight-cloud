@@ -1,0 +1,32 @@
+[
+  {
+    "player_id": "1642379",
+    "name": "Taran Armstrong",
+    "url": "https://cdn.nba.com/headshots/nba/latest/260x190/1642379.png",
+    "status": "SUCCESS"
+  },
+  {
+    "player_id": "1641754",
+    "name": "Seth Lundy",
+    "url": "https://cdn.nba.com/headshots/nba/latest/260x190/1641754.png",
+    "status": "SUCCESS"
+  },
+  {
+    "player_id": "201565",
+    "name": "Derrick Rose",
+    "url": "https://cdn.nba.com/headshots/nba/latest/260x190/201565.png",
+    "status": "SUCCESS"
+  },
+  {
+    "player_id": "201568",
+    "name": "Danilo Gallinari",
+    "url": "https://cdn.nba.com/headshots/nba/latest/260x190/201568.png",
+    "status": "SUCCESS"
+  },
+  {
+    "player_id": "201976",
+    "name": "Patrick Beverley",
+    "url": "https://cdn.nba.com/headshots/nba/latest/260x190/201976.png",
+    "status": "SUCCESS"
+  }
+]

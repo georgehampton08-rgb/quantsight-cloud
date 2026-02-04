@@ -1,0 +1,36 @@
+[
+  {
+    "test_id": 2,
+    "category": "Health",
+    "test_name": "Aegis health at /aegis/health",
+    "endpoint": "/aegis/health",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 102.83565521240234,
+    "error_message": "Expected 200, got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:12:54.007557"
+  },
+  {
+    "test_id": 30,
+    "category": "MatchupLab",
+    "test_name": "GET /matchup/analyze",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 84.55801010131836,
+    "error_message": "Expected 200, got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:12:57.479420"
+  }
+]

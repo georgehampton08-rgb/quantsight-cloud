@@ -1,0 +1,1057 @@
+[
+  {
+    "test_id": 2,
+    "category": "Health",
+    "test_name": "GET /aegis/health",
+    "endpoint": "/aegis/health",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 86.01021766662598,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:16.265397"
+  },
+  {
+    "test_id": 23,
+    "category": "Health",
+    "test_name": "POST /health (should still work)",
+    "endpoint": "/health",
+    "method": "POST",
+    "status": "FAIL",
+    "status_code": 405,
+    "response_time_ms": 92.52309799194336,
+    "error_message": "Expected [200, 405], got 405",
+    "error_type": "HTTP405",
+    "request_data": null,
+    "response_data": {
+      "detail": "Method Not Allowed"
+    },
+    "timestamp": "2026-02-03T04:21:18.348637"
+  },
+  {
+    "test_id": 28,
+    "category": "CoreData",
+    "test_name": "GET /teams/LAL",
+    "endpoint": "/teams/LAL",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 89.43915367126465,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.165210"
+  },
+  {
+    "test_id": 29,
+    "category": "CoreData",
+    "test_name": "GET /teams/BOS",
+    "endpoint": "/teams/BOS",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 108.17837715148926,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.274439"
+  },
+  {
+    "test_id": 30,
+    "category": "CoreData",
+    "test_name": "GET /teams/GSW",
+    "endpoint": "/teams/GSW",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 88.64474296569824,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.363084"
+  },
+  {
+    "test_id": 31,
+    "category": "CoreData",
+    "test_name": "GET /teams/MIA",
+    "endpoint": "/teams/MIA",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 90.98529815673828,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.454581"
+  },
+  {
+    "test_id": 32,
+    "category": "CoreData",
+    "test_name": "GET /teams/NYK",
+    "endpoint": "/teams/NYK",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 95.20578384399414,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.550804"
+  },
+  {
+    "test_id": 33,
+    "category": "CoreData",
+    "test_name": "GET /teams/CHI",
+    "endpoint": "/teams/CHI",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 82.56149291992188,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.633928"
+  },
+  {
+    "test_id": 34,
+    "category": "CoreData",
+    "test_name": "GET /teams/PHX",
+    "endpoint": "/teams/PHX",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 100.59404373168945,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.735535"
+  },
+  {
+    "test_id": 35,
+    "category": "CoreData",
+    "test_name": "GET /teams/DAL",
+    "endpoint": "/teams/DAL",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 89.60413932800293,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.825139"
+  },
+  {
+    "test_id": 36,
+    "category": "CoreData",
+    "test_name": "GET /teams/MIL",
+    "endpoint": "/teams/MIL",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 95.0312614440918,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:19.920686"
+  },
+  {
+    "test_id": 37,
+    "category": "CoreData",
+    "test_name": "GET /teams/DEN",
+    "endpoint": "/teams/DEN",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 92.85974502563477,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.013546"
+  },
+  {
+    "test_id": 38,
+    "category": "CoreData",
+    "test_name": "GET /teams/PHI",
+    "endpoint": "/teams/PHI",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 95.77488899230957,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.109731"
+  },
+  {
+    "test_id": 39,
+    "category": "CoreData",
+    "test_name": "GET /teams/BKN",
+    "endpoint": "/teams/BKN",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 82.83042907714844,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.193664"
+  },
+  {
+    "test_id": 40,
+    "category": "CoreData",
+    "test_name": "GET /teams/ATL",
+    "endpoint": "/teams/ATL",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 73.78149032592773,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.268454"
+  },
+  {
+    "test_id": 41,
+    "category": "CoreData",
+    "test_name": "GET /teams/TOR",
+    "endpoint": "/teams/TOR",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 109.25436019897461,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.378325"
+  },
+  {
+    "test_id": 42,
+    "category": "CoreData",
+    "test_name": "GET /teams/CLE",
+    "endpoint": "/teams/CLE",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 90.90757369995117,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.469787"
+  },
+  {
+    "test_id": 43,
+    "category": "CoreData",
+    "test_name": "GET /teams/MEM",
+    "endpoint": "/teams/MEM",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 95.29995918273926,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.566093"
+  },
+  {
+    "test_id": 44,
+    "category": "CoreData",
+    "test_name": "GET /teams/SAC",
+    "endpoint": "/teams/SAC",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 106.89544677734375,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.673504"
+  },
+  {
+    "test_id": 45,
+    "category": "CoreData",
+    "test_name": "GET /teams/NOP",
+    "endpoint": "/teams/NOP",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 74.72991943359375,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:20.748234"
+  },
+  {
+    "test_id": 46,
+    "category": "CoreData",
+    "test_name": "GET /teams/LAC",
+    "endpoint": "/teams/LAC",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 346.402645111084,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:21.095425"
+  },
+  {
+    "test_id": 47,
+    "category": "CoreData",
+    "test_name": "GET /teams/MIN",
+    "endpoint": "/teams/MIN",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 94.72012519836426,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:21.190145"
+  },
+  {
+    "test_id": 50,
+    "category": "CoreData",
+    "test_name": "GET /players/2544",
+    "endpoint": "/players/2544",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 87.72540092468262,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:21.754827"
+  },
+  {
+    "test_id": 51,
+    "category": "CoreData",
+    "test_name": "GET /players/1628389",
+    "endpoint": "/players/1628389",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 88.96398544311523,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:21.844795"
+  },
+  {
+    "test_id": 52,
+    "category": "CoreData",
+    "test_name": "GET /players/201935",
+    "endpoint": "/players/201935",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 93.22071075439453,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:21.938528"
+  },
+  {
+    "test_id": 53,
+    "category": "CoreData",
+    "test_name": "GET /players/203507",
+    "endpoint": "/players/203507",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 94.54941749572754,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.033580"
+  },
+  {
+    "test_id": 54,
+    "category": "CoreData",
+    "test_name": "GET /players/202681",
+    "endpoint": "/players/202681",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 81.4051628112793,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.115501"
+  },
+  {
+    "test_id": 55,
+    "category": "CoreData",
+    "test_name": "GET /players/203954",
+    "endpoint": "/players/203954",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 92.41414070129395,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.208486"
+  },
+  {
+    "test_id": 56,
+    "category": "CoreData",
+    "test_name": "GET /players/1629029",
+    "endpoint": "/players/1629029",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 91.29858016967773,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.300301"
+  },
+  {
+    "test_id": 57,
+    "category": "CoreData",
+    "test_name": "GET /players/203076",
+    "endpoint": "/players/203076",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 89.59579467773438,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.390478"
+  },
+  {
+    "test_id": 58,
+    "category": "CoreData",
+    "test_name": "GET /players/201142",
+    "endpoint": "/players/201142",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 113.82365226745605,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.504836"
+  },
+  {
+    "test_id": 59,
+    "category": "CoreData",
+    "test_name": "GET /players/203999",
+    "endpoint": "/players/203999",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 99.9593734741211,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:22.604795"
+  },
+  {
+    "test_id": 62,
+    "category": "CoreData",
+    "test_name": "GET /schedule?date=2024-11-15",
+    "endpoint": "/schedule",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 200,
+    "response_time_ms": 172.9426383972168,
+    "error_message": "Expected [200, 404], got 200",
+    "error_type": "HTTP200",
+    "request_data": {
+      "date": "2024-11-15"
+    },
+    "response_data": {
+      "date": "2026-02-03",
+      "total_games": 4,
+      "games": [
+        {
+          "game_id": "0022500712",
+          "game_date": "2026-02-02",
+          "game_time": "2026-02-02T20:00:00Z",
+          "home_team": {
+            "team_id": 1610612766,
+            "name": "Hornets",
+            "tricode": "CHA",
+            "score": 102,
+            "wins": 23,
+            "losses": 28
+          },
+          "away_team": {
+            "team_id": 1610612740,
+            "name": "Pelicans",
+            "tricode": "NOP",
+            "score": 95,
+            "wins": 13,
+            "losses": 39
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        },
+        {
+          "game_id": "0022500713",
+          "game_date": "2026-02-03",
+          "game_time": "2026-02-03T00:00:00Z",
+          "home_team": {
+            "team_id": 1610612754,
+            "name": "Pacers",
+            "tricode": "IND",
+            "score": 114,
+            "wins": 13,
+            "losses": 37
+          },
+          "away_team": {
+            "team_id": 1610612745,
+            "name": "Rockets",
+            "tricode": "HOU",
+            "score": 118,
+            "wins": 31,
+            "losses": 17
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        },
+        {
+          "game_id": "0022500714",
+          "game_date": "2026-02-03",
+          "game_time": "2026-02-03T00:30:00Z",
+          "home_team": {
+            "team_id": 1610612763,
+            "name": "Grizzlies",
+            "tricode": "MEM",
+            "score": 137,
+            "wins": 19,
+            "losses": 29
+          },
+          "away_team": {
+            "team_id": 1610612750,
+            "name": "Timberwolves",
+            "tricode": "MIN",
+            "score": 128,
+            "wins": 31,
+            "losses": 20
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        },
+        {
+          "game_id": "0022500715",
+          "game_date": "2026-02-03",
+          "game_time": "2026-02-03T03:00:00Z",
+          "home_team": {
+            "team_id": 1610612746,
+            "name": "Clippers",
+            "tricode": "LAC",
+            "score": 113,
+            "wins": 23,
+            "losses": 26
+          },
+          "away_team": {
+            "team_id": 1610612755,
+            "name": "76ers",
+            "tricode": "PHI",
+            "score": 128,
+            "wins": 28,
+            "losses": 21
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        }
+      ]
+    },
+    "timestamp": "2026-02-03T04:21:23.153532"
+  },
+  {
+    "test_id": 63,
+    "category": "CoreData",
+    "test_name": "GET /schedule?team=LAL",
+    "endpoint": "/schedule",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 200,
+    "response_time_ms": 171.7541217803955,
+    "error_message": "Expected [200, 404], got 200",
+    "error_type": "HTTP200",
+    "request_data": {
+      "team": "LAL"
+    },
+    "response_data": {
+      "date": "2026-02-03",
+      "total_games": 4,
+      "games": [
+        {
+          "game_id": "0022500712",
+          "game_date": "2026-02-02",
+          "game_time": "2026-02-02T20:00:00Z",
+          "home_team": {
+            "team_id": 1610612766,
+            "name": "Hornets",
+            "tricode": "CHA",
+            "score": 102,
+            "wins": 23,
+            "losses": 28
+          },
+          "away_team": {
+            "team_id": 1610612740,
+            "name": "Pelicans",
+            "tricode": "NOP",
+            "score": 95,
+            "wins": 13,
+            "losses": 39
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        },
+        {
+          "game_id": "0022500713",
+          "game_date": "2026-02-03",
+          "game_time": "2026-02-03T00:00:00Z",
+          "home_team": {
+            "team_id": 1610612754,
+            "name": "Pacers",
+            "tricode": "IND",
+            "score": 114,
+            "wins": 13,
+            "losses": 37
+          },
+          "away_team": {
+            "team_id": 1610612745,
+            "name": "Rockets",
+            "tricode": "HOU",
+            "score": 118,
+            "wins": 31,
+            "losses": 17
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        },
+        {
+          "game_id": "0022500714",
+          "game_date": "2026-02-03",
+          "game_time": "2026-02-03T00:30:00Z",
+          "home_team": {
+            "team_id": 1610612763,
+            "name": "Grizzlies",
+            "tricode": "MEM",
+            "score": 137,
+            "wins": 19,
+            "losses": 29
+          },
+          "away_team": {
+            "team_id": 1610612750,
+            "name": "Timberwolves",
+            "tricode": "MIN",
+            "score": 128,
+            "wins": 31,
+            "losses": 20
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        },
+        {
+          "game_id": "0022500715",
+          "game_date": "2026-02-03",
+          "game_time": "2026-02-03T03:00:00Z",
+          "home_team": {
+            "team_id": 1610612746,
+            "name": "Clippers",
+            "tricode": "LAC",
+            "score": 113,
+            "wins": 23,
+            "losses": 26
+          },
+          "away_team": {
+            "team_id": 1610612755,
+            "name": "76ers",
+            "tricode": "PHI",
+            "score": 128,
+            "wins": 28,
+            "losses": 21
+          },
+          "status": 3,
+          "status_text": "Final",
+          "period": 4,
+          "game_clock": "",
+          "arena": "",
+          "city": ""
+        }
+      ]
+    },
+    "timestamp": "2026-02-03T04:21:23.326324"
+  },
+  {
+    "test_id": 125,
+    "category": "MatchupLab",
+    "test_name": "GET /matchup/analyze",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 84.54227447509766,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:30.959912"
+  },
+  {
+    "test_id": 126,
+    "category": "MatchupLab",
+    "test_name": "Matchup LAL vs GSW",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 113.39068412780762,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": {
+      "home_team": "LAL",
+      "away_team": "GSW"
+    },
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.073303"
+  },
+  {
+    "test_id": 127,
+    "category": "MatchupLab",
+    "test_name": "Matchup BOS vs MIA",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 149.75643157958984,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": {
+      "home_team": "BOS",
+      "away_team": "MIA"
+    },
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.223060"
+  },
+  {
+    "test_id": 128,
+    "category": "MatchupLab",
+    "test_name": "Matchup MIL vs DEN",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 101.0291576385498,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": {
+      "home_team": "MIL",
+      "away_team": "DEN"
+    },
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.324764"
+  },
+  {
+    "test_id": 129,
+    "category": "MatchupLab",
+    "test_name": "Matchup PHX vs DAL",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 108.71434211730957,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": {
+      "home_team": "PHX",
+      "away_team": "DAL"
+    },
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.433987"
+  },
+  {
+    "test_id": 130,
+    "category": "MatchupLab",
+    "test_name": "Matchup NYK vs BKN",
+    "endpoint": "/matchup/analyze",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 98.92559051513672,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": {
+      "home_team": "NYK",
+      "away_team": "BKN"
+    },
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.532913"
+  },
+  {
+    "test_id": 131,
+    "category": "MatchupLab",
+    "test_name": "Player 2544 vs 201935",
+    "endpoint": "/matchup-lab/player/2544/201935",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 121.57130241394043,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.655489"
+  },
+  {
+    "test_id": 132,
+    "category": "MatchupLab",
+    "test_name": "Player 203507 vs 202681",
+    "endpoint": "/matchup-lab/player/203507/202681",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 97.37682342529297,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.753430"
+  },
+  {
+    "test_id": 133,
+    "category": "MatchupLab",
+    "test_name": "Player 1628389 vs 203954",
+    "endpoint": "/matchup-lab/player/1628389/203954",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 404,
+    "response_time_ms": 103.34134101867676,
+    "error_message": "Expected [200, 404], got 404",
+    "error_type": "HTTP404",
+    "request_data": null,
+    "response_data": {
+      "detail": "Not Found"
+    },
+    "timestamp": "2026-02-03T04:21:31.858287"
+  },
+  {
+    "test_id": 135,
+    "category": "Database",
+    "test_name": "GET /debug/teams-schema",
+    "endpoint": "/debug/teams-schema",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 500,
+    "response_time_ms": 172.15490341186523,
+    "error_message": "Expected [200, 404], got 500",
+    "error_type": "HTTP500",
+    "request_data": null,
+    "response_data": {
+      "detail": "'str' object has no attribute 'name'"
+    },
+    "timestamp": "2026-02-03T04:21:32.213751"
+  },
+  {
+    "test_id": 160,
+    "category": "EdgeCases",
+    "test_name": "Invalid /docs",
+    "endpoint": "/docs",
+    "method": "GET",
+    "status": "FAIL",
+    "status_code": 200,
+    "response_time_ms": 137.89129257202148,
+    "error_message": "Expected 404, got 200",
+    "error_type": "HTTP200",
+    "request_data": null,
+    "response_data": "\n    <!DOCTYPE html>\n    <html>\n    <head>\n    <link type=\"text/css\" rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css\">\n    <link rel=\"shortcut icon\" href=\"https://fastapi.tiangolo.com/img/favicon.png\">\n    <title>QuantSight Live Pulse (Cloud) - Swagger UI</title>\n    </head>\n    <body>\n    <div id=\"swagger-ui\">\n    </div>\n    <script src=\"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js\"></script>\n    <!-- `SwaggerUIBundle` is now available on the page -->\n    <script>\n    const ui = SwaggerUIBundle({\n        url: '/openapi.json',\n    \"dom_id\": \"#swagger-ui\",\n\"layout\": \"BaseLayout\",\n\"deepLinking\": true,\n\"showExtensions\": true,\n\"showCommonExtensions\": true,\noauth2RedirectUrl: window.location.origin + '/docs/oauth2-redirect',\n    presets: [\n        SwaggerUIBundle.presets.apis,\n        SwaggerUIBundle.SwaggerUIStandalonePreset\n        ],\n    })\n    </script>\n    </body>\n    </html>\n    ",
+    "timestamp": "2026-02-03T04:21:36.707722"
+  },
+  {
+    "test_id": 166,
+    "category": "EdgeCases",
+    "test_name": "POST /teams (should reject)",
+    "endpoint": "/teams",
+    "method": "POST",
+    "status": "FAIL",
+    "status_code": 405,
+    "response_time_ms": 91.81952476501465,
+    "error_message": "Expected [405, 404], got 405",
+    "error_type": "HTTP405",
+    "request_data": null,
+    "response_data": {
+      "detail": "Method Not Allowed"
+    },
+    "timestamp": "2026-02-03T04:21:37.282322"
+  },
+  {
+    "test_id": 167,
+    "category": "EdgeCases",
+    "test_name": "DELETE /players (should reject)",
+    "endpoint": "/players",
+    "method": "DELETE",
+    "status": "FAIL",
+    "status_code": 405,
+    "response_time_ms": 114.79473114013672,
+    "error_message": "Expected [405, 404], got 405",
+    "error_type": "HTTP405",
+    "request_data": null,
+    "response_data": {
+      "detail": "Method Not Allowed"
+    },
+    "timestamp": "2026-02-03T04:21:37.398723"
+  },
+  {
+    "test_id": 168,
+    "category": "EdgeCases",
+    "test_name": "PUT /schedule (should reject)",
+    "endpoint": "/schedule",
+    "method": "PUT",
+    "status": "FAIL",
+    "status_code": 405,
+    "response_time_ms": 104.13813591003418,
+    "error_message": "Expected [405, 404], got 405",
+    "error_type": "HTTP405",
+    "request_data": null,
+    "response_data": {
+      "detail": "Method Not Allowed"
+    },
+    "timestamp": "2026-02-03T04:21:37.503368"
+  }
+]

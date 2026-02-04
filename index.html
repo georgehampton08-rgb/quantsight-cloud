@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://quantsight-cloud-458498663186.us-central1.run.app http://127.0.0.1:5000 http://localhost:5000 ws://localhost:5173; img-src 'self' data: blob: https:;" />
+  <title>QuantSight</title>
+  <style>
+    /* Mobile-first responsive overrides */
+    @media (max-width: 768px) {
+      body {
+        overflow-x: hidden;
+      }
+
+      /* Sidebar slides from left on mobile */
+      .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: -100% !important;
+        bottom: 0 !important;
+        transition: left 0.3s ease !important;
+        z-index: 1001 !important;
+        width: 16rem !important;
+        max-width: 80vw !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5) !important;
+      }
+
+      .sidebar.open {
+        left: 0 !important;
+      }
+
+      /* Stack cards vertically */
+      .glass-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0.5rem 0 !important;
+      }
+
+      /* Reduce padding on mobile */
+      .p-8 {
+        padding: 1rem !important;
+      }
+
+      .p-6 {
+        padding: 0.75rem !important;
+      }
+
+      .px-6 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      /* Make tables scrollable */
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      /* Pulse Page - Make table container scrollable */
+      .matchup-lab-page .overflow-x-auto {
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      /* Pulse Page - Single column grid on mobile */
+      .matchup-lab-page .grid.lg\:grid-cols-12 {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Pulse Page - Reduce featured game padding */
+      .matchup-lab-page .glass-card {
+        padding: 1rem !important;
+      }
+
+      /* Pulse Page - Smaller text sizes */
+      .matchup-lab-page h1 {
+        font-size: 1.5rem !important;
+      }
+
+      .matchup-lab-page .text-5xl {
+        font-size: 2.5rem !important;
+      }
+
+      .matchup-lab-page .text-4xl {
+        font-size: 2rem !important;
+      }
+
+      /* Adjust font sizes */
+      h1 {
+        font-size: 1.5rem !important;
+      }
+
+      h2 {
+        font-size: 1.25rem !important;
+      }
+
+      /* Make grid layouts single column */
+      .grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Compact status LEDs on mobile */
+      .flex.items-center.gap-4>div {
+        font-size: 0.75rem !important;
+      }
+
+      /* Compact CascadingSelector on mobile */
+      .cascading-selector {
+        max-width: 180px !important;
+        font-size: 0.875rem !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

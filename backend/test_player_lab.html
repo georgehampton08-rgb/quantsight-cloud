@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Player Lab Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff88;
+            padding: 20px;
+        }
+
+        .test {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border-left: 3px solid #00ff88;
+        }
+
+        .pass {
+            border-left-color: #00ff88;
+        }
+
+        .fail {
+            border-left-color: #ff4444;
+        }
+
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #00dd77;
+        }
+
+        pre {
+            background: #000;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔬 QuantSight Player Lab Diagnostic</h1>
+
+    <div class="test">
+        <h3>Test 1: Player Search API</h3>
+        <button onclick="testSearch()">Run Test</button>
+        <pre id="search-result">Click button to test...</pre>
+    </div>
+
+    <div class="test">
+        <h3>Test 2: Player Profile API</h3>
+        <button onclick="testProfile()">Run Test</button>
+        <pre id="profile-result">Click button to test...</pre>
+    </div>
+
+    <div class="test">
+        <h3>Test 3: Navigate to Player Lab</h3>
+        <button onclick="navigateToPlayer()">Open Player Lab (LeBron)</button>
+        <pre id="nav-result">Click button to navigate...</pre>
+    </div>
+
+    <div class="test">
+        <h3>Test 4: Check API Connectivity</h3>
+        <button onclick="testConnectivity()">Run Test</button>
+        <pre id="conn-result">Click button to test...</pre>
+    </div>
+
+    <script>
+        async function testSearch() {
+            const el = document.getElementById('search-result');
+            try {
+                el.textContent = 'Loading...';
+                const res = await fetch('http://localhost:5000/players/search?q=lebron');
+                const data = await res.json();
+                el.textContent = `✅ Success! Found ${data.length} players:\n${JSON.stringify(data[0], null, 2)}`;
+            } catch (e) {
+                el.textContent = `❌ Error: ${e.message}`;
+            }
+        }
+
+        async function testProfile() {
+            const el = document.getElementById('profile-result');
+            try {
+                el.textContent = 'Loading...';
+                const res = await fetch('http://localhost:5000/players/2544');
+                const data = await res.json();
+                el.textContent = `✅ Success! Profile:\n${JSON.stringify(data, null, 2)}`;
+            } catch (e) {
+                el.textContent = `❌ Error: ${e.message}`;
+            }
+        }
+
+        function navigateToPlayer() {
+            const el = document.getElementById('nav-result');
+            el.textContent = 'Navigating to http://localhost:5173/player/2544...';
+            window.open('http://localhost:5173/player/2544', '_blank');
+        }
+
+        async function testConnectivity() {
+            const el = document.getElementById('conn-result');
+            el.textContent = 'Testing...\n';
+
+            const tests = [
+                { name: 'Backend Health', url: 'http://localhost:5000/aegis/health' },
+                { name: 'Frontend', url: 'http://localhost:5173' },
+                { name: 'Schedule', url: 'http://localhost:5000/schedule' },
+                { name: 'Players Search', url: 'http://localhost:5000/players/search?q=' },
+            ];
+
+            let results = '';
+            for (const test of tests) {
+                try {
+                    const res = await fetch(test.url);
+                    results += `${res.ok ? '✅' : '❌'} ${test.name}: ${res.status}\n`;
+                } catch (e) {
+                    results += `❌ ${test.name}: ${e.message}\n`;
+                }
+            }
+            el.textContent = results;
+        }
+    </script>
+</body>
+
+</html>
