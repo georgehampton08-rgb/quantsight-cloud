@@ -2367,7 +2367,7 @@ Position: {position or 'Forward'}.
 Focus on: strengths, tendencies, and what opposing teams should watch for.
 Be concise and insightful. Use present tense."""
         
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         
         if response and response.text:

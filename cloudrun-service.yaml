@@ -1,0 +1,23 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: quantsight-cloud
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: quantsight-prod:us-central1:quantsight-db
+    spec:
+      containers:
+      - image: us-central1-docker.pkg.dev/quantsight-prod/cloud-run-source-deploy/quantsight-cloud
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://quantsight:QSInvest2026$@/nba_data?host=/cloudsql/quantsight-prod:us-central1:quantsight-db"
+        - name: FIREBASE_PROJECT_ID
+          value: "quantsight-prod"
+        - name: PORT
+          value: "8080"
+        - name: DEPLOYMENT_MODE
+          value: "cloud"

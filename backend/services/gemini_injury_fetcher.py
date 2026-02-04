@@ -20,7 +20,7 @@ class GeminiInjuryFetcher:
     """
     
     # Use a model that exists in the current environment
-    DEFAULT_MODEL = 'gemini-2.5-flash-lite'
+    DEFAULT_MODEL = 'gemini-1.5-flash'
     
     def __init__(self, api_key: str = None):
         # Get API key from environment or parameter
@@ -42,7 +42,7 @@ class GeminiInjuryFetcher:
         # Verify model exists, fallback if needed
         # (Skip listing for performance in prod, but using flash-lite for safety)
         if '2.0-flash-exp' in self.model_id:
-             self.model_id = 'gemini-2.5-flash-lite' # 2.0-flash-exp was 404ing
+             self.model_id = 'gemini-1.5-flash' # 2.0-flash-exp was 404ing
         
         logger.info(f"GeminiInjuryFetcher initialized with model: {self.model_id}")
     

@@ -339,7 +339,7 @@ class IncidentStorage:
         """Legacy alias for resolve (to maintain compatibility)."""
         return await self.resolve(fingerprint)
     
-    async def list_incidents(self, limit: int = 100) -> List[str]:
+    async def list_incidents(self, limit: int = 2000) -> List[str]:
         """List recent incident fingerprints (Firestore or FileSystem)."""
         incidents = []
         
