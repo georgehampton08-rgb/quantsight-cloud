@@ -196,13 +196,27 @@ async def get_incident_detail_admin(fingerprint: str):
 
 
 @router.post("/vanguard/admin/incidents/analyze-all")
-async def batch_analyze_incidents():
-    """Batch analyze all active incidents without AI analysis."""
+async def batch_analyze_incidents(request: Request, force: bool = False):
+    """Batch analyze all active incidents."""
     try:
-        from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
+        from vanguard.ai.ai_analyzer import get_ai_analyzer
+        from vanguard.core.config import get_vanguard_config
         
         storage = get_incident_storage()
-        analyzer = VanguardAIAnalyzer()
+        analyzer = get_ai_analyzer()
+        config = get_vanguard_config()
+        
+        # Collect system context once for the batch
+        routes = []
+        for route in request.app.routes:
+            if hasattr(route, "path"):
+                routes.append(f"{list(route.methods) if hasattr(route, 'methods') else 'GET'} {route.path}")
+
+        system_context = {
+            "mode": config.mode.value,
+            "revision": os.getenv("K_REVISION", "local"),
+            "routes": routes[:50]
+        }
         
         fingerprints = await storage.list_incidents(limit=2000)
         to_analyze = []
@@ -211,25 +225,30 @@ async def batch_analyze_incidents():
             incident = await storage.load(fp)
             if not incident or incident.get('status') != 'active':
                 continue
-            if 'ai_analysis' not in incident and 'ai_analyses' not in incident:
-                to_analyze.append((fp, incident))
+            # If not forcing, skip if it already has analysis
+            if not force and ('ai_analysis' in incident or 'ai_analyses' in incident):
+                continue
+            to_analyze.append((fp, incident))
         
         if not to_analyze:
             return {"success": True, "message": "All incidents already analyzed", "analyzed": 0}
         
         analyzed, failed = 0, 0
-        limit = min(10, len(to_analyze))
+        # Increased limit for "all" coverage
+        limit = min(100, len(to_analyze))
         
         for fp, incident in to_analyze[:limit]:
             try:
-                # Call analyzer with correct signature: analyze_incident(incident, storage)
                 analysis = await analyzer.analyze_incident(
                     incident=incident,
                     storage=storage,
-                    force_regenerate=False
+                    force_regenerate=force,
+                    system_context=system_context
                 )
-                analyzed += 1 if analysis else 0
-                failed += 0 if analysis else 1
+                if analysis:
+                    analyzed += 1
+                else:
+                    failed += 1
             except Exception as e:
                 logger.error(f"Failed to analyze {fp}: {e}")
                 failed += 1

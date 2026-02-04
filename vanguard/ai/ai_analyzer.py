@@ -41,6 +41,56 @@ class VanguardAIAnalyzer:
         self.github = GitHubContextFetcher()
         self.client = None
         self._genai_loaded = False
+
+    ANALYSIS_PROMPT_TEMPLATE = """
+You are analyzing a production incident in the QuantSight NBA analytics system.
+
+{context}
+
+## INCIDENT DETAILS
+- **Fingerprint**: {fingerprint}
+- **Error Type**: {error_type}
+- **Endpoint**: {endpoint}
+- **Occurrences**: {occurrence_count}
+- **Severity**: {severity}
+- **Labels**: {labels}
+- **First Seen**: {first_seen}
+- **Last Seen**: {last_seen}
+
+## STACK TRACE
+{traceback}
+
+## CODEBASE CONTEXT (Source Code with Line Numbers)
+{code_contexts}
+
+## SYSTEM CONTEXT
+- **Current System Time (UTC)**: {system_time}
+- **Vanguard Mode**: {vanguard_mode}
+- **Revision**: {revision}
+- **Available Routes**: {available_routes}
+
+## YOUR TASK
+Provide a concise incident analysis in the following JSON format:
+
+{{
+  "root_cause": "2-3 sentence explanation of what's broken",
+  "impact": "1 sentence on who/what is affected",
+  "recommended_fix": ["specific step 1", "specific step 2", "specific step 3"],
+  "ready_to_resolve": false,
+  "ready_reasoning": "Why it's not ready OR why it is",
+  "confidence": 85
+}}
+
+## READINESS CRITERIA
+Set `ready_to_resolve: true` ONLY if:
+1. Error occurred more than 30 minutes ago
+2. No recent occurrences (check last_seen vs current time)
+3. Code changes likely deployed (check recent git commits)
+
+Otherwise set `ready_to_resolve: false` with clear reasoning.
+
+**IMPORTANT**: Return ONLY valid JSON, no extra text.
+"""
     
     def _lazy_load_genai(self):
         """Lazy load genai to prevent import errors from breaking vanguard"""
@@ -162,55 +212,23 @@ class VanguardAIAnalyzer:
         if len(traceback) > 1500:
             traceback = traceback[:1500] + "\n... (truncated)"
         
-        prompt = f"""
-You are analyzing a production incident in the QuantSight NBA analytics system.
-
-{context}
-
-## INCIDENT DETAILS
-- **Fingerprint**: {incident['fingerprint'][:16]}...
-- **Error Type**: {incident['error_type']}
-- **Endpoint**: {incident['endpoint']}
-- **Occurrences**: {incident['occurrence_count']}
-- **Severity**: {incident['severity']}
-- **Labels**: {json.dumps(incident.get('labels', {}))}
-- **First Seen**: {incident['first_seen']}
-- **Last Seen**: {incident['last_seen']}
-
-## STACK TRACE
-{traceback}
-
-## CODEBASE CONTEXT (Source Code with Line Numbers)
-{self._format_code_contexts(code_contexts or [])}
-
-## SYSTEM CONTEXT
-- **Current System Time (UTC)**: {datetime.utcnow().isoformat()}Z
-- **Vanguard Mode**: {kwargs.get('system_context', {}).get('mode', 'UNKNOWN')}
-- **Revision**: {kwargs.get('system_context', {}).get('revision', 'UNKNOWN')}
-- **Available Routes**: {json.dumps(kwargs.get('system_context', {}).get('routes', []))}
-
-## YOUR TASK
-Provide a concise incident analysis in the following JSON format:
-
-{{
-  "root_cause": "2-3 sentence explanation of what's broken",
-  "impact": "1 sentence on who/what is affected",
-  "recommended_fix": ["specific step 1", "specific step 2", "specific step 3"],
-  "ready_to_resolve": false,
-  "ready_reasoning": "Why it's not ready OR why it is",
-  "confidence": 85
-}}
-
-## READINESS CRITERIA
-Set `ready_to_resolve: true` ONLY if:
-1. Error occurred more than 30 minutes ago
-2. No recent occurrences (check last_seen vs current time)
-3. Code changes likely deployed (check recent git commits)
-
-Otherwise set `ready_to_resolve: false` with clear reasoning.
-
-**IMPORTANT**: Return ONLY valid JSON, no extra text.
-"""
+        prompt = self.ANALYSIS_PROMPT_TEMPLATE.format(
+            context=context,
+            fingerprint=incident['fingerprint'][:16] + "...",
+            error_type=incident['error_type'],
+            endpoint=incident['endpoint'],
+            occurrence_count=incident['occurrence_count'],
+            severity=incident['severity'],
+            labels=json.dumps(incident.get('labels', {})),
+            first_seen=incident['first_seen'],
+            last_seen=incident['last_seen'],
+            traceback=traceback,
+            code_contexts=self._format_code_contexts(code_contexts or []),
+            system_time=datetime.utcnow().isoformat() + "Z",
+            vanguard_mode=kwargs.get('system_context', {}).get('mode', 'UNKNOWN'),
+            revision=kwargs.get('system_context', {}).get('revision', 'local'),
+            available_routes=json.dumps(kwargs.get('system_context', {}).get('routes', []))
+        )
         return prompt.strip()
     
     def _parse_ai_response(self, response: str, incident: Dict) -> IncidentAnalysis:
