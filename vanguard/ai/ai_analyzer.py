@@ -127,9 +127,9 @@ class VanguardAIAnalyzer:
         
         try:
             # Generate analysis using new API
-            logger.info(f"[AI_DEBUG] Calling Gemini API with model gemini-2.0-flash-exp")
+            logger.info(f"[AI_DEBUG] Calling Gemini API with model gemini-1.5-flash")
             response = self.client.models.generate_content(
-                model='gemini-2.0-flash-exp',
+                model='gemini-1.5-flash',
                 contents=prompt
             )
             logger.info(f"[AI_DEBUG] Gemini API responded successfully")
