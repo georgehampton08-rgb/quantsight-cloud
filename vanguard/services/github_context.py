@@ -49,12 +49,29 @@ class GitHubContextFetcher:
     
     # Endpoint to file mapping
     ENDPOINT_MAP = {
+        # Vanguard
         '/vanguard/admin/incidents': 'vanguard/api/admin_routes.py',
+        '/vanguard/admin/resolve': 'vanguard/api/admin_routes.py',
         '/vanguard/health': 'vanguard/api/health.py',
         '/vanguard/admin/cron': 'vanguard/api/cron_routes.py',
+        
+        # Live Services
         '/live/stream': 'services/live_pulse_service_cloud.py',
         '/live/leaders': 'api/public_routes.py',
+        '/live/scoreboard': 'api/public_routes.py',
+        
+        # Matchup & Player Lab
         '/matchup/lab': 'aegis/matchup_engine.py',
+        '/matchup/': 'aegis/matchup_engine.py',  # Wildcard for /matchup/123
+        '/api/team/': 'api/public_routes.py',
+        '/api/player/': 'api/public_routes.py',
+        
+        # Frontend routes (404s from SPA)
+        '/main': 'api/public_routes.py',
+        '/favicon.ico': 'api/public_routes.py',
+        
+        # API endpoints
+        '/api/': 'api/public_routes.py',
     }
     
     def __init__(self):

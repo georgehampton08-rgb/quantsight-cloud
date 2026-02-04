@@ -259,15 +259,16 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
             expires_at=expires.isoformat() + "Z"
         )
     
+    
     async def _cache_analysis(self, analysis: IncidentAnalysis, storage):
-        """Store analysis in Firestore with 24hr TTL"""
+        """Store analysis in the incident's ai_analysis field"""
         try:
-            doc_ref = storage.firestore_client.collection("vanguard_analysis").document(
-                analysis.fingerprint
-            )
-            
-            await doc_ref.set(analysis.dict())
-            logger.info(f"Cached analysis for {analysis.fingerprint} (expires: {analysis.expires_at})")
+            # Update the incident with the analysis
+            incident = await storage.load(analysis.fingerprint)
+            if incident:
+                incident['ai_analysis'] = analysis.dict()
+                await storage.save(incident)
+                logger.info(f"Saved analysis to incident {analysis.fingerprint} (expires: {analysis.expires_at})")
         except Exception as e:
             logger.warning(f"Failed to cache analysis: {e}")
     
@@ -276,15 +277,13 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
         fingerprint: str,
         storage
     ) -> Optional[IncidentAnalysis]:
-        """Retrieve cached analysis if not expired"""
+        """Retrieve cached analysis from incident's ai_analysis field"""
         try:
-            doc_ref = storage.firestore_client.collection("vanguard_analysis").document(fingerprint)
-            doc = await doc_ref.get()
-            
-            if not doc.exists:
+            incident = await storage.load(fingerprint)
+            if not incident or 'ai_analysis' not in incident:
                 return None
             
-            data = doc.to_dict()
+            data = incident['ai_analysis']
             
             # Check expiration
             expires_at = datetime.fromisoformat(data["expires_at"].replace('Z', '+00:00'))
