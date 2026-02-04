@@ -3,11 +3,12 @@ Vanguard Admin Routes
 ====================
 Admin endpoints for incident management and learning data verification.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import logging
+import os
 
 from vanguard.archivist.storage import get_incident_storage
 from vanguard.resolution_learner import VanguardResolutionLearner
@@ -178,11 +179,20 @@ async def bulk_resolve_incidents(request: BulkResolveRequest):
     return {
         "resolved_count": len(resolved),
         "failed_count": len(failed),
-        "resolved": resolved,
-        "failed": failed,
-        "resolution_notes": request.resolution_notes,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "failed": failed
     }
+
+
+@router.get("/vanguard/admin/incidents/{fingerprint}")
+async def get_incident_detail_admin(fingerprint: str):
+    """Get full details for a specific incident (Admin version)."""
+    storage = get_incident_storage()
+    incident = await storage.load(fingerprint)
+    
+    if not incident:
+        raise HTTPException(404, f"Incident {fingerprint} not found")
+        
+    return incident
 
 
 @router.post("/vanguard/admin/incidents/analyze-all")
@@ -247,7 +257,7 @@ async def resolve_all_incidents(request: ResolveAllRequest):
         raise HTTPException(400, "Must set confirm=true to resolve all incidents")
     
     storage = get_incident_storage()
-    fingerprints = storage.list_incidents(limit=1000)
+    fingerprints = await storage.list_incidents(limit=1000)
     
     resolved = []
     already_resolved = []
@@ -287,28 +297,14 @@ async def get_learning_status():
     """Get status of resolution learning data."""
     try:
         learner = VanguardResolutionLearner()
-        
-        # Get all resolutions
-        all_resolutions = learner.resolutions
-        verified = [r for r in all_resolutions if r.incidents_after != -1]
-        pending = [r for r in all_resolutions if r.incidents_after == -1]
-        
-        # Get patterns
-        patterns = learner.get_successful_patterns()
+        stats = learner.get_stats()
         
         return {
-            "total_resolutions": len(all_resolutions),
-            "verified_resolutions": len(verified),
-            "pending_verification": len(pending),
-            "successful_patterns": len(patterns),
-            "patterns": [
-                {
-                    "pattern": p.pattern,
-                    "success_rate": round(p.success_rate, 2),
-                    "occurrences": p.occurrences
-                }
-                for p in patterns[:10]  # Top 10
-            ],
+            "total_resolutions": stats["total_resolutions"],
+            "verified_resolutions": stats["verified"],
+            "pending_verification": stats["pending_verification"],
+            "successful_patterns": stats["effective_fixes"],
+            "patterns": [],
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
     except Exception as e:
@@ -412,16 +408,9 @@ ai_analyzer = VanguardAIAnalyzer()
 
 
 @router.get("/vanguard/admin/incidents/{fingerprint}/analysis")
-async def get_incident_analysis(fingerprint: str, regenerate: bool = False):
+async def get_incident_analysis(request: Request, fingerprint: str, regenerate: bool = False):
     """
     Get AI-generated analysis for an incident.
-    
-    Args:
-        fingerprint: Incident fingerprint
-        regenerate: Force regenerate analysis (skip cache)
-    
-    Returns:
-        IncidentAnalysis with AI insights, cached for 24 hours
     """
     try:
         storage = get_incident_storage()
@@ -430,11 +419,31 @@ async def get_incident_analysis(fingerprint: str, regenerate: bool = False):
         if not incident:
             raise HTTPException(404, f"Incident {fingerprint} not found")
         
+        # Collect system context for AI confidence
+        from vanguard.core.config import get_vanguard_config
+        config = get_vanguard_config()
+        
+        # Get all registered routes
+        routes = []
+        for route in request.app.routes:
+            if hasattr(route, "path"):
+                routes.append(f"{list(route.methods) if hasattr(route, 'methods') else 'GET'} {route.path}")
+
+        system_context = {
+            "mode": config.mode.value,
+            "revision": os.getenv("K_REVISION", "local"),
+            "routes": routes[:50] # Limit to top 50 routes
+        }
+        
         # Generate or retrieve analysis
-        analysis = await ai_analyzer.analyze_incident(
-            incident,
-            storage,
-            force_regenerate=regenerate
+        from vanguard.ai.ai_analyzer import get_ai_analyzer
+        analyzer = get_ai_analyzer()
+        
+        analysis = await analyzer.analyze_incident(
+            incident=incident,
+            storage=storage,
+            force_regenerate=regenerate,
+            system_context=system_context
         )
         
         return analysis.dict()

@@ -127,11 +127,19 @@ class SystemHealthMonitor:
     async def check_firestore(self) -> Dict:
         """Check Firestore connectivity."""
         try:
-            project_id = os.getenv('FIREBASE_PROJECT_ID')
+            project_id = os.getenv('FIREBASE_PROJECT_ID') or os.getenv('GOOGLE_CLOUD_PROJECT')
+            if not project_id:
+                # In Cloud Run, it might be available via metadata service
+                try:
+                    import google.auth
+                    _, project_id = google.auth.default()
+                except:
+                    pass
+                    
             if not project_id:
                 return {
-                    "status": "critical",
-                    "details": "No project ID configured",
+                    "status": "warning", # Warning instead of critical if we just can't find ID
+                    "details": "Could not determine project ID",
                     "error": "FIREBASE_PROJECT_ID not set"
                 }
             

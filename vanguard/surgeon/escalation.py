@@ -42,43 +42,43 @@ class EscalationEngine:
         self._running = True
         logger.info("Escalation Engine STARTED")
         asyncio.create_task(self._monitoring_loop())
+        # Trigger an immediate check instead of waiting for loop
+        asyncio.create_task(self._trigger_immediate_check())
         
-    async def stop(self):
-        """Stop the escalation monitoring loop."""
-        self._running = False
-        logger.info("Escalation Engine STOPPED")
-        
+    async def _trigger_immediate_check(self):
+        """Run one check immediately."""
+        await asyncio.sleep(5) # Give subsystems a second to breath
+        await self._check_once()
+
     async def _monitoring_loop(self):
         """Background loop to check health and escalate."""
         while self._running:
-            try:
-                # 1. Fetch current health results
-                health_results = await self.monitor.run_all_checks()
+            await self._check_once()
+            await asyncio.sleep(120)
+            
+    async def _check_once(self):
+        """Perform a single health check and escalation decision."""
+        try:
+            # 1. Fetch current health results
+            health_results = await self.monitor.run_all_checks()
+            
+            # 2. Calculate score
+            # Note: component_score is 0-60 based on core systems
+            component_score = self.calculator.calculate_component_score(health_results)
+            self._last_score = component_score
+            
+            logger.info(f"Escalation Check: Health Score = {component_score:.1f}")
+            
+            # 3. Decision Logic
+            # If core systems (NBA, Firestore) are down, we MUST protect
+            # component_score < 40 means at least one core system is critical (or all warning)
+            if component_score < 45: 
+                await self._escalate(VanguardMode.CIRCUIT_BREAKER, f"Health dropped to {component_score:.1f}")
+            elif component_score >= 55 and self.config.mode == VanguardMode.CIRCUIT_BREAKER:
+                await self._deescalate(VanguardMode.SILENT_OBSERVER, "Health recovered")
                 
-                # 2. Calculate score
-                # Note: We don't have endpoints list here, but calculate_component_score gives us the 60% base
-                component_score = self.calculator.calculate_component_score(health_results)
-                
-                # For escalation, we primarily care about core systems (nba_api, firestore)
-                # If they are critical, we MUST protected
-                self._last_score = component_score
-                
-                logger.info(f"Escalation Check: Health Score = {component_score:.1f}")
-                
-                # 3. Decision Logic
-                if component_score < 40: # Serious degradation
-                    await self._escalate(VanguardMode.CIRCUIT_BREAKER, f"Health dropped to {component_score:.1f}")
-                elif component_score >= 55 and self.config.mode == VanguardMode.CIRCUIT_BREAKER:
-                    # De-escalate if systems recover (requires 60/60 points ideally)
-                    self._consecutive_low_scores = 0
-                    await self._deescalate(VanguardMode.SILENT_OBSERVER, "Health recovered")
-                
-                # Interval: checkEvery 2 minutes
-                await asyncio.sleep(120)
-                
-            except Exception as e:
-                logger.error(f"Escalation loop error: {e}")
-                await asyncio.sleep(60)
+        except Exception as e:
+            logger.error(f"Escalation check failed: {e}")
                 
     async def _escalate(self, target_mode: VanguardMode, reason: str):
         """Escalate Vanguard mode."""

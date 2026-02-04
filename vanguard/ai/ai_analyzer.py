@@ -120,9 +120,14 @@ class VanguardAIAnalyzer:
             logger.error(f"[AI_DEBUG] GitHub fetch failed: {e}")
             code_contexts = []
         
-        # Build AI prompt with code context
+        # Build AI prompt with code context and system context
         logger.info(f"[AI_DEBUG] Building prompt with {len(code_contexts)} code contexts")
-        prompt = await self._build_analysis_prompt(incident, context, code_contexts)
+        prompt = await self._build_analysis_prompt(
+            incident=incident, 
+            context=context, 
+            code_contexts=code_contexts,
+            system_context=kwargs.get('system_context')
+        )
         logger.info(f"[AI_DEBUG] Prompt built: {len(prompt)} chars")
         
         try:
@@ -148,7 +153,7 @@ class VanguardAIAnalyzer:
             logger.error(f"[AI_DEBUG] Full traceback:\n{traceback.format_exc()}")
             return self._create_fallback_analysis(incident)
     
-    async def _build_analysis_prompt(self, incident: Dict, context: str, code_contexts: List[Dict] = None) -> str:
+    async def _build_analysis_prompt(self, incident: Dict, context: str, code_contexts: List[Dict] = None, **kwargs) -> str:
         """Build comprehensive analysis prompt for Gemini"""
         
         # Get metadata
@@ -177,6 +182,12 @@ You are analyzing a production incident in the QuantSight NBA analytics system.
 
 ## CODEBASE CONTEXT (Source Code with Line Numbers)
 {self._format_code_contexts(code_contexts or [])}
+
+## SYSTEM CONTEXT
+- **Current System Time (UTC)**: {datetime.utcnow().isoformat()}Z
+- **Vanguard Mode**: {kwargs.get('system_context', {}).get('mode', 'UNKNOWN')}
+- **Revision**: {kwargs.get('system_context', {}).get('revision', 'UNKNOWN')}
+- **Available Routes**: {json.dumps(kwargs.get('system_context', {}).get('routes', []))}
 
 ## YOUR TASK
 Provide a concise incident analysis in the following JSON format:
