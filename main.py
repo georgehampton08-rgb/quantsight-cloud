@@ -28,7 +28,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Vanguard Sovereign Imports
+
+# Vanguard Sovereign Imports - Enhanced Debugging
+import os
+logger.info(f"🔍 Current working directory: {os.getcwd()}")
+logger.info(f"🔍 Directory contents: {os.listdir('.')[:15]}...")
+if os.path.exists('vanguard'):
+    logger.info(f"📁 vanguard/ directory exists: {os.listdir('vanguard')}")
+else:
+    logger.error("❌ vanguard/ directory NOT FOUND in container!")
+
 try:
     from vanguard.bootstrap import vanguard_lifespan
     from vanguard.middleware import RequestIDMiddleware
@@ -36,8 +45,11 @@ try:
     VANGUARD_AVAILABLE = True
     logger.info("✅ Vanguard modules loaded successfully")
 except ImportError as e:
-    logger.warning(f"⚠️ Vanguard not available: {e}")
+    import traceback
+    logger.error(f"❌ Vanguard import FAILED: {e}")
+    logger.error(f"Full traceback:\n{traceback.format_exc()}")
     VANGUARD_AVAILABLE = False
+
 
 # Import cloud-native pulse producer (graceful fallback)
 try:
