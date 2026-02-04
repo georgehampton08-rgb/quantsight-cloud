@@ -150,7 +150,7 @@ class SystemSensorGenerator:
             client = genai.Client(api_key=api_key)
             # Use a tiny generation to verify connectivity
             client.models.generate_content(
-                model='gemini-2.5-flash-lite',
+                model='gemini-1.5-flash',
                 contents='health_check'
             )
             

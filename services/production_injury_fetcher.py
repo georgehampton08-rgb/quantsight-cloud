@@ -40,7 +40,7 @@ class ProductionInjuryFetcher:
         
         genai.configure(api_key=api_key)
         # Use Gemini 2.0 Flash (stable, confirmed available)
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
     
     def get_team_injuries_today(self, team_name: str) -> str:
         """

@@ -35,7 +35,7 @@ class LLMClient:
         
         # Configure Gemini with new API
         self.client = genai.Client(api_key=self.config.gemini_api_key)
-        logger.info("llm_client_initialized", model="gemini-2.0-flash-exp")
+        logger.info("llm_client_initialized", model="gemini-1.5-flash")
     
     async def classify_incident(self, incident_details: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
@@ -77,7 +77,7 @@ Respond ONLY with valid JSON in this exact format:
             response = await asyncio.wait_for(
                 asyncio.to_thread(
                     self.client.models.generate_content,
-                    model='gemini-2.0-flash-exp',
+                    model='gemini-1.5-flash',
                     contents=full_prompt,
                     config={
                         'temperature': 0.1,
