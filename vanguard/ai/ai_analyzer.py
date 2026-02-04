@@ -90,7 +90,9 @@ class VanguardAIAnalyzer:
         fingerprint = incident["fingerprint"]
         
         # Lazy load genai if needed
+        logger.info(f"[AI_DEBUG] Starting analysis for {fingerprint}")
         if not self._lazy_load_genai():
+            logger.warning(f"[AI_DEBUG] Genai not available, returning fallback for {fingerprint}")
             return self._create_fallback_analysis(incident)
         
         # Check cache first (unless forced)
@@ -100,27 +102,37 @@ class VanguardAIAnalyzer:
                 logger.info(f"Using cached analysis for {fingerprint}")
                 return cached
         
-        logger.info(f"Generating new AI analysis for {fingerprint}")
+        logger.info(f"[AI_DEBUG] Generating new AI analysis for {fingerprint}")
+        logger.info(f"[AI_DEBUG] Incident details - endpoint: {incident.get('endpoint')}, error: {incident.get('error_type')}")
         
         # Get codebase context
         context = self.kb.get_context_for_endpoint(incident["endpoint"])
+        logger.info(f"[AI_DEBUG] Retrieved codebase context: {len(context)} chars")
         
         # Fetch GitHub code context for anti-hallucination
-        code_contexts = self.github.fetch_context(
-            incident.get('endpoint', ''),
-            incident.get('error_type', '')
-        )
-        logger.info(f"Fetched {len(code_contexts)} code files from GitHub")
+        try:
+            code_contexts = self.github.fetch_context(
+                incident.get('endpoint', ''),
+                incident.get('error_type', '')
+            )
+            logger.info(f"[AI_DEBUG] Fetched {len(code_contexts)} code files from GitHub")
+        except Exception as e:
+            logger.error(f"[AI_DEBUG] GitHub fetch failed: {e}")
+            code_contexts = []
         
         # Build AI prompt with code context
+        logger.info(f"[AI_DEBUG] Building prompt with {len(code_contexts)} code contexts")
         prompt = await self._build_analysis_prompt(incident, context, code_contexts)
+        logger.info(f"[AI_DEBUG] Prompt built: {len(prompt)} chars")
         
         try:
             # Generate analysis using new API
+            logger.info(f"[AI_DEBUG] Calling Gemini API with model gemini-2.0-flash-exp")
             response = self.client.models.generate_content(
                 model='gemini-2.0-flash-exp',
                 contents=prompt
             )
+            logger.info(f"[AI_DEBUG] Gemini API responded successfully")
             
             # Parse AI response
             analysis = self._parse_ai_response(response.text, incident)
@@ -130,7 +142,10 @@ class VanguardAIAnalyzer:
             
             return analysis
         except Exception as e:
-            logger.error(f"AI analysis failed: {e}")
+            logger.error(f"[AI_DEBUG] AI analysis failed with error: {e}")
+            logger.error(f"[AI_DEBUG] Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"[AI_DEBUG] Full traceback:\n{traceback.format_exc()}")
             return self._create_fallback_analysis(incident)
     
     async def _build_analysis_prompt(self, incident: Dict, context: str, code_contexts: List[Dict] = None) -> str:
