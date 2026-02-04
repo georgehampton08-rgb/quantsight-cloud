@@ -44,7 +44,7 @@ class GitHubContextFetcher:
     
     # File size limits (3x safety margin under Gemini's 32K limit)
     MAX_FILES = 6  # Increased for deeper context understanding
-    MAX_LINES_PER_FILE = 500  # Increased to 5 pages for comprehensive analysis
+    MAX_LINES_PER_FILE = 800  # Increased to 8 pages for comprehensive git context
     MAX_TOTAL_TOKENS = 10000  # 32K / 3 = safe budget
     
     # Endpoint to file mapping
