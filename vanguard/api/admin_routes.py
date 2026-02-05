@@ -178,11 +178,15 @@ async def bulk_resolve_incidents(request: BulkResolveRequest):
             # Load incident for learning
             incident = await storage.load(fp)
             if incident:
-                # Record to learning corpus
-                await learner.record_resolution(
-                    incident=incident,
-                    resolution_notes=request.resolution_notes or "Bulk resolution",
-                    metadata={"approved_by": "bulk_operation", "batch": True}
+                # Record to learning corpus using record_fix
+                incident_pattern = f"{incident.get('endpoint', 'unknown')} {incident.get('http_status', 0)} {incident.get('error_type', 'unknown')}"
+                learner.record_fix(
+                    incident_pattern=incident_pattern,
+                    fix_description=request.resolution_notes or "Bulk resolution",
+                    fix_files=["bulk_operation"],
+                    deployed_revision="bulk_resolve",
+                    incidents_before=incident.get('occurrence_count', 1),
+                    fix_commit=None
                 )
                 learned += 1
             
