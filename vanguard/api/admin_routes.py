@@ -134,6 +134,13 @@ async def resolve_incident(fingerprint: str, request: ResolveRequest):
                 "fingerprint": fingerprint
             }
         
+        # Require explicit approval to resolve (prevents accidental resolution)
+        if not request.approved:
+            raise HTTPException(
+                400, 
+                "Resolution requires explicit approval. Send {'approved': true} in request body."
+            )
+        
         # Resolve the incident
         success = await storage.resolve(fingerprint)
         
