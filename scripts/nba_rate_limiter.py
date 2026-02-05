@@ -42,7 +42,7 @@ TEAM_IDS = {
 class RateLimiter:
     """Smart rate limiter with exponential backoff."""
     
-    def __init__(self, base_delay: float = 1.2, max_delay: float = 30.0):
+    def __init__(self, base_delay: float = 2.0, max_delay: float = 30.0):
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.current_delay = base_delay

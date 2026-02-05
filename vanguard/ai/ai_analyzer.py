@@ -14,6 +14,7 @@ import logging
 
 from .knowledge_base import CodebaseKnowledgeBase
 from ..services.github_context import GitHubContextFetcher
+from ..core.config import get_vanguard_config
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ class VanguardAIAnalyzer:
         self.github = GitHubContextFetcher()
         self.client = None
         self._genai_loaded = False
+        
+        # Load config for model name
+        config = get_vanguard_config()
+        self.model_name = config.llm_model
 
     ANALYSIS_PROMPT_TEMPLATE = """
 You are analyzing a production incident in the QuantSight NBA analytics system.
@@ -109,7 +114,7 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
             # Configure client with API key
             self.client = genai.Client(api_key=api_key)
             self._genai_loaded = True
-            logger.info("Gemini AI initialized successfully (google.genai)")
+            logger.info(f"Gemini AI initialized successfully with model: {self.model_name}")
             return True
         except ImportError as e:
             logger.error(f"google-genai package not installed: {e}")
@@ -183,9 +188,9 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
         
         try:
             # Generate analysis using new API
-            logger.info(f"[AI_DEBUG] Calling Gemini API with model models/gemini-2.0-flash-lite")
+            logger.info(f"[AI_DEBUG] Calling Gemini API with model {self.model_name}")
             response = self.client.models.generate_content(
-                model='models/gemini-2.0-flash-lite',
+                model=f'models/{self.model_name}',
                 contents=prompt
             )
             logger.info(f"[AI_DEBUG] Gemini API responded successfully")
