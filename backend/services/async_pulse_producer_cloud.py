@@ -311,10 +311,15 @@ class CloudAsyncPulseProducer:
                 'heat_scale': heat_scale,
                 'stats': {
                     'pts': player.pts,
+                    'fga': player.fga,  # Field goals attempted
+                    'fg3m': player.fg3m,  # 3-pointers made
                     'reb': player.reb,
                     'ast': player.ast,
                     'stl': player.stl,
-                    'blk': player.blk
+                    'blk': player.blk,
+                    'pf': player.pf,  # Personal fouls
+                    'tov': player.tov,  # Turnovers
+                    'min': player.minutes  # Minutes played
                 }
             })
 
