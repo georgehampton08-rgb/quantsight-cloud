@@ -37,12 +37,16 @@ export interface LivePlayerStat {
     vacuum_source: string | null;
     stats: {
         pts: number;
+        fga: number;      // Field goals attempted
+        fg3m: number;     // 3-pointers made
         reb: number;
         ast: number;
-        stl?: number;
-        blk?: number;
+        stl: number;
+        blk: number;
+        pf: number;       // Personal fouls
+        tov: number;      // Turnovers
+        min: number;      // Minutes played
     };
-    min: string;
 }
 
 export interface LiveGame {
