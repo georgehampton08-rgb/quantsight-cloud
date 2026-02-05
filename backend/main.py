@@ -70,6 +70,14 @@ except ImportError as e:
     logger.warning(f"⚠️ Vanguard routes not available: {e}")
     VANGUARD_ROUTES_AVAILABLE = False
 
+# Import game logs routes for historical game data
+try:
+    from api.game_logs_routes import router as game_logs_router
+    GAME_LOGS_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ Game logs routes not available: {e}")
+    GAME_LOGS_ROUTES_AVAILABLE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -127,6 +135,11 @@ if VANGUARD_ROUTES_AVAILABLE:
     app.include_router(vanguard_surgeon_router)
     app.include_router(vanguard_health_router)
     logger.info("✅ Vanguard routes registered (admin, surgeon, health)")
+
+# Include game logs routes if available
+if GAME_LOGS_ROUTES_AVAILABLE:
+    app.include_router(game_logs_router)
+    logger.info("✅ Game logs routes registered")
 
 # CORS configuration for web/mobile clients
 app.add_middleware(
