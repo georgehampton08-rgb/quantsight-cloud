@@ -165,14 +165,27 @@ async def resolve_incident(fingerprint: str, request: ResolveRequest):
 
 @router.post("/vanguard/admin/incidents/bulk-resolve")
 async def bulk_resolve_incidents(request: BulkResolveRequest):
-    """Resolve multiple incidents by fingerprint."""
+    """Resolve multiple incidents by fingerprint with learning tracking."""
     storage = get_incident_storage()
+    learner = VanguardResolutionLearner()
     
     resolved = []
     failed = []
+    learned = 0
     
     for fp in request.fingerprints:
         try:
+            # Load incident for learning
+            incident = await storage.load(fp)
+            if incident:
+                # Record to learning corpus
+                await learner.record_resolution(
+                    incident=incident,
+                    resolution_notes=request.resolution_notes or "Bulk resolution",
+                    metadata={"approved_by": "bulk_operation", "batch": True}
+                )
+                learned += 1
+            
             success = await storage.resolve(fp)
             if success:
                 resolved.append(fp)
@@ -181,10 +194,11 @@ async def bulk_resolve_incidents(request: BulkResolveRequest):
         except Exception as e:
             failed.append({"fingerprint": fp, "reason": str(e)})
     
-    logger.info(f"Bulk resolve: {len(resolved)} resolved, {len(failed)} failed")
+    logger.info(f"Bulk resolve: {len(resolved)} resolved, {learned} learned, {len(failed)} failed")
     
     return {
         "resolved_count": len(resolved),
+        "learned_count": learned,
         "failed_count": len(failed),
         "failed": failed
     }
