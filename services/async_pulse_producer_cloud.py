@@ -314,7 +314,10 @@ class CloudAsyncPulseProducer:
                     'reb': player.reb,
                     'ast': player.ast,
                     'stl': player.stl,
-                    'blk': player.blk
+                    'blk': player.blk,
+                    'fg3m': player.fg3m,
+                    'pf': player.pf,
+                    'tov': player.tov
                 }
             })
 
