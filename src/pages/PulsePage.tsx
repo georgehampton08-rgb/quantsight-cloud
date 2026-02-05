@@ -43,21 +43,42 @@ const PlayerRow: React.FC<PlayerRowProps> = ({ player, rank, changedPlayerIds })
     );
 };
 
-// Game chip for the ticker
-const GameChip: React.FC<{ game: LiveGame }> = ({ game }) => {
+// Game chip for the ticker - now clickable for LIVE and FINAL games
+interface GameChipProps {
+    game: LiveGame;
+    isSelected: boolean;
+    onSelect: (gameId: string) => void;
+}
+
+const GameChip: React.FC<GameChipProps> = ({ game, isSelected, onSelect }) => {
     const isLive = game.status === 'LIVE';
+    const isFinal = game.status === 'FINAL';
+    const isClickable = isLive || isFinal; // Allow clicking on LIVE or FINAL games
 
     return (
-        <div className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${isLive ? 'bg-red-500/20 border border-red-500/30' : 'bg-white/5'
-            }`}>
+        <button
+            onClick={() => isClickable && onSelect(game.game_id)}
+            disabled={!isClickable}
+            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
+                ${isSelected
+                    ? 'border-2 border-yellow-400/80 cursor-pointer'
+                    : isLive
+                        ? 'border-2 border-red-500/50 hover:border-red-500/70 cursor-pointer animate-pulse'
+                        : isFinal
+                            ? 'bg-white/5 border-2 border-green-500/30 hover:border-green-500/50 cursor-pointer'
+                            : 'bg-white/5 border border-transparent opacity-50 cursor-not-allowed'
+                }`}
+        >
             {isLive && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-            <span className="text-gray-400">{game.away_team}</span>
-            <span className="font-mono font-bold text-white">
-                {game.away_score}-{game.home_score}
-            </span>
+            {isFinal && <span className="text-green-400 text-xs">✓</span>}
             <span className="text-gray-400">{game.home_team}</span>
+            <span className="font-mono font-bold text-white">
+                {game.home_score}-{game.away_score}
+            </span>
+            <span className="text-gray-400">{game.away_team}</span>
             {isLive && <span className="text-xs text-gray-500 ml-1">{game.clock}</span>}
-        </div>
+            {isFinal && <span className="text-xs text-green-500/50 ml-1">FINAL</span>}
+        </button>
     );
 };
 
@@ -72,14 +93,51 @@ const PulsePage: React.FC = () => {
         changedPlayerIds
     } = useLiveStats();
 
-    // Sort games: LIVE first
+    // State for selected game (null = show all live games)
+    const [selectedGameId, setSelectedGameId] = React.useState<string | null>(null);
+
+    // Sort games: LIVE first, then FINAL
     const sortedGames = [...games].sort((a, b) => {
-        const order = { 'LIVE': 0, 'HALFTIME': 1, 'UPCOMING': 2, 'FINAL': 3 };
+        const order = { 'LIVE': 0, 'HALFTIME': 1, 'FINAL': 2, 'UPCOMING': 3 };
         return (order[a.status] || 4) - (order[b.status] || 4);
     });
 
-    // Get first live game for featured display
-    const featuredGame = games.find(g => g.status === 'LIVE');
+    // Get selected game or first live game
+    const featuredGame = selectedGameId
+        ? games.find(g => g.game_id === selectedGameId)
+        : games.find(g => g.status === 'LIVE');
+
+    // Filter leaders by selected game and split by home/away teams
+    const { homePlayers, awayPlayers } = React.useMemo(() => {
+        let allLeaders = leaders;
+
+        // If game selected, filter to that game's players
+        if (selectedGameId) {
+            const game = games.find(g => g.game_id === selectedGameId);
+            if (game) {
+                allLeaders = game.leaders || [];
+            }
+        }
+
+        // Filter to players with points > 0
+        const scoringPlayers = allLeaders.filter(p => p.stats.pts > 0);
+
+        // Split by team (if we have a featured game)
+        if (featuredGame) {
+            const home = scoringPlayers
+                .filter(p => p.team === featuredGame.home_team)
+                .sort((a, b) => b.pie - a.pie);
+            const away = scoringPlayers
+                .filter(p => p.team === featuredGame.away_team)
+                .sort((a, b) => b.pie - a.pie);
+            return { homePlayers: home, awayPlayers: away };
+        }
+
+        return {
+            homePlayers: scoringPlayers.sort((a, b) => b.pie - a.pie),
+            awayPlayers: []
+        };
+    }, [selectedGameId, games, leaders, featuredGame]);
 
     return (
         <div className="matchup-lab-page h-full overflow-y-auto p-8">
@@ -89,10 +147,10 @@ const PulsePage: React.FC = () => {
                         <span className="lab-icon text-red-500 animate-pulse">❤️</span>
                         <h1>The Pulse</h1>
                         <span className={`ai-badge ${isConnected
-                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                : isConnecting
-                                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                            : isConnecting
+                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/20 text-red-400 border-red-500/30'
                             } border`}>
                             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
                                 }`} />
@@ -111,7 +169,12 @@ const PulsePage: React.FC = () => {
             {games.length > 0 && (
                 <div className="flex gap-3 overflow-x-auto pb-4 mb-6">
                     {sortedGames.map(game => (
-                        <GameChip key={game.game_id} game={game} />
+                        <GameChip
+                            key={game.game_id}
+                            game={game}
+                            isSelected={selectedGameId === game.game_id}
+                            onSelect={setSelectedGameId}
+                        />
                     ))}
                 </div>
             )}
@@ -159,8 +222,8 @@ const PulsePage: React.FC = () => {
                                 <div className="bg-white/5 rounded-lg p-4 text-center">
                                     <div className="text-xs text-gray-500 uppercase mb-1">Differential</div>
                                     <div className={`text-2xl font-bold font-mono ${Math.abs(featuredGame.home_score - featuredGame.away_score) <= 5
-                                            ? 'text-yellow-400 animate-pulse'
-                                            : 'text-white'
+                                        ? 'text-yellow-400 animate-pulse'
+                                        : 'text-white'
                                         }`}>
                                         {Math.abs(featuredGame.home_score - featuredGame.away_score)} PTS
                                     </div>
@@ -225,20 +288,51 @@ const PulsePage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    {leaders.map((leader, idx) => (
-                                        <PlayerRow
-                                            key={leader.player_id}
-                                            player={leader}
-                                            rank={idx + 1}
-                                            changedPlayerIds={changedPlayerIds}
-                                        />
-                                    ))}
-                                    {leaders.length === 0 && (
+                                    {/* HOME TEAM SECTION */}
+                                    {featuredGame && homePlayers.length > 0 && (
+                                        <>
+                                            <tr className="bg-blue-500/10 border-b border-blue-500/20">
+                                                <td colSpan={7} className="p-2 text-blue-400 font-black text-xs uppercase tracking-widest">
+                                                    🏠 {featuredGame.home_team} (HOME)
+                                                </td>
+                                            </tr>
+                                            {homePlayers.map((player, idx) => (
+                                                <PlayerRow
+                                                    key={player.player_id}
+                                                    player={player}
+                                                    rank={idx + 1}
+                                                    changedPlayerIds={changedPlayerIds}
+                                                />
+                                            ))}
+                                        </>
+                                    )}
+
+                                    {/* AWAY TEAM SECTION */}
+                                    {featuredGame && awayPlayers.length > 0 && (
+                                        <>
+                                            <tr className="bg-orange-500/10 border-b border-orange-500/20">
+                                                <td colSpan={7} className="p-2 text-orange-400 font-black text-xs uppercase tracking-widest">
+                                                    ✈️ {featuredGame.away_team} (AWAY)
+                                                </td>
+                                            </tr>
+                                            {awayPlayers.map((player, idx) => (
+                                                <PlayerRow
+                                                    key={player.player_id}
+                                                    player={player}
+                                                    rank={idx + 1}
+                                                    changedPlayerIds={changedPlayerIds}
+                                                />
+                                            ))}
+                                        </>
+                                    )}
+
+                                    {/* NO DATA MESSAGE */}
+                                    {homePlayers.length === 0 && awayPlayers.length === 0 && (
                                         <tr>
                                             <td colSpan={7} className="p-8 text-center text-gray-500">
                                                 {isConnected
-                                                    ? 'Waiting for live game data...'
-                                                    : 'SSE stream not connected'}
+                                                    ? 'Waiting for scoring plays...'
+                                                    : 'Establish link to begin stream'}
                                             </td>
                                         </tr>
                                     )}
