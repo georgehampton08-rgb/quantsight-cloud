@@ -190,6 +190,37 @@ class FirebaseAdminService:
         except Exception as e:
             logger.error(f"Firestore read failed: {e}")
             return []
+    
+    async def save_game_log(self, date: str, game_id: str, game_log_data: Dict[str, Any]) -> bool:
+        """
+        Save final game log data to Firestore with hierarchical structure.
+        
+        Hierarchy: game_logs/{date}/{game_id}
+        
+        Args:
+            date: Game date (YYYY-MM-DD format)
+            game_id: Game ID
+            game_log_data: Complete game log with all player stats
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled or not self.db:
+            logger.warning("Firebase not enabled, skipping game log save")
+            return False
+        
+        try:
+            # Write to game_logs/{date}/{game_id}
+            doc_ref = self.db.collection('game_logs').document(date).collection('games').document(game_id)
+            doc_ref.set(game_log_data)
+            
+            logger.info(f"✅ Game log saved: {date}/{game_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to save game log: {e}")
+            return False
+
 
 
 def get_firebase_service() -> Optional[FirebaseAdminService]:

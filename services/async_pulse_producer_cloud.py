@@ -45,6 +45,7 @@ except ImportError as e:
 
 # Firebase service
 from services.firebase_admin_service import get_firebase_service
+from services.game_log_persister import GameLogPersister
 
 # Cloud SQL data service for Alpha metrics
 from services.cloud_sql_data_service import (
@@ -71,11 +72,13 @@ class CloudAsyncPulseProducer:
     def __init__(self):
         self._adapter = get_nba_adapter() if ADAPTER_AVAILABLE else None
         self._firebase = get_firebase_service()
+        self._game_log_persister = GameLogPersister()
         self._running = False
         self._task: Optional[asyncio.Task] = None
         self._update_count = 0
         self._last_update_duration: float = 0.0
         self._firebase_write_errors = 0
+        self._game_statuses: Dict[str, str] = {}  # Track game status changes
         
         logger.info(f"🚀 CloudAsyncPulseProducer v{self.VERSION} initialized")
         if self._firebase:
@@ -161,10 +164,36 @@ class CloudAsyncPulseProducer:
             all_leaders = []
             
             for game_info in games:
+                game_id = game_info.game_id
+                current_status = game_info.status
+                previous_status = self._game_statuses.get(game_id)
+                
+                # Detect status change to FINAL
+                if current_status == 'FINAL' and previous_status != 'FINAL':
+                    logger.info(f"🏁 Game {game_id} finished - saving game log")
+                    
+                    # Get boxscore if available
+                    boxscore = boxscores.get(game_id)
+                    if boxscore:
+                        # Save game log asynchronously
+                        game_data_for_log = {
+                            'game_id': game_id,
+                            'home_team': game_info.home_team_tricode,
+                            'away_team': game_info.away_team_tricode,
+                            'home_score': game_info.home_score,
+                            'away_score': game_info.away_score,
+                            'period': game_info.period
+                        }
+                        asyncio.create_task(
+                            self._game_log_persister.save_game_log(game_data_for_log, boxscore)
+                        )
+                
+                # Update status tracking
+                self._game_statuses[game_id] = current_status
+                
                 if game_info.status != 'LIVE':
                     continue
                 
-                game_id = game_info.game_id
                 boxscore = boxscores.get(game_id)
                 
                 if not boxscore:
