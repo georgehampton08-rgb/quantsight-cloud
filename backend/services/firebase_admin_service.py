@@ -190,6 +190,123 @@ class FirebaseAdminService:
         except Exception as e:
             logger.error(f"Firestore read failed: {e}")
             return []
+    
+    def save_game_log(self, date: str, game_id: str, log_data: Dict[str, Any]) -> bool:
+        """
+        Save complete game log to Firestore.
+        
+        Hierarchy: game_logs/{date}/{game_id}
+        
+        Args:
+            date: Game date in YYYY-MM-DD format
+            game_id: NBA game ID
+            log_data: Complete game log data with teams and players
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled or not self.db:
+            logger.warning("Firebase not enabled, skipping game log save")
+            return False
+        
+        try:
+            # Save to: game_logs/{date}/{game_id}
+            doc_ref = self.db.collection('game_logs').document(date).collection('games').document(game_id)
+            doc_ref.set(log_data)
+            
+            logger.info(f"✅ Saved game log: {date}/{game_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to save game log {game_id}: {e}")
+            return False
+    
+    def get_game_log(self, date: str, game_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve game log from Firestore.
+        
+        Args:
+            date: Game date in YYYY-MM-DD format
+            game_id: NBA game ID
+            
+        Returns:
+            Game log data if exists, None otherwise
+        """
+        if not self.enabled or not self.db:
+            return None
+        
+        try:
+            doc_ref = self.db.collection('game_logs').document(date).collection('games').document(game_id)
+            doc = doc_ref.get()
+            
+            if doc.exists:
+                return doc.to_dict()
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get game log {game_id}: {e}")
+            return None
+    
+    def query_game_logs(
+        self, 
+        game_id: Optional[str] = None,
+        date: Optional[str] = None,
+        player_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Query game logs with filters.
+        
+        Args:
+            game_id: Filter by specific game
+            date: Filter by date (YYYY-MM-DD)
+            player_id: Filter by player ID
+            team_id: Filter by team tricode
+            limit: Maximum results
+            
+        Returns:
+            List of matching game log entries
+        """
+        if not self.enabled or not self.db:
+            return []
+        
+        try:
+            results = []
+            
+            # If date and game_id provided, direct lookup
+            if date and game_id:
+                log = self.get_game_log(date, game_id)
+                if log:
+                    results.append(log)
+                return results
+            
+            # Otherwise, scan approach (less efficient, but works)
+            # In production, consider using a flattened collection for better querying
+            if date:
+                # Query specific date
+                date_ref = self.db.collection('game_logs').document(date).collection('games')
+                docs = date_ref.limit(limit).stream()
+                
+                for doc in docs:
+                    log_data = doc.to_dict()
+                    
+                    # Apply filters
+                    if game_id and log_data.get('game_id') != game_id:
+                        continue
+                    if team_id and team_id not in [log_data.get('home_team'), log_data.get('away_team')]:
+                        continue
+                        
+                    results.append(log_data)
+                    
+                    if len(results) >= limit:
+                        break
+            
+            return results[:limit]
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to query game logs: {e}")
+            return []
 
 
 def get_firebase_service() -> Optional[FirebaseAdminService]:

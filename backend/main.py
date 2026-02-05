@@ -60,6 +60,16 @@ except ImportError as e:
     logger.warning(f"⚠️ Nexus routes not available: {e}")
     NEXUS_ROUTES_AVAILABLE = False
 
+# Import Vanguard routes for autonomous health monitoring
+try:
+    from vanguard.api.admin_routes import router as vanguard_admin_router
+    from vanguard.api.surgeon_routes import router as vanguard_surgeon_router
+    from vanguard.health_routes import router as vanguard_health_router
+    VANGUARD_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ Vanguard routes not available: {e}")
+    VANGUARD_ROUTES_AVAILABLE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -110,6 +120,13 @@ if PUBLIC_ROUTES_AVAILABLE:
 if NEXUS_ROUTES_AVAILABLE:
     app.include_router(nexus_router)
     logger.info("✅ Nexus routes registered")
+
+# Include Vanguard routes if available
+if VANGUARD_ROUTES_AVAILABLE:
+    app.include_router(vanguard_admin_router)
+    app.include_router(vanguard_surgeon_router)
+    app.include_router(vanguard_health_router)
+    logger.info("✅ Vanguard routes registered (admin, surgeon, health)")
 
 # CORS configuration for web/mobile clients
 app.add_middleware(

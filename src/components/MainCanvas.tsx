@@ -7,6 +7,7 @@ import TeamCentralPage from '../pages/TeamCentralPage'
 import SettingsPage from '../pages/SettingsPage'
 import InjuryAdmin from '../pages/InjuryAdmin'
 import PulsePage from '../pages/PulsePage'
+import VanguardControlRoom from '../pages/VanguardControlRoom'
 
 export default function MainCanvas() {
     return (
@@ -24,6 +25,7 @@ export default function MainCanvas() {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/injury-admin" element={<InjuryAdmin />} />
                 <Route path="/pulse" element={<PulsePage />} />
+                <Route path="/vanguard" element={<VanguardControlRoom />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>
