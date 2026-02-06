@@ -210,20 +210,7 @@ async def search_players_endpoint(q: str = Query("")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/roster/{team_id}")
-async def get_team_roster(team_id: str):
-    """
-    Get roster (players) for a specific team
-    """
-    try:
-        players = get_players_by_team(team_id.upper())
-        
-        logger.info(f"✅ Returned {len(players)} players for team {team_id}")
-        return players
-        
-    except Exception as e:
-        logger.error(f"Error fetching roster for {team_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Duplicate endpoint at line 213 removed - see consolidated get_roster at line 373
 
 
 # ================== NEXUS ENDPOINTS ==================
@@ -374,13 +361,19 @@ async def get_matchup_lab_games(force_refresh: bool = Query(False)):
 async def get_roster(team_id: str):
     """Get team roster from players collection"""
     try:
-        players = get_players_by_team(team_id, active_only=True)
-        
-        if not players:
-            raise HTTPException(status_code=404, detail=f"No roster found for team {team_id}")
-        
-        logger.info(f"✅ Returned {len(players)} players for {team_id}")
-        return players
+        # Normalize and wrap for frontend compatibility
+        roster = []
+        for p in players:
+            roster.append({
+                "player_id": str(p.get('player_id') or p.get('id') or ''),
+                "name": p.get('name') or p.get('player_name') or p.get('fullName') or 'Unknown',
+                "position": p.get('position') or '',
+                "jersey_number": str(p.get('jersey_number') or ''),
+                "status": p.get('status') or ('active' if p.get('is_active') else 'inactive')
+            })
+            
+        logger.info(f"✅ Returned {len(roster)} players for {team_id}")
+        return {"roster": roster}
         
     except HTTPException:
         raise

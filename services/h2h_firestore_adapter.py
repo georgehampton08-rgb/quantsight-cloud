@@ -26,9 +26,9 @@ class H2HFirestoreAdapter:
     """
     Firestore adapter for H2H matchup data.
     
-    Collections:
-    - player_h2h/{player_id}_{opponent} - Aggregate H2H stats
-    - player_h2h_games/{doc_id} - Individual game records
+    Collections (Hierarchical):
+    - players/{player_id}/h2h_stats/{opponent} - Aggregate H2H stats
+    - players/{player_id}/h2h_games/{opponent}/games/{game_id} - Individual game records
     """
     
     def __init__(self):
@@ -54,9 +54,24 @@ class H2HFirestoreAdapter:
             self.db = None
             self.enabled = False
     
-    def _get_doc_id(self, player_id: str, opponent: str) -> str:
-        """Generate document ID for player_h2h collection."""
-        return f"{player_id}_{opponent.upper()}"
+    def _get_agg_ref(self, player_id: str, opponent: str):
+        """Get document reference for H2H aggregate stats."""
+        return (
+            self.db.collection('players')
+            .document(str(player_id))
+            .collection('h2h_stats')
+            .document(opponent.upper())
+        )
+
+    def _get_games_coll_ref(self, player_id: str, opponent: str):
+        """Get collection reference for H2H individual games."""
+        return (
+            self.db.collection('players')
+            .document(str(player_id))
+            .collection('h2h_games')
+            .document(opponent.upper())
+            .collection('games')
+        )
     
     def get_h2h_stats(self, player_id: str, opponent: str) -> Optional[Dict]:
         """
@@ -73,8 +88,7 @@ class H2HFirestoreAdapter:
             return None
         
         try:
-            doc_id = self._get_doc_id(player_id, opponent)
-            doc = self.db.collection('player_h2h').document(doc_id).get()
+            doc = self._get_agg_ref(player_id, opponent).get()
             
             if doc.exists:
                 data = doc.to_dict()
@@ -105,15 +119,13 @@ class H2HFirestoreAdapter:
             return False
         
         try:
-            doc_id = self._get_doc_id(player_id, opponent)
-            
             # Add metadata
             stats['player_id'] = str(player_id)
             stats['opponent'] = opponent.upper()
             stats['updated_at'] = firestore.SERVER_TIMESTAMP
             
-            # Upsert
-            self.db.collection('player_h2h').document(doc_id).set(
+            # Upsert using hierarchical path
+            self._get_agg_ref(player_id, opponent).set(
                 stats,
                 merge=True
             )
@@ -147,16 +159,18 @@ class H2HFirestoreAdapter:
             batch = self.db.batch()
             
             for game in games:
-                # Create unique doc ID from player + game date
-                game_date = game.get('game_date', 'unknown')
-                doc_id = f"{player_id}_{opponent.upper()}_{game_date}"
-                
+                # Use game_id for document ID, or fallback to date
+                actual_game_id = game.get('game_id') or game.get('id') or game.get('game_date')
+                if not actual_game_id:
+                    continue
+                    
                 # Add metadata
                 game['player_id'] = str(player_id)
                 game['opponent'] = opponent.upper()
                 game['updated_at'] = firestore.SERVER_TIMESTAMP
                 
-                doc_ref = self.db.collection('player_h2h_games').document(doc_id)
+                # Target path: players/{player_id}/h2h_games/{opponent}/games/{game_id}
+                doc_ref = self._get_games_coll_ref(player_id, opponent).document(str(actual_game_id))
                 batch.set(doc_ref, game, merge=True)
             
             batch.commit()
@@ -229,15 +243,18 @@ class H2HFirestoreAdapter:
         
         try:
             query = (
-                self.db.collection('player_h2h_games')
-                .where('player_id', '==', str(player_id))
-                .where('opponent', '==', opponent.upper())
+                self._get_games_coll_ref(player_id, opponent)
                 .order_by('game_date', direction=firestore.Query.DESCENDING)
                 .limit(limit)
             )
             
             docs = query.stream()
-            games = [doc.to_dict() for doc in docs]
+            games = []
+            for doc in docs:
+                game_data = doc.to_dict()
+                game_data['id'] = doc.id
+                games.append(game_data)
+                
             logger.debug(f"✓ Retrieved {len(games)} H2H games for {player_id} vs {opponent}")
             return games
             
