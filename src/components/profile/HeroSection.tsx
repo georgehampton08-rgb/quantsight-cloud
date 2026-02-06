@@ -35,15 +35,15 @@ export default function HeroSection({ player }: HeroSectionProps) {
                     <div className="grid grid-cols-3 gap-12 border-t border-slate-700/50 pt-4 max-w-lg">
                         <div>
                             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Height</div>
-                            <div className="font-semibold text-slate-200 text-lg">{player.height}</div>
+                            <div className="font-semibold text-slate-200 text-lg">{player.height || "N/A"}</div>
                         </div>
                         <div>
                             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Weight</div>
-                            <div className="font-semibold text-slate-200 text-lg">{player.weight}</div>
+                            <div className="font-semibold text-slate-200 text-lg">{player.weight || "N/A"}</div>
                         </div>
                         <div>
                             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Exp</div>
-                            <div className="font-semibold text-slate-200 text-lg">{player.experience}</div>
+                            <div className="font-semibold text-slate-200 text-lg">{player.experience || "N/A"}</div>
                         </div>
                     </div>
                 </div>

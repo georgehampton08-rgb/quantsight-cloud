@@ -145,8 +145,8 @@ export default function ProjectionMatrix({ simulation, loading, onRefresh }: Pro
                     <span className="text-lg">🎲</span>
                     <h3 className="text-base sm:text-lg font-bold text-slate-200">Projection Matrix</h3>
                     <GameModeIndicator
-                        blowoutPct={game_mode.blowout_pct}
-                        clutchPct={game_mode.clutch_pct}
+                        blowoutPct={game_mode?.blowout_pct || 0}
+                        clutchPct={game_mode?.clutch_pct || 0}
                     />
                     <span className="text-xs text-slate-600 font-mono hidden sm:inline">{execution_time_ms}ms</span>
                 </div>
