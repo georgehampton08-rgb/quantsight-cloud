@@ -1,0 +1,229 @@
+.progressive-skeleton {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 20px 0;
+    backdrop-filter: blur(12px);
+}
+
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.skeleton-icon {
+    font-size: 32px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2));
+    border-radius: 12px;
+}
+
+.skeleton-icon.pulse-ring {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 12px rgba(139, 92, 246, 0);
+    }
+}
+
+.skeleton-title h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.simulation-id {
+    font-size: 12px;
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Progress Steps */
+.progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.progress-step.pending {
+    opacity: 0.4;
+}
+
+.progress-step.loading {
+    background: rgba(139, 92, 246, 0.1);
+    border-left: 3px solid #8b5cf6;
+}
+
+.progress-step.complete {
+    opacity: 0.7;
+}
+
+.step-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(100, 116, 139, 0.3);
+    color: #94a3b8;
+}
+
+.progress-step.loading .step-indicator {
+    background: rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+}
+
+.progress-step.complete .step-indicator {
+    background: rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+}
+
+.spinner-mini {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.step-label {
+    font-size: 14px;
+    color: #cbd5e1;
+}
+
+.progress-step.loading .step-label {
+    color: #f1f5f9;
+    font-weight: 500;
+}
+
+/* Overall Progress Bar */
+.overall-progress {
+    margin-bottom: 24px;
+}
+
+.progress-bar-container {
+    height: 8px;
+    background: rgba(100, 116, 139, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+    border-radius: 4px;
+    transition: width 0.1s linear;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.progress-percent {
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+.time-remaining {
+    color: #64748b;
+}
+
+/* Skeleton Cards */
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.skeleton-card {
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 100px;
+}
+
+.skeleton-line {
+    height: 12px;
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+.skeleton-line.medium {
+    width: 70%;
+}
+
+.shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(139, 92, 246, 0.1),
+            transparent);
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    to {
+        left: 100%;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .skeleton-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

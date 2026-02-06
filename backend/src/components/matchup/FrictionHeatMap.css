@@ -1,0 +1,217 @@
+.friction-heatmap {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.heatmap-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.legend {
+    display: flex;
+    gap: 16px;
+}
+
+.legend-item {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.legend-item.advantage {
+    color: #f97316;
+}
+
+.legend-item.frost {
+    color: #60a5fa;
+}
+
+/* Matchup Grid */
+.matchup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.matchup-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.matchup-card:hover {
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Frost Overlay */
+.matchup-card.frost-overlay {
+    background: linear-gradient(135deg,
+            rgba(96, 165, 250, 0.1) 0%,
+            rgba(30, 41, 59, 0.5) 100%);
+    border-color: rgba(96, 165, 250, 0.3);
+}
+
+.frost-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(96, 165, 250, 0.2);
+    border-radius: 6px;
+}
+
+.frost-icon {
+    font-size: 14px;
+}
+
+.frost-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #93c5fd;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Card Content */
+.matchup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.player-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.matchup-grade {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.matchup-vs {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 12px;
+}
+
+.opponent {
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* Radar Chart */
+.radar-container {
+    width: 100%;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.radar-chart {
+    width: 100%;
+    height: 100%;
+}
+
+.radar-grid {
+    fill: none;
+    stroke: rgba(100, 116, 139, 0.2);
+    stroke-width: 0.5;
+}
+
+.radar-axis {
+    stroke: rgba(100, 116, 139, 0.1);
+    stroke-width: 0.5;
+}
+
+.radar-data {
+    fill: rgba(139, 92, 246, 0.3);
+    stroke: #8b5cf6;
+    stroke-width: 1.5;
+}
+
+.radar-data.frost {
+    fill: rgba(96, 165, 250, 0.2);
+    stroke: #60a5fa;
+}
+
+.radar-point {
+    fill: #f1f5f9;
+}
+
+.radar-label {
+    font-size: 6px;
+    fill: #64748b;
+    font-weight: 500;
+}
+
+/* Friction Badge */
+.friction-badge {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.friction-badge.boost {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.friction-badge.suppressed {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+/* Traffic Light */
+.traffic-light {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.light {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(100, 116, 139, 0.2);
+}
+
+.light.active.green {
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.light.active.yellow {
+    background: #fbbf24;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+.light.active.red {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}

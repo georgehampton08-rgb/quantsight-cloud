@@ -1,0 +1,30 @@
+# QuantSight Backend - MINIMAL (Phase 2 Fix)
+# Get routes working first, add Vanguard later
+
+# Core FastAPI
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Google Cloud dependencies  
+firebase-admin==6.4.0
+google-cloud-firestore==2.14.0
+
+# Data processing (required by NBA API)
+pandas==2.2.0
+numpy==1.26.3
+
+# HTTP/Networking
+aiohttp==3.9.1
+requests==2.31.0
+
+# Utilities
+python-dateutil==2.8.2
+python-dotenv==1.0.0
+
+# NBA Stats API
+nba_api==1.4.1
+
+# Production WSGI
+gunicorn==21.2.0
