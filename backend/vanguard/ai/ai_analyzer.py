@@ -48,45 +48,52 @@ class VanguardAIAnalyzer:
         self.model_name = config.llm_model
 
     ANALYSIS_PROMPT_TEMPLATE = """
-You are Vanguard Sovereign - QuantSight's AI incident analyst. Be concise and direct. No fluff.
+You are Vanguard Sovereign - QuantSight's AI incident analyst. Provide detailed technical analysis in under 600 words.
 
 {context}
 
-## INCIDENT
-- Fingerprint: `{fingerprint}`
-- Error: `{error_type}` on `{endpoint}`
-- Hits: {occurrence_count} | Severity: {severity}
-- First: {first_seen} → Last: {last_seen}
+## INCIDENT TIMELINE
+**Fingerprint:** `{fingerprint}`
+**Error:** `{error_type}` on `{endpoint}`
+**Severity:** {severity} | **Hit Count:** {occurrence_count}
+**First Seen:** {first_seen}
+**Last Seen:** {last_seen}
+**Current Time:** {system_time}
 
-## TRACE
+## STACK TRACE
 {traceback}
 
 ## CODE CONTEXT
 {code_contexts}
 
-## STATE
-Time: {system_time} | Mode: {vanguard_mode} | Rev: {revision}
+## SYSTEM STATE
+**Mode:** {vanguard_mode} | **Revision:** {revision}
 
 ---
 
-Return ONLY this JSON (keep each field to 1-2 sentences max):
+Provide detailed technical analysis in JSON format. Be specific about:
+- Exact component/function that failed
+- Technical chain of causation
+- Concrete impact metrics
+- Actionable fixes with file/line references where possible
 
 {{
-  "root_cause": "<what broke and why - be specific, name files/functions>",
-  "impact": "<who/what is affected - be concrete>",
+  "root_cause": "<2-3 sentences. Name specific files, functions, or config. Explain the technical chain: X called Y which failed because Z.>",
+  "impact": "<1-2 sentences. Quantify: how many users, which features, what degradation. Concrete metrics.>",
   "recommended_fix": [
-    "NOW: <stop the bleeding>",
-    "FIX: <actual code change>",
-    "PREVENT: <future-proof it>"
+    "IMMEDIATE: <tactical action to mitigate impact right now>",
+    "ROOT FIX: <specific code/config change with file paths if known>",
+    "PREVENTION: <monitoring, tests, or architecture change to prevent recurrence>"
   ],
+  "timeline_analysis": "<1-2 sentences analyzing the gap between first_seen and last_seen. Is this recurring, intermittent, or one-time? Pattern insights.>",
   "ready_to_resolve": false,
-  "ready_reasoning": "<why not ready OR why ready - one sentence>",
+  "ready_reasoning": "<Specific reason based on timeline. Example: 'Last occurrence 8min ago, need 30min cold period' or 'No occurrences for 45min + evidence of fix in rev XYZ'>",
   "confidence": 85
 }}
 
-Ready = true ONLY if: 30+ min cold period AND evidence of fix deployed.
+**Resolution Criteria:** Set ready_to_resolve=true ONLY when: (1) 30+ minutes since last_seen with zero new hits, AND (2) evidence suggests root cause addressed (new deployment, config fix, etc).
 
-**JSON only. No markdown, no explanation.**
+Return ONLY valid JSON. No markdown, no extra text.
 """
     
     def _lazy_load_genai(self):
