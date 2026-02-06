@@ -40,7 +40,7 @@ class VanguardConfig(BaseSettings):
     firebase_project_id: Optional[str] = Field(default=None, validation_alias="FIREBASE_PROJECT_ID")
     
     # LLM Profiler Configuration
-    llm_enabled: bool = Field(default=False, validation_alias="VANGUARD_LLM_ENABLED")
+    llm_enabled: bool = Field(default=True, validation_alias="VANGUARD_LLM_ENABLED")
     llm_model: str = Field(default="gemini-2.5-flash", validation_alias="VANGUARD_LLM_MODEL")
     llm_timeout_sec: int = Field(default=30, validation_alias="VANGUARD_LLM_TIMEOUT_SEC")
     gemini_api_key: Optional[str] = Field(default=None, validation_alias="GEMINI_API_KEY")
