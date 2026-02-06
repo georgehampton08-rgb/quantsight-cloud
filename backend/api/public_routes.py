@@ -235,6 +235,9 @@ async def get_player_by_id(player_id: str):
             "team": player.get("team") or player.get("team_id") or "",
             "position": player.get("position") or "",
             "avatar": player.get("headshot_url") or "",
+            "height": player.get("height") or "N/A",
+            "weight": player.get("weight") or "N/A",
+            "experience": str(player.get("experience") or player.get("years_pro") or "0") + " yrs",
             "stats": {
                 "ppg": player.get("ppg", 0),
                 "rpg": player.get("rpg", 0),
@@ -247,9 +250,22 @@ async def get_player_by_id(player_id: str):
         }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to get player {player_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to load player profile")
+
+
+@router.get("/players/{player_id}/play-types")
+async def get_player_play_types(player_id: str):
+    """
+    Get play type efficiency data for a player.
+    STUB: Returns empty data until play type tracking is implemented.
+    """
+    logger.info(f"[STUB] Play types requested for player {player_id}")
+    return {
+        "player_id": player_id,
+        "player_name": "Unknown",
+        "season": "2024-25",
+        "play_types": []
+    }
 
 
 @router.get("/roster/{team_id}")
