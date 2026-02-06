@@ -253,15 +253,27 @@ async def get_player_by_id(player_id: str):
 
 
 @router.get("/roster/{team_id}")
-async def get_team_roster(team_id: str):
+async def get_team_roster_v2(team_id: str):
     """
-    Get roster (players) for a specific team
+    Get roster (players) for a specific team.
+    Returns format expected by CascadingSelector: {"roster": [...]}
     """
     try:
-        players = get_players_by_team(team_id.upper())
+        players_raw = get_players_by_team(team_id.upper(), active_only=True)
         
-        logger.info(f"✅ Returned {len(players)} players for team {team_id}")
-        return players
+        # Normalize for frontend CascadingSelector
+        roster = []
+        for p in players_raw:
+            roster.append({
+                "player_id": str(p.get('player_id') or p.get('id') or ''),
+                "name": p.get('name') or p.get('player_name') or p.get('fullName') or 'Unknown',
+                "position": p.get('position') or '',
+                "jersey_number": str(p.get('jersey_number') or ''),
+                "status": p.get('status') or ('active' if p.get('is_active') else 'inactive')
+            })
+            
+        logger.info(f"✅ Returned {len(roster)} players for team {team_id}")
+        return {"roster": roster}
         
     except Exception as e:
         logger.error(f"Error fetching roster for {team_id}: {e}")
@@ -549,23 +561,7 @@ async def get_matchup_roster(team_id: str, game_id: Optional[str] = Query(None))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/roster/{team_id}")
-async def get_roster(team_id: str):
-    """Get team roster from players collection"""
-    try:
-        players = get_players_by_team(team_id, active_only=True)
-        
-        if not players:
-            raise HTTPException(status_code=404, detail=f"No roster found for team {team_id}")
-        
-        logger.info(f"✅ Returned {len(players)} players for {team_id}")
-        return players
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching roster for {team_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Duplicate /roster route removed (consolidated above)
 
 
 @router.get("/teams/{team_abbrev}")

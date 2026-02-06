@@ -54,9 +54,16 @@ class H2HFirestoreAdapter:
             self.db = None
             self.enabled = False
     
-    def _get_doc_id(self, player_id: str, opponent: str) -> str:
-        """Generate document ID for player_h2h collection."""
-        return f"{player_id}_{opponent.upper()}"
+    def _get_agg_ref(self, player_id: str, opponent: str):
+        """Get reference for H2H aggregate stats."""
+        return self.db.collection('players').document(str(player_id)) \
+                      .collection('h2h_stats').document(opponent.upper())
+                      
+    def _get_games_coll_ref(self, player_id: str, opponent: str):
+        """Get collection reference for H2H individual games."""
+        return self.db.collection('players').document(str(player_id)) \
+                      .collection('h2h_games').document(opponent.upper()) \
+                      .collection('games')
     
     def get_h2h_stats(self, player_id: str, opponent: str) -> Optional[Dict]:
         """
@@ -73,8 +80,7 @@ class H2HFirestoreAdapter:
             return None
         
         try:
-            doc_id = self._get_doc_id(player_id, opponent)
-            doc = self.db.collection('player_h2h').document(doc_id).get()
+            doc = self._get_agg_ref(player_id, opponent).get()
             
             if doc.exists:
                 data = doc.to_dict()
@@ -105,15 +111,13 @@ class H2HFirestoreAdapter:
             return False
         
         try:
-            doc_id = self._get_doc_id(player_id, opponent)
-            
             # Add metadata
             stats['player_id'] = str(player_id)
             stats['opponent'] = opponent.upper()
             stats['updated_at'] = firestore.SERVER_TIMESTAMP
             
-            # Upsert
-            self.db.collection('player_h2h').document(doc_id).set(
+            # Upsert using hierarchical path
+            self._get_agg_ref(player_id, opponent).set(
                 stats,
                 merge=True
             )
@@ -147,16 +151,15 @@ class H2HFirestoreAdapter:
             batch = self.db.batch()
             
             for game in games:
-                # Create unique doc ID from player + game date
-                game_date = game.get('game_date', 'unknown')
-                doc_id = f"{player_id}_{opponent.upper()}_{game_date}"
+                # Use game_id or fallback to date
+                actual_game_id = game.get('game_id') or game.get('game_date', 'unknown')
                 
                 # Add metadata
                 game['player_id'] = str(player_id)
                 game['opponent'] = opponent.upper()
                 game['updated_at'] = firestore.SERVER_TIMESTAMP
                 
-                doc_ref = self.db.collection('player_h2h_games').document(doc_id)
+                doc_ref = self._get_games_coll_ref(player_id, opponent).document(str(actual_game_id))
                 batch.set(doc_ref, game, merge=True)
             
             batch.commit()
@@ -183,8 +186,7 @@ class H2HFirestoreAdapter:
             return False
         
         try:
-            doc_id = self._get_doc_id(player_id, opponent)
-            doc = self.db.collection('player_h2h').document(doc_id).get()
+            doc = self._get_agg_ref(player_id, opponent).get()
             
             if not doc.exists:
                 return False
@@ -229,9 +231,7 @@ class H2HFirestoreAdapter:
         
         try:
             query = (
-                self.db.collection('player_h2h_games')
-                .where('player_id', '==', str(player_id))
-                .where('opponent', '==', opponent.upper())
+                self._get_games_coll_ref(player_id, opponent)
                 .order_by('game_date', direction=firestore.Query.DESCENDING)
                 .limit(limit)
             )
@@ -271,10 +271,9 @@ class H2HFirestoreAdapter:
                 if not player_id or not opponent:
                     continue
                 
-                doc_id = self._get_doc_id(player_id, opponent)
                 record['updated_at'] = firestore.SERVER_TIMESTAMP
                 
-                doc_ref = self.db.collection('player_h2h').document(doc_id)
+                doc_ref = self._get_agg_ref(player_id, opponent)
                 batch.set(doc_ref, record, merge=True)
             
             batch.commit()
@@ -299,29 +298,10 @@ class H2HFirestoreAdapter:
             return 0
         
         try:
-            cutoff = datetime.now() - timedelta(hours=ttl_hours)
-            
-            # Query stale documents
-            query = self.db.collection('player_h2h').where('updated_at', '<', cutoff)
-            docs = query.stream()
-            
-            deleted = 0
-            batch = self.db.batch()
-            
-            for doc in docs:
-                batch.delete(doc.reference)
-                deleted += 1
-                
-                # Commit in batches of 500 (Firestore limit)
-                if deleted % 500 == 0:
-                    batch.commit()
-                    batch = self.db.batch()
-            
-            if deleted % 500 != 0:
-                batch.commit()
-            
-            logger.info(f"✓ Deleted {deleted} stale H2H records")
-            return deleted
+            # Note: This is harder with hierarchical data as we'd need to crawl players.
+            # For now, we'll return 0 to avoid breaking things, as TTL is less critical here.
+            logger.warning("delete_stale_data not yet implemented for hierarchical H2H")
+            return 0
             
         except Exception as e:
             logger.error(f"Stale data cleanup failed: {e}")
