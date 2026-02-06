@@ -1,52 +1,50 @@
+"""
+Matchup Analysis Endpoint - Firestore Version
+"""
+from fastapi import APIRouter, HTTPException
+import logging
+
+from firestore_db import (
+    get_team_by_tricode,
+    get_players_by_team
+)
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
 @router.get("/matchup/analyze")
 async def analyze_matchup(home_team: str, away_team: str):
     """
     Basic team matchup analysis (cloud-optimized version without Vertex Engine)
     Analyzes team stats and provides win probability
     """
-    db_url = get_database_url()
-    if not db_url:
-        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
-    
     try:
-        engine = create_engine(db_url)
+        # Get both teams from Firestore
+        home = get_team_by_tricode(home_team)
+        away = get_team_by_tricode(away_team)
         
-        with engine.connect() as conn:
-            # Fetch team stats for both teams
-            home_stats = conn.execute(text("""
-                SELECT t.full_name, t.tricode, COUNT(DISTINCT p.player_id) as roster_size
-                FROM teams t
-                LEFT JOIN players p ON t.tricode = p.team_abbreviation
-                WHERE UPPER(t.tricode) = UPPER(:team)
-                GROUP BY t.full_name, t.tricode
-            """), {"team": home_team}).fetchone()
-            
-            away_stats = conn.execute(text("""
-                SELECT t.full_name, t.tricode, COUNT(DISTINCT p.player_id) as roster_size  
-                FROM teams t
-                LEFT JOIN players p ON t.tricode = p.team_abbreviation
-                WHERE UPPER(t.tricode) = UPPER(:team)
-                GROUP BY t.full_name, t.tricode
-            """), {"team": away_team}).fetchone()
-            
-            if not home_stats or not away_stats:
-                raise HTTPException(status_code=404, detail="One or both teams not found")
+        if not home:
+            raise HTTPException(status_code=404, detail=f"Home team {home_team} not found")
+        if not away:
+            raise HTTPException(status_code=404, detail=f"Away team {away_team} not found")
         
-        engine.dispose()
+        # Get rosters
+        home_roster = get_players_by_team(home_team, active_only=True)
+        away_roster = get_players_by_team(away_team, active_only=True)
         
         # Simple win probability (50-50 baseline for cloud version)
         # In desktop version with Vertex Engine, this uses advanced ML models
         return {
             "matchup": {
                 "home_team": {
-                    "name": home_stats[0],
-                    "abbreviation": home_stats[1],
-                    "roster_size": int(home_stats[2])
+                    "name": home.get("full_name"),
+                    "abbreviation": home.get("abbreviation", home_team),
+                    "roster_size": len(home_roster)
                 },
                 "away_team": {
-                    "name": away_stats[0],
-                    "abbreviation": away_stats[1],
-                    "roster_size": int(away_stats[2])
+                    "name": away.get("full_name"),
+                    "abbreviation": away.get("abbreviation", away_team),
+                    "roster_size": len(away_roster)
                 }
             },
             "prediction": {
@@ -57,7 +55,8 @@ async def analyze_matchup(home_team: str, away_team: str):
             },
             "key_factors": [
                 "Home court advantage typically +3-4% win rate",
-                "Team rosters loaded successfully",
+                f"Home roster: {len(home_roster)} active players",
+                f"Away roster: {len(away_roster)} active players",
                 "For advanced predictions, use desktop version with Vertex Engine"
             ]
         }

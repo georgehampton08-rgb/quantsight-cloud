@@ -45,6 +45,8 @@ except ImportError as e:
 
 # Firebase service
 from services.firebase_admin_service import get_firebase_service
+from services.game_log_persister import GameLogPersister
+from services.pulse_stats_archiver import get_pulse_archiver
 
 # Cloud SQL data service for Alpha metrics
 from services.cloud_sql_data_service import (
@@ -65,23 +67,33 @@ class CloudAsyncPulseProducer:
     NO local cache, NO SSE - pure Firestore updates.
     """
     
-    VERSION = "4.0.0-cloud"
+    VERSION = "4.1.0-cloud"  # Bumped for archiver integration
     POLL_INTERVAL_SECONDS = 10
     
     def __init__(self):
         self._adapter = get_nba_adapter() if ADAPTER_AVAILABLE else None
         self._firebase = get_firebase_service()
+        self._game_log_persister = GameLogPersister()
+        self._pulse_archiver = get_pulse_archiver()  # NEW: Quarter archiver
         self._running = False
         self._task: Optional[asyncio.Task] = None
         self._update_count = 0
         self._last_update_duration: float = 0.0
         self._firebase_write_errors = 0
+        self._game_statuses: Dict[str, str] = {}  # Track game status changes
+        self._game_quarters: Dict[str, int] = {}  # Track quarter changes
+        
+        # Set Firebase on archiver
+        if self._firebase and self._pulse_archiver:
+            self._pulse_archiver.set_firebase(self._firebase)
         
         logger.info(f"🚀 CloudAsyncPulseProducer v{self.VERSION} initialized")
         if self._firebase:
             logger.info("   └─ Firebase: ENABLED")
+            logger.info("   └─ Pulse Archiver: ENABLED")
         else:
             logger.warning("   └─ Firebase: DISABLED - producer will run in degraded mode")
+
     
     async def start(self):
         """Start the cloud producer loop."""
@@ -161,10 +173,36 @@ class CloudAsyncPulseProducer:
             all_leaders = []
             
             for game_info in games:
+                game_id = game_info.game_id
+                current_status = game_info.status
+                previous_status = self._game_statuses.get(game_id)
+                
+                # Detect status change to FINAL
+                if current_status == 'FINAL' and previous_status != 'FINAL':
+                    logger.info(f"🏁 Game {game_id} finished - saving game log")
+                    
+                    # Get boxscore if available
+                    boxscore = boxscores.get(game_id)
+                    if boxscore:
+                        # Save game log asynchronously
+                        game_data_for_log = {
+                            'game_id': game_id,
+                            'home_team': game_info.home_team_tricode,
+                            'away_team': game_info.away_team_tricode,
+                            'home_score': game_info.home_score,
+                            'away_score': game_info.away_score,
+                            'period': game_info.period
+                        }
+                        asyncio.create_task(
+                            self._game_log_persister.save_game_log(game_data_for_log, boxscore)
+                        )
+                
+                # Update status tracking
+                self._game_statuses[game_id] = current_status
+                
                 if game_info.status != 'LIVE':
                     continue
                 
-                game_id = game_info.game_id
                 boxscore = boxscores.get(game_id)
                 
                 if not boxscore:
@@ -204,6 +242,21 @@ class CloudAsyncPulseProducer:
                 
                 # Write to Firebase (non-blocking)
                 asyncio.create_task(self._firebase.upsert_game_state(game_data))
+                
+                # Archive quarter-end stats (non-blocking)
+                if self._pulse_archiver:
+                    asyncio.create_task(
+                        self._pulse_archiver.check_and_archive(
+                            game_id=game_id,
+                            current_quarter=game_info.period,
+                            game_status=game_info.status,
+                            player_stats=leaders,
+                            home_team=game_info.home_team_tricode,
+                            away_team=game_info.away_team_tricode,
+                            home_score=game_info.home_score,
+                            away_score=game_info.away_score
+                        )
+                    )
             
             # Step 5: Update global leaderboard (top 10 across all games)
             if all_leaders:
@@ -314,7 +367,10 @@ class CloudAsyncPulseProducer:
                     'reb': player.reb,
                     'ast': player.ast,
                     'stl': player.stl,
-                    'blk': player.blk
+                    'blk': player.blk,
+                    'fg3m': player.fg3m,
+                    'pf': player.pf,
+                    'tov': player.tov
                 }
             })
 

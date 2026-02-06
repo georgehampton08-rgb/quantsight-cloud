@@ -4141,6 +4141,229 @@ async def matchup_lab_simulate(request: Request):
 
 
 
+# ==================== LIVE STATS ENDPOINTS (FIRESTORE) ====================
+
+@app.get("/live/stream")
+async def live_stats_stream(request: Request):
+    """
+    Firestore-based SSE endpoint for live game stats.
+    
+    Streams real-time updates from Firestore live_games and live_leaders collections.
+    """
+    from sse_starlette.sse import EventSourceResponse
+    import asyncio
+    
+    async def event_generator():
+        logger.info("[SSE] Client connected to /live/stream (Firestore)")
+        
+        try:
+            from firestore_db import get_firestore_db
+            db = get_firestore_db()
+            
+            while True:
+                if await request.is_disconnected():
+                    logger.info("[SSE] Client disconnected")
+                    break
+                
+                try:
+                    # Fetch live games from Firestore
+                    live_games_ref = db.collection('live_games')
+                    game_docs = live_games_ref.stream()
+                    
+                    games_data = []
+                    for doc in game_docs:
+                        game = doc.to_dict()
+                        game['game_id'] = doc.id
+                        games_data.append(game)
+                    
+                    # Fetch live leaders from Firestore
+                    leaders_ref = db.collection('live_leaders').order_by('rank').limit(10)
+                    leader_docs = leaders_ref.stream()
+                    
+                    leaders_data = []
+                    for doc in leader_docs:
+                        leader = doc.to_dict()
+                        leader['player_id'] = doc.id
+                        leaders_data.append(leader)
+                    
+                    # Build SSE payload
+                    payload = {
+                        "games": games_data,
+                        "leaders": leaders_data,
+                        "meta": {
+                            "timestamp": datetime.now().isoformat(),
+                            "live_count": len(games_data),
+                            "source": "firestore"
+                        }
+                    }
+                    
+                    yield {
+                        "event": "pulse",
+                        "data": json.dumps(payload)
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"[SSE] Error fetching Firestore data: {e}")
+                    yield {
+                        "event": "error",
+                        "data": json.dumps({"error": str(e)})
+                    }
+                
+                # Update every 3 seconds (Firestore optimized)
+                await asyncio.sleep(3)
+                
+        except asyncio.CancelledError:
+            logger.info("[SSE] Live stream cancelled")
+        except Exception as e:
+            logger.error(f"[SSE] Stream error: {e}")
+    
+    return EventSourceResponse(event_generator())
+
+
+@app.get("/live/leaders")
+def get_live_leaders(limit: int = 10):
+    """
+    Get top live players from Firestore live_leaders collection.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        db = get_firestore_db()
+        
+        # Query live leaders ordered by rank
+        leaders_ref = db.collection('live_leaders').order_by('rank').limit(limit)
+        docs = leaders_ref.stream()
+        
+        leaders = []
+        for doc in docs:
+            leader_data = doc.to_dict()
+            leader_data['player_id'] = doc.id
+            leaders.append(leader_data)
+        
+        return {
+            "leaders": leaders,
+            "count": len(leaders),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"[LiveLeaders] Error: {e}")
+        return {
+            "leaders": [],
+            "error": str(e),
+            "count": 0
+        }
+
+
+@app.get("/live/games")
+def get_live_games():
+    """
+    Get all currently live NBA games from Firestore.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        db = get_firestore_db()
+        
+        # Query live games collection
+        games_ref = db.collection('live_games')
+        docs = games_ref.stream()
+        
+        live_games = []
+        for doc in docs:
+            game_data = doc.to_dict()
+            game_data['game_id'] = doc.id
+            
+            # Only include if status is 'live'
+            if game_data.get('status') == 'live':
+                live_games.append(game_data)
+        
+        return {
+            "status": "ok",
+            "count": len(live_games),
+            "games": live_games,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"[LiveGames] Error: {e}")
+        return {
+            "status": "error",
+            "games": [],
+            "error": str(e)
+        }
+
+
+@app.get("/api/game-logs")
+def get_game_logs(
+    limit: int = 50,
+    player_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    team: Optional[str] = None
+):
+    """
+    Firestore-based game logs endpoint.
+    
+    Fetches historical game logs from Firestore game_logs collection.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        db = get_firestore_db()
+        
+        # Start with base collection
+        logs_ref = db.collection('game_logs')
+        
+        # Apply filters
+        if player_id:
+            logs_ref = logs_ref.where(filter=FieldFilter('player_id', '==', str(player_id)))
+        
+        if start_date:
+            logs_ref = logs_ref.where(filter=FieldFilter('game_date', '>=', start_date))
+        
+        if end_date:
+            logs_ref = logs_ref.where(filter=FieldFilter('game_date', '<=', end_date))
+        
+        if team:
+            # Team filter - check opponent or team_abbreviation
+            logs_ref = logs_ref.where(filter=FieldFilter('opponent', '==', team.upper()))
+        
+        # Order by date descending and apply limit
+        logs_ref = logs_ref.order_by('game_date', direction='DESCENDING').limit(limit)
+        
+        # Execute query
+        docs = logs_ref.stream()
+        
+        logs = []
+        for doc in docs:
+            log_data = doc.to_dict()
+            log_data['id'] = doc.id
+            logs.append(log_data)
+        
+        logger.info(f"[GameLogs] Returning {len(logs)} logs from Firestore")
+        
+        return {
+            "logs": logs,
+            "count": len(logs),
+            "filters_applied": {
+                "player_id": player_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "team": team,
+                "limit": limit
+            },
+            "timestamp": datetime.now().isoformat(),
+            "source": "firestore"
+        }
+        
+    except Exception as e:
+        logger.error(f"[GameLogs] Firestore error: {e}", exc_info=True)
+        return {
+            "logs": [],
+            "error": str(e),
+            "count": 0
+        }
+
+
 # --- Entry Point ---
 if __name__ == "__main__":
     try:

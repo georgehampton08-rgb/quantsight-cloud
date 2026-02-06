@@ -1,43 +1,63 @@
-# QuantSight Cloud Backend - Mobile API Dependencies
-# =====================================================
-# Minimal production build - excludes desktop-only packages
+# QuantSight Backend - Vanguard with Google Gemini
+# ================================================
+# Google Cloud Native LLM Stack
 
 # Core FastAPI
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic==2.9.0  # Upgraded for google-genai compatibility (requires >=2.9.0)
+pydantic-settings==2.3.0  # Upgraded to support pydantic 2.9
 
-# Firebase & Cloud
+# Google Cloud dependencies  
 firebase-admin==6.4.0
 google-cloud-firestore==2.14.0
 google-cloud-logging==3.9.0
 
-# Data processing
+# Data processing  
 pandas==2.2.0
 numpy==1.26.3
 
-# NBA API & Data
-nba_api==1.4.1
+# HTTP/Networking (httpx upgraded for google-genai compatibility)
+httpx==0.28.1
+aiohttp==3.9.1
 requests==2.31.0
 
-# Database (Cloud SQL PostgreSQL)
-asyncpg==0.29.0
-sqlalchemy==2.0.25
-
-# Environment
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
 python-dotenv==1.0.0
 
-# Async utilities
-asyncio==3.4.3
-aiohttp==3.9.1
-httpx==0.26.0
+# NBA Stats API
+nba_api==1.4.1
+
+# SSE (Server-Sent Events)
+sse-starlette==1.8.2
 
 # Production WSGI
 gunicorn==21.2.0
 
-# Excluded from cloud build (desktop-only):
-# - pyserial (desktop hardware)
-# - electron-specific packages
-# - SQLite drivers (using Cloud SQL instead)
-# - sse-starlette (SSE replaced by Firebase)
+# ========================================
+# VANGUARD SOVEREIGN - FULL STACK (v3.1)
+# ========================================
+
+# Redis (async support)
+redis==5.0.1
+
+# Structured Logging
+structlog==24.1.0
+python-json-logger==2.0.7
+
+# System Metrics
+psutil==5.9.8
+
+# Async File I/O
+aiofiles==23.2.1
+
+# Google Gemini AI (New SDK - replaces google-generativeai)
+google-genai==1.61.0
+
+# Git analysis for AI context
+GitPython==3.1.40
+PyGithub==2.4.0  # GitHub API for code fetching\nredis[hiredis]==5.0.1  # Redis client for Vanguard caching
+
+

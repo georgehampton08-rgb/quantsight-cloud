@@ -1,106 +1,87 @@
-#!/bin/bash
-# QuantSight Cloud Backend - Cloud Run Deployment Script
-# ========================================================
-# Production deployment to Google Cloud Run
+# QuantSight Cloud Run Deployment Script (Updated)
+# Deploys API hardening fixes to production
 
-set -e
+set -e  # Exit on error
+
+echo ""
+echo "🚀 QuantSight Cloud Run Deployment"
+echo "===================================="
+echo ""
 
 # Configuration
-PROJECT_ID="${GCP_PROJECT_ID:-your-gcp-project-id}"
-REGION="${GCP_REGION:-us-central1}"
+PROJECT_ID="quantsight-443700"
+REGION="us-central1"
 SERVICE_NAME="quantsight-cloud"
-IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
+SOURCE_DIR="./backend"
 
-# Cloud SQL Connection (update with your instance)
-CLOUD_SQL_INSTANCE="${PROJECT_ID}:${REGION}:nba-database"
-
-# Firestore Project
-FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-${PROJECT_ID}}"
-
-echo "========================================="
-echo "QuantSight Cloud Run Deployment"
-echo "========================================="
-echo ""
-echo "Project ID: ${PROJECT_ID}"
-echo "Region: ${REGION}"
-echo "Service: ${SERVICE_NAME}"
+echo "📋 Configuration:"
+echo "   Project: $PROJECT_ID"
+echo "   Region: $REGION"
+echo "   Service: $SERVICE_NAME"
+echo "   Source: $SOURCE_DIR"
 echo ""
 
-# Step 1: Build and push Docker image to Google Container Registry
-echo "[1/3] Building and pushing Docker image..."
-echo ""
-
-gcloud builds submit \
-    --tag ${IMAGE_NAME} \
-    --project ${PROJECT_ID} \
-    .
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Docker build failed"
+# Verify we're in the right directory
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "❌ Error: backend/ directory not found"
     exit 1
 fi
 
-echo ""
-echo "✓ Image pushed to ${IMAGE_NAME}"
-echo ""
-
-# Step 2: Deploy to Cloud Run
-echo "[2/3] Deploying to Cloud Run..."
-echo ""
-
-gcloud run deploy ${SERVICE_NAME} \
-    --image ${IMAGE_NAME} \
-    --platform managed \
-    --region ${REGION} \
-    --project ${PROJECT_ID} \
-    --allow-unauthenticated \
-    --memory 512Mi \
-    --cpu 1 \
-    --min-instances 0 \
-    --max-instances 10 \
-    --timeout 300 \
-    --set-env-vars "FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID},LOG_LEVEL=INFO" \
-    --set-env-vars "DATABASE_URL=postgresql://user:password@/cloudsql/${CLOUD_SQL_INSTANCE}/nba_data" \
-    --add-cloudsql-instances ${CLOUD_SQL_INSTANCE} \
-    --service-account ${SERVICE_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Cloud Run deployment failed"
+if [ ! -f "$SOURCE_DIR/main.py" ]; then
+    echo "❌ Error: main.py not found in backend/"
     exit 1
 fi
 
-echo ""
-echo "✓ Deployment successful"
-echo ""
-
-# Step 3: Get service URL
-echo "[3/3] Retrieving service URL..."
+echo "✅ Source files verified"
 echo ""
 
-SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} \
-    --platform managed \
-    --region ${REGION} \
-    --project ${PROJECT_ID} \
-    --format 'value(status.url)')
-
-echo "========================================="
-echo "Deployment Complete!"
-echo "========================================="
-echo ""
-echo "Service URL: ${SERVICE_URL}"
-echo "Health Check: ${SERVICE_URL}/health"
-echo "Live Status: ${SERVICE_URL}/live/status"
-echo ""
-echo "To view logs:"
-echo "  gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE_NAME}\" --limit 50 --project ${PROJECT_ID}"
-echo ""
-echo "To update environment variables:"
-echo "  gcloud run services update ${SERVICE_NAME} --set-env-vars KEY=VALUE --region ${REGION} --project ${PROJECT_ID}"
+# Check gcloud authentication
+echo "🔐 Checking authentication..."
+gcloud auth list --filter=status:ACTIVE --format="value(account)" > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "❌ Not authenticated. Run: gcloud auth login"
+    exit 1
+fi
+echo "✅ Authenticated"
 echo ""
 
-# Test the deployment
-echo "Testing deployment..."
-curl -s ${SERVICE_URL}/health | python -m json.tool
-
+# Set project
+echo "🎯 Setting project..."
+gcloud config set project $PROJECT_ID
 echo ""
-echo "========================================="
+
+# Deploy to Cloud Run
+echo "🚀 Deploying to Cloud Run..."
+echo "   This will take 5-7 minutes..."
+echo ""
+
+gcloud run deploy $SERVICE_NAME \
+  --source $SOURCE_DIR \
+  --region $REGION \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars FIREBASE_PROJECT_ID=$PROJECT_ID \
+  --memory 512Mi \
+  --timeout 300 \
+  --max-instances 10 \
+  --quiet
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✅ Deployment successful!"
+    echo ""
+    echo "🔗 Service URL:"
+    SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format="value(status.url)")
+    echo "   $SERVICE_URL"
+    echo ""
+    echo "📊 Next steps:"
+    echo "   1. Test health: curl $SERVICE_URL/health"
+    echo "   2. Run test suite: ./test_api_hardening.ps1 -BaseUrl \"$SERVICE_URL\""
+    echo "   3. Monitor logs: gcloud logging tail \"resource.type=cloud_run_revision\" --limit 50"
+    echo ""
+else
+    echo ""
+    echo "❌ Deployment failed!"
+    echo "   Check logs: gcloud logging read --limit 50"
+    exit 1
+fi

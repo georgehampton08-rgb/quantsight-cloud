@@ -57,3 +57,10 @@ Thumbs.db
 # Data directories
 data/
 backup/
+# Deployment docs with secrets
+DEPLOY_IN_CLOUD_SHELL.md
+VANGUARD_CLOUD_ENV.md
+VANGUARD_DEPLOYMENT.md
+setup_redis.sh
+setup_redis_cloudshell.sh
+

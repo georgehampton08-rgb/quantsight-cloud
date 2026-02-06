@@ -2,6 +2,7 @@
 H2H Fetcher
 Fetches head-to-head game logs for a player vs specific opponent team.
 Designed for async/background execution (Shadow-Fetch pattern).
+Now with dual-write to SQLite (local) and Firestore (cloud).
 """
 import sqlite3
 import requests
@@ -10,6 +11,14 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
+
+# Import Firestore adapter for cloud persistence
+try:
+    from services.h2h_firestore_adapter import get_h2h_adapter, H2HFirestoreAdapter
+    HAS_FIRESTORE_ADAPTER = True
+except ImportError:
+    HAS_FIRESTORE_ADAPTER = False
+    get_h2h_adapter = None
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +59,16 @@ class H2HFetcher:
         self.session = requests.Session()
         self.session.headers.update(self.HEADERS)
         self._ensure_tables()
+        
+        # Initialize Firestore adapter for cloud writes
+        self.firestore_adapter = None
+        if HAS_FIRESTORE_ADAPTER and get_h2h_adapter:
+            try:
+                self.firestore_adapter = get_h2h_adapter()
+                if self.firestore_adapter:
+                    logger.info("✅ H2H Firestore adapter integrated")
+            except Exception as e:
+                logger.warning(f"Firestore adapter init failed: {e}")
     
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=30)
@@ -217,7 +236,8 @@ class H2HFetcher:
         return games
     
     def _save_h2h_games(self, player_id: str, opponent: str, games: List[Dict]):
-        """Save individual H2H games to database"""
+        """Save individual H2H games to database and Firestore"""
+        # Save to SQLite
         conn = self._get_connection()
         
         for game in games:
@@ -236,10 +256,18 @@ class H2HFetcher:
         
         conn.commit()
         conn.close()
-        logger.info(f"Saved {len(games)} H2H games for {player_id} vs {opponent}")
+        logger.info(f"Saved {len(games)} H2H games for {player_id} vs {opponent} (SQLite)")
+        
+        # Also save to Firestore (cloud persistence)
+        if self.firestore_adapter:
+            try:
+                self.firestore_adapter.save_h2h_games(player_id, opponent, games)
+                logger.info(f"Saved {len(games)} H2H games to Firestore")
+            except Exception as e:
+                logger.warning(f"Firestore H2H games save failed: {e}")
     
     def _calculate_aggregates(self, player_id: str, opponent: str):
-        """Calculate and store aggregate H2H stats"""
+        """Calculate and store aggregate H2H stats with 3PM tracking"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -252,6 +280,7 @@ class H2HFetcher:
                 AVG(stl) as avg_stl,
                 AVG(blk) as avg_blk,
                 AVG(min) as avg_min,
+                AVG(fg3m) as avg_3pm,
                 SUM(fgm) * 1.0 / NULLIF(SUM(fga), 0) as fg_pct,
                 SUM(fg3m) * 1.0 / NULLIF(SUM(fg3a), 0) as fg3_pct,
                 SUM(CASE WHEN result = 'W' THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as win_pct
@@ -275,8 +304,27 @@ class H2HFetcher:
                 datetime.now().isoformat()
             ))
             conn.commit()
+            
+            # Also save to Firestore with 3PM included
+            if self.firestore_adapter:
+                try:
+                    h2h_stats = {
+                        'pts': round(row['avg_pts'], 1) if row['avg_pts'] else 0,
+                        'reb': round(row['avg_reb'], 1) if row['avg_reb'] else 0,
+                        'ast': round(row['avg_ast'], 1) if row['avg_ast'] else 0,
+                        '3pm': round(row['avg_3pm'], 1) if row['avg_3pm'] else 0,
+                        'games': row['games'],
+                        'fg_pct': round(row['fg_pct'] * 100, 1) if row['fg_pct'] else 0,
+                        'fg3_pct': round(row['fg3_pct'] * 100, 1) if row['fg3_pct'] else 0,
+                        'win_pct': round(row['win_pct'] * 100, 1) if row['win_pct'] else 0,
+                    }
+                    self.firestore_adapter.save_h2h_stats(player_id, opponent, h2h_stats)
+                    logger.info(f"H2H aggregates saved to Firestore for {player_id} vs {opponent}")
+                except Exception as e:
+                    logger.warning(f"Firestore H2H aggregates save failed: {e}")
         
         conn.close()
+
     
     def get_h2h_stats(self, player_id: str, opponent: str) -> Optional[Dict]:
         """Get cached H2H aggregate stats"""

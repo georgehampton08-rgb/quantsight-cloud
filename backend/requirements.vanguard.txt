@@ -1,0 +1,45 @@
+# Vanguard Sovereign Dependencies
+# =================================
+# Add these to your existing requirements.txt
+
+# Core Dependencies (if not already present)
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+
+# Redis (async)
+redis[asyncio]>=5.0.0
+
+# Structured Logging
+structlog>=24.1.0
+python-json-logger>=2.0.7
+
+# OpenTelemetry (optional, for advanced tracing)
+opentelemetry-api>=1.24.0
+opentelemetry-sdk>=1.24.0
+opentelemetry-instrumentation-fastapi>=0.45.0
+
+# LLM & Intelligence (for Profiler)
+langchain>=0.1.0
+langchain-openai>=0.0.5
+openai>=1.12.0
+tiktoken>=0.6.0
+
+# System Metrics
+psutil>=5.9.8
+
+# Async File I/O
+aiofiles>=23.2.1
+
+# HTTP Client (for testing)
+httpx>=0.26.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+
+# Chaos Testing (optional, for Vaccine phase)
+# chaos-toolkit>=1.18.0
+# locust>=2.20.0

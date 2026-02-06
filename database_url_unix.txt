@@ -1,0 +1,1 @@
+postgresql+psycopg2://quantsight:QSInvest2026@/nba_data?host=/cloudsql/quantsight-prod:us-central1:quantsight-db

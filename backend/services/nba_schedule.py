@@ -47,14 +47,51 @@ class NBAScheduleService:
         self._cache_time = 0
         self._cache_ttl = 60  # 1 minute cache
     
-    def get_todays_games(self) -> List[Dict]:
+    def invalidate_cache(self):
+        """Force cache invalidation. Useful after errors or for manual refresh."""
+        self._cache = {}
+        self._cache_time = 0
+        logger.info("NBA schedule cache invalidated")
+    
+    def reset_session(self):
+        """Reset the requests session. Useful for recovering from connection issues."""
+        self.session.close()
+        self.session = requests.Session()
+        self.session.headers.update(self.HEADERS)
+        logger.info("NBA API session reset")
+    
+    def health_check(self) -> Dict:
+        """
+        Check service health and return diagnostics.
+        
+        Returns:
+            Dict with status, cache_age, last_fetch_time, etc.
+        """
+        now = time.time()
+        cache_age = now - self._cache_time if self._cache_time > 0 else None
+        
+        return {
+            'status': 'healthy' if self._cache.get('games') else 'no_data',
+            'cache_age_seconds': cache_age,
+            'cached_games_count': len(self._cache.get('games', [])),
+            'cache_ttl': self._cache_ttl,
+            'is_cache_fresh': cache_age < self._cache_ttl if cache_age else False
+        }
+    
+    def get_todays_games(self, force_refresh: bool = False) -> List[Dict]:
         """
         Fetch today's games from NBA API.
-        Returns list of game dicts with home/away teams and status.
+        
+        Args:
+            force_refresh: If True, bypass cache and fetch fresh data
+        
+        Returns:
+            List of game dicts with home/away teams and status.
         """
-        # Check cache
+        # Check cache (skip if force_refresh)
         now = time.time()
-        if self._cache.get('games') and (now - self._cache_time) < self._cache_ttl:
+        if not force_refresh and self._cache.get('games') and (now - self._cache_time) < self._cache_ttl:
+            logger.debug(f"Returning cached games ({len(self._cache['games'])} games)")
             return self._cache['games']
         
         games = []
@@ -123,8 +160,11 @@ class NBAScheduleService:
         
         except requests.RequestException as e:
             logger.error(f"NBA API request failed: {e}")
+            # Invalidate cache on error to prevent serving stale data
+            self.invalidate_cache()
         except Exception as e:
             logger.error(f"Error parsing NBA scoreboard: {e}")
+            self.invalidate_cache()
         
         # Cache results
         if games:
@@ -160,6 +200,18 @@ def get_schedule_service() -> NBAScheduleService:
     if _schedule_service is None:
         _schedule_service = NBAScheduleService()
     return _schedule_service
+
+
+def reset_schedule_service():
+    """
+    Reset the singleton instance. Useful for recovery from persistent errors.
+    Creates a fresh service instance with clean session and cache.
+    """
+    global _schedule_service
+    if _schedule_service:
+        _schedule_service.session.close()
+    _schedule_service = None
+    logger.info("NBA schedule service reset - new instance will be created on next access")
 
 
 if __name__ == "__main__":

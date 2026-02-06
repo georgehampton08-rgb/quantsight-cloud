@@ -1,4 +1,0 @@
-player_id,player_name,game_date,opponent,points,rebounds,assists,minutes,sync_timestamp,source
-1,Stephen Curry,2026-01-26,LAL,28,4,6,35,2026-01-27T15:14:58.280392,BATCH_API
-2,LeBron James,2026-01-26,GSW,25,8,9,37,2026-01-27T15:14:58.280392,BATCH_API
-999,Test Player,2026-01-26,LAL,27,6,11,34,2026-01-27T15:14:58.286589,LIVE_API

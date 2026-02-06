@@ -1,56 +1,21 @@
 """
-Database Configuration for Cloud Backend
-=========================================
-Hybrid setup: SQLite for local development, PostgreSQL for Cloud Run production.
+Database Configuration for Cloud Backend - FIRESTORE VERSION
+============================================================
+No SQL dependencies. All data operations use Firestore.
 """
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
-from pathlib import Path
+import logging
 
-# Database URL selection
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    # Default: SQLite for local testing
-    f"sqlite:///{Path(__file__).parent.parent / 'data' / 'nba_data.db'}"
-)
+logger = logging.getLogger(__name__)
 
-# For Cloud Run, expect:
-# DATABASE_URL=postgresql://user:password@/cloudsql/project:region:instance
-
-# Create engine with appropriate settings
-if DATABASE_URL.startswith("sqlite"):
-    # SQLite-specific config
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        echo=False
-    )
-else:
-    # PostgreSQL-specific config (Cloud SQL)
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=5,
-        max_overflow=2,
-        pool_timeout=30,
-        pool_recycle=1800,
-        echo=False
-    )
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
+# Firestore is imported elsewhere - this file exists for compatibility
+# All database operations should use firestore_db.py functions directly
 
 def get_db():
-    """Dependency for FastAPI routes to get database session."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+    """Legacy compatibility - returns None since we use Firestore directly."""
+    logger.warning("get_db() called but Firestore doesn't use sessions. Use firestore_db functions directly.")
+    return None
 
 def get_db_connection():
-    """Legacy compatibility for raw connection access."""
-    return engine.connect()
+    """Legacy compatibility - returns None since we use Firestore directly."""
+    logger.warning("get_db_connection() called but Firestore doesn't use connections. Use firestore_db functions directly.")
+    return None

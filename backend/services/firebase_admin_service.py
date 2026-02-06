@@ -190,6 +190,112 @@ class FirebaseAdminService:
         except Exception as e:
             logger.error(f"Firestore read failed: {e}")
             return []
+    
+    async def save_game_log(self, date: str, game_id: str, game_log_data: Dict[str, Any]) -> bool:
+        """
+        Save final game log data to Firestore with hierarchical structure.
+        
+        Hierarchy: game_logs/{date}/{game_id}
+        
+        Args:
+            date: Game date (YYYY-MM-DD format)
+            game_id: Game ID
+            game_log_data: Complete game log with all player stats
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled or not self.db:
+            logger.warning("Firebase not enabled, skipping game log save")
+            return False
+        
+        try:
+            # Write to game_logs/{date}/{game_id}
+            doc_ref = self.db.collection('game_logs').document(date).collection('games').document(game_id)
+            doc_ref.set(game_log_data)
+            
+            logger.info(f"✅ Game log saved: {date}/{game_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to save game log: {e}")
+            return False
+    
+    async def set_document_nested(
+        self, 
+        path: str, 
+        data: Dict[str, Any], 
+        merge: bool = False
+    ) -> bool:
+        """
+        Write to nested Firestore path like "pulse_stats/2026-02-04/games/001/quarters/Q1".
+        
+        Args:
+            path: Slash-separated path (collection/doc/collection/doc/...)
+            data: Data to write
+            merge: If True, merge with existing data instead of overwriting
+            
+        Returns:
+            True if successful
+        """
+        if not self.enabled or not self.db:
+            return False
+        
+        try:
+            parts = path.strip("/").split("/")
+            if len(parts) < 2:
+                logger.error(f"Invalid path: {path}")
+                return False
+            
+            # Build reference: alternating collection/document
+            ref = self.db.collection(parts[0]).document(parts[1])
+            
+            for i in range(2, len(parts), 2):
+                if i + 1 < len(parts):
+                    ref = ref.collection(parts[i]).document(parts[i + 1])
+            
+            if merge:
+                ref.set(data, merge=True)
+            else:
+                ref.set(data)
+            
+            logger.debug(f"✅ Nested doc written: {path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Nested write failed: {e}")
+            return False
+    
+    async def get_document_nested(self, path: str) -> Optional[Dict[str, Any]]:
+        """
+        Read from nested Firestore path.
+        
+        Args:
+            path: Slash-separated path
+            
+        Returns:
+            Document data or None
+        """
+        if not self.enabled or not self.db:
+            return None
+        
+        try:
+            parts = path.strip("/").split("/")
+            if len(parts) < 2:
+                return None
+            
+            ref = self.db.collection(parts[0]).document(parts[1])
+            
+            for i in range(2, len(parts), 2):
+                if i + 1 < len(parts):
+                    ref = ref.collection(parts[i]).document(parts[i + 1])
+            
+            doc = ref.get()
+            return doc.to_dict() if doc.exists else None
+            
+        except Exception as e:
+            logger.error(f"❌ Nested read failed: {e}")
+            return None
 
 
 def get_firebase_service() -> Optional[FirebaseAdminService]:
