@@ -24,8 +24,21 @@ if str(_backend_path) not in sys.path:
     sys.path.insert(0, str(_backend_path))
 
 # Shared core imports (copied from desktop)
+# Try multiple paths: Docker puts shared_core at /app/shared_core,
+# local dev has it at ../shared_core relative to backend/
 try:
-    sys.path.insert(0, str(_backend_path.parent / 'shared_core'))
+    _shared_core_docker = _backend_path / 'shared_core'       # /app/shared_core (Docker)
+    _shared_core_local = _backend_path.parent / 'shared_core'  # sibling dir (local dev)
+    
+    if _shared_core_docker.exists():
+        sys.path.insert(0, str(_shared_core_docker))
+    elif _shared_core_local.exists():
+        sys.path.insert(0, str(_shared_core_local))
+    else:
+        # Fallback: try both
+        sys.path.insert(0, str(_shared_core_docker))
+        sys.path.insert(0, str(_shared_core_local))
+    
     from adapters.nba_api_adapter import (
         AsyncNBAApiAdapter,
         NormalizedBoxScore,
@@ -39,9 +52,10 @@ try:
         calculate_in_game_usage
     )
     ADAPTER_AVAILABLE = True
+    logging.info("✅ Shared core loaded successfully")
 except ImportError as e:
     ADAPTER_AVAILABLE = False
-    logging.warning(f"Shared core not available: {e}")
+    logging.error(f"❌ Shared core not available: {e} | Searched: {_shared_core_docker}, {_shared_core_local}")
 
 # Firebase service
 from services.firebase_admin_service import get_firebase_service
@@ -163,7 +177,9 @@ class CloudAsyncPulseProducer:
         This is the core replacement for desktop's cache update logic.
         """
         if not self._adapter:
-            logger.warning("NBA API adapter not available")
+            if not getattr(self, '_adapter_warned', False):
+                logger.warning("NBA API adapter not available — will not repeat this warning")
+                self._adapter_warned = True
             return
         
         if not self._firebase:

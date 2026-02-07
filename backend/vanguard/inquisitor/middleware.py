@@ -15,9 +15,28 @@ from ..core.context import get_request_id
 from ..utils.logger import get_logger
 from .sampler import get_sampler
 from .fingerprint import generate_error_fingerprint
-from ..archivist.storage import get_incident_storage
+
+# Defensive import — storage may fail to initialize
+_STORAGE_AVAILABLE = False
+_get_incident_storage = None
+try:
+    from ..archivist.storage import get_incident_storage as _get_incident_storage
+    _STORAGE_AVAILABLE = True
+except Exception as _import_err:
+    import logging
+    logging.warning(f"Incident storage import failed: {_import_err}")
 
 logger = get_logger(__name__)
+
+
+def _safe_get_storage():
+    """Safely get incident storage, returning None if unavailable."""
+    if not _STORAGE_AVAILABLE or _get_incident_storage is None:
+        return None
+    try:
+        return _get_incident_storage()
+    except Exception:
+        return None
 
 
 class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
@@ -34,48 +53,49 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
         endpoint = request.url.path
         
         # Check if endpoint is quarantined
-        try:
-            storage = get_incident_storage()
-            quarantine_doc = await storage.get_document(
-                collection="vanguard_quarantine",
-                document_id=endpoint.replace("/", "_")
-            )
-            
-            if quarantine_doc and quarantine_doc.get("active"):
-                from fastapi.responses import JSONResponse
-                logger.warning("quarantine_block", endpoint=endpoint)
-                return JSONResponse(
-                    status_code=503,
-                    content={
-                        "error": "Service temporarily unavailable",
-                        "reason": "Endpoint quarantined by Vanguard Surgeon",
-                        "contact": "Check Vanguard Control Room for details"
-                    }
+        storage = _safe_get_storage()
+        if storage is not None:
+            try:
+                quarantine_doc = await storage.get_document(
+                    collection="vanguard_quarantine",
+                    document_id=endpoint.replace("/", "_")
                 )
-        except Exception as quarantine_error:
-            logger.error("quarantine_check_failed", error=str(quarantine_error))
-        
-        # Check rate limits
-        try:
-            import random
-            storage = get_incident_storage()
-            rate_limit_doc = await storage.get_document(
-                collection="vanguard_rate_limits",
-                document_id=endpoint.replace("/", "_")
-            )
-            
-            if rate_limit_doc and rate_limit_doc.get("active"):
-                limit_pct = rate_limit_doc.get("limit_pct", 100)
-                # Drop requests above limit percentage
-                if random.randint(1, 100) > limit_pct:
+                
+                if quarantine_doc and quarantine_doc.get("active"):
                     from fastapi.responses import JSONResponse
-                    logger.info("rate_limit_drop", endpoint=endpoint, limit=limit_pct)
+                    logger.warning("quarantine_block", endpoint=endpoint)
                     return JSONResponse(
-                        status_code=429,
-                        content={"error": "Too many requests", "retry_after": 60}
+                        status_code=503,
+                        content={
+                            "error": "Service temporarily unavailable",
+                            "reason": "Endpoint quarantined by Vanguard Surgeon",
+                            "contact": "Check Vanguard Control Room for details"
+                        }
                     )
-        except Exception as rate_limit_error:
-            logger.error("rate_limit_check_failed", error=str(rate_limit_error))
+            except Exception as quarantine_error:
+                logger.error("quarantine_check_failed", error=str(quarantine_error))
+        
+            # Check rate limits
+            try:
+                import random
+                rate_limit_doc = await storage.get_document(
+                    collection="vanguard_rate_limits",
+                    document_id=endpoint.replace("/", "_")
+                )
+                
+                if rate_limit_doc and rate_limit_doc.get("active"):
+                    limit_pct = rate_limit_doc.get("limit_pct", 100)
+                    # Drop requests above limit percentage
+                    if random.randint(1, 100) > limit_pct:
+                        from fastapi.responses import JSONResponse
+                        logger.info("rate_limit_drop", endpoint=endpoint, limit=limit_pct)
+                        return JSONResponse(
+                            status_code=429,
+                            content={"error": "Too many requests", "retry_after": 60}
+                        )
+            except Exception as rate_limit_error:
+                logger.error("rate_limit_check_failed", error=str(rate_limit_error))
+
         
         # Check if we should fully trace this request
         sampler = get_sampler()
@@ -119,7 +139,9 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
             # Store incident to Archivist
             try:
                 from datetime import datetime, timezone
-                storage = get_incident_storage()
+                storage = _safe_get_storage()
+                if storage is None:
+                    raise RuntimeError("Storage unavailable")
                 incident: Incident = {
                     "fingerprint": fingerprint,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -213,7 +235,9 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
                     )
                     
                     # Create incident
-                    storage = get_incident_storage()
+                    storage = _safe_get_storage()
+                    if storage is None:
+                        raise RuntimeError("Storage unavailable")
                     incident: Incident = {
                         "fingerprint": fingerprint,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
