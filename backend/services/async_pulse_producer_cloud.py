@@ -177,9 +177,7 @@ class CloudAsyncPulseProducer:
         This is the core replacement for desktop's cache update logic.
         """
         if not self._adapter:
-            if not getattr(self, '_adapter_warned', False):
-                logger.warning("NBA API adapter not available — will not repeat this warning")
-                self._adapter_warned = True
+            logger.warning("NBA API adapter not available")
             return
         
         if not self._firebase:

@@ -23,9 +23,22 @@ _backend_path = Path(__file__).parent.parent
 if str(_backend_path) not in sys.path:
     sys.path.insert(0, str(_backend_path))
 
-# Shared core imports (copied from desktop)
+# Shared core imports
+# Docker layout: /app/shared_core/ (same level as services/)
+# Local dev layout: ../shared_core relative to backend/
 try:
-    sys.path.insert(0, str(_backend_path.parent / 'shared_core'))
+    _shared_core_docker = _backend_path / 'shared_core'       # /app/shared_core (Docker)
+    _shared_core_local = _backend_path.parent / 'shared_core'  # sibling dir (local dev)
+    
+    if _shared_core_docker.exists():
+        sys.path.insert(0, str(_shared_core_docker))
+    elif _shared_core_local.exists():
+        sys.path.insert(0, str(_shared_core_local))
+    else:
+        # Fallback: try both
+        sys.path.insert(0, str(_shared_core_docker))
+        sys.path.insert(0, str(_shared_core_local))
+    
     from adapters.nba_api_adapter import (
         AsyncNBAApiAdapter,
         NormalizedBoxScore,
@@ -39,22 +52,44 @@ try:
         calculate_in_game_usage
     )
     ADAPTER_AVAILABLE = True
+    logging.info("✅ Shared core loaded successfully")
 except ImportError as e:
     ADAPTER_AVAILABLE = False
-    logging.warning(f"Shared core not available: {e}")
+    logging.error(f"❌ Shared core not available: {e}")
 
 # Firebase service
 from services.firebase_admin_service import get_firebase_service
 
-# Cloud SQL data service for Alpha metrics
-from services.cloud_sql_data_service import (
-    get_team_defense_rating,
-    get_player_season_usage,
-    get_player_rolling_ts,
-    calculate_usage_vacuum,
-    calculate_heat_scale,
-    LEAGUE_AVG_DEF_RATING
-)
+# Cloud SQL data service for Alpha metrics (optional — not all deployments have this)
+try:
+    from services.cloud_sql_data_service import (
+        get_team_defense_rating,
+        get_player_season_usage,
+        get_player_rolling_ts,
+        calculate_usage_vacuum,
+        calculate_heat_scale,
+        LEAGUE_AVG_DEF_RATING
+    )
+    CLOUD_SQL_AVAILABLE = True
+except ImportError:
+    CLOUD_SQL_AVAILABLE = False
+    LEAGUE_AVG_DEF_RATING = 110.0
+    
+    def get_team_defense_rating(team_tricode: str):
+        """Fallback: return league average when Cloud SQL unavailable."""
+        return LEAGUE_AVG_DEF_RATING, 'average'
+    
+    def get_player_season_usage(player_id: str):
+        return 0.20  # League average usage rate
+    
+    def get_player_rolling_ts(player_id: str):
+        return 0.55  # League average TS%
+    
+    def calculate_usage_vacuum(current_usage, season_avg):
+        return False
+    
+    def calculate_heat_scale(current_ts, season_avg_ts):
+        return 'steady'
 
 logger = logging.getLogger(__name__)
 
