@@ -48,15 +48,36 @@ from services.firebase_admin_service import get_firebase_service
 from services.game_log_persister import GameLogPersister
 from services.pulse_stats_archiver import get_pulse_archiver
 
-# Cloud SQL data service for Alpha metrics
-from services.cloud_sql_data_service import (
-    get_team_defense_rating,
-    get_player_season_usage,
-    get_player_rolling_ts,
-    calculate_usage_vacuum,
-    calculate_heat_scale,
-    LEAGUE_AVG_DEF_RATING
-)
+# Cloud SQL data service for Alpha metrics (optional - not all deployments have this)
+try:
+    from services.cloud_sql_data_service import (
+        get_team_defense_rating,
+        get_player_season_usage,
+        get_player_rolling_ts,
+        calculate_usage_vacuum,
+        calculate_heat_scale,
+        LEAGUE_AVG_DEF_RATING
+    )
+    CLOUD_SQL_AVAILABLE = True
+except ImportError:
+    CLOUD_SQL_AVAILABLE = False
+    LEAGUE_AVG_DEF_RATING = 110.0
+    
+    def get_team_defense_rating(team_tricode: str):
+        """Fallback: return league average when Cloud SQL unavailable."""
+        return LEAGUE_AVG_DEF_RATING, 'average'
+    
+    def get_player_season_usage(player_id: str):
+        return 0.20  # League average usage rate
+    
+    def get_player_rolling_ts(player_id: str):
+        return 0.55  # League average TS%
+    
+    def calculate_usage_vacuum(current_usage, season_avg):
+        return False
+    
+    def calculate_heat_scale(current_ts, season_avg_ts):
+        return 'steady'
 
 logger = logging.getLogger(__name__)
 
