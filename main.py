@@ -38,6 +38,7 @@ if os.path.exists('vanguard'):
 else:
     logger.error("❌ vanguard/ directory NOT FOUND in container!")
 
+# Vanguard Sovereign Imports
 try:
     from vanguard.bootstrap import vanguard_lifespan
     from vanguard.middleware import RequestIDMiddleware
