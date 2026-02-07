@@ -7,7 +7,7 @@ Uses the new google.genai SDK.
 import json
 import re
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 from pydantic import BaseModel
 import logging
@@ -320,7 +320,7 @@ Otherwise set `ready_to_resolve: false` with clear reasoning.
             
             # Check expiration
             expires_at = datetime.fromisoformat(data["expires_at"].replace('Z', '+00:00'))
-            if expires_at < datetime.utcnow():
+            if expires_at < datetime.now(timezone.utc):
                 logger.info(f"Cached analysis expired for {fingerprint}")
                 return None
             

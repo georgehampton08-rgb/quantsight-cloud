@@ -425,7 +425,7 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
             session = await self._get_session()
             async with session.get(self.SCOREBOARD_URL) as response:
                 if response.status == 200:
-                    raw_data = await response.json()
+                    raw_data = await response.json(content_type=None)
                     return self.normalize_scoreboard(raw_data)
                 else:
                     logger.warning(f"Scoreboard fetch returned {response.status}")
@@ -472,7 +472,7 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
             session = await self._get_session()
             async with session.get(url) as response:
                 if response.status == 200:
-                    raw_data = await response.json()
+                    raw_data = await response.json(content_type=None)
                     return self.normalize_boxscore(raw_data)
                 else:
                     logger.debug(f"Boxscore {game_id} returned {response.status}")
