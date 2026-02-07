@@ -6,6 +6,7 @@ Autonomously adjusts Vanguard's operation mode based on system health.
 
 import asyncio
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Any
 
@@ -62,12 +63,21 @@ class EscalationEngine:
             # 1. Fetch current health results
             health_results = await self.monitor.run_all_checks()
             
+            # Exclude Redis from scoring on Cloud Run (not configured)
+            if os.getenv('K_SERVICE') and 'redis' in health_results:
+                health_results = {k: v for k, v in health_results.items() if k != 'redis'}
+            
             # 2. Calculate score
             # Note: component_score is 0-60 based on core systems
             component_score = self.calculator.calculate_component_score(health_results)
-            self._last_score = component_score
             
-            logger.info(f"Escalation Check: Health Score = {component_score:.1f}")
+            # Only log when score changes (reduce noise)
+            if component_score != self._last_score:
+                logger.info(f"Escalation Check: Health Score = {component_score:.1f} (was {self._last_score:.1f})")
+            else:
+                logger.debug(f"Escalation Check: Health Score = {component_score:.1f} (unchanged)")
+            
+            self._last_score = component_score
             
             # 3. Decision Logic
             # If core systems (NBA, Firestore) are down, we MUST protect

@@ -150,6 +150,10 @@ class CodebaseKnowledgeBase:
     
     def _get_recent_changes(self, days: int = 7) -> List[Dict]:
         """Get recent git commits"""
+        # Skip on Cloud Run — no .git directory available in container
+        if os.getenv('K_SERVICE'):
+            return []
+        
         try:
             repo = Repo(".")
             since = datetime.now() - timedelta(days=days)

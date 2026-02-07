@@ -23,16 +23,16 @@ from firestore_db import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ==================== LIVE PULSE CACHE (VPC-ENABLED) ====================
-# Initialize hot cache for live game stats (desktop pattern with VPC)
+# ==================== LIVE PULSE (CLOUD PRODUCER) ====================
+# Cloud Run uses CloudAsyncPulseProducer (started in main.py) for Firebase writes.
+# The old LivePulseCache SSE producer is REMOVED to avoid duplicate NBA API calls.
 try:
-    from services.live_pulse_service_cloud import get_pulse_cache
-    pulse_cache = get_pulse_cache()
-    pulse_cache_thread = pulse_cache.start_producer()  # Background NBA API polling every 10s
+    from services.async_pulse_producer_cloud import get_cloud_producer
     HAS_PULSE_CACHE = True
-    logger.info(f"[OK] LivePulseCache v{pulse_cache.VERSION} producer started (VPC-enabled)")
-except Exception as e:
-    logger.warning(f"[WARN] LivePulseCache not available: {e}")
+    pulse_cache = None  # No more SSE cache; live endpoints use cloud producer / Firestore
+    logger.info("[OK] Live pulse routing via CloudAsyncPulseProducer (Firebase)")
+except ImportError as e:
+    logger.warning(f"[WARN] CloudAsyncPulseProducer not available: {e}")
     HAS_PULSE_CACHE = False
     pulse_cache = None
 
@@ -433,15 +433,7 @@ async def get_matchup_roster(team_id: str, game_id: Optional[str] = Query(None))
             
             # Get live leaders if available
             live_leaders = {}
-            if HAS_PULSE_CACHE and pulse_cache:
-                leaders_data = pulse_cache.get_latest()
-                if leaders_data and 'leaders' in leaders_data:
-                    for leader in leaders_data.get('leaders', []):
-                        pid = str(leader.get('player_id', ''))
-                        if pid:
-                            live_leaders[pid] = leader
-            
-            # Also check Firestore live_leaders collection
+            # Read from Firestore live_leaders collection (written by CloudAsyncPulseProducer)
             try:
                 leaders_ref = db.collection('live_leaders').document('current')
                 leaders_doc = leaders_ref.get()
@@ -697,8 +689,8 @@ async def analyze_matchup(
         raise HTTPException(status_code=400, detail="Both home_team and away_team are required")
     
     try:
-        # Run multi-stat confluence analysis
-        confluence_data = multi_stat_engine.analyze_game(home_team.upper(), away_team.upper())
+        # Run multi-stat confluence analysis (now async with parallel H2H fetching)
+        confluence_data = await multi_stat_engine.analyze_game(home_team.upper(), away_team.upper())
         
         # Add game_id to response if provided
         if game_id:
@@ -765,8 +757,8 @@ async def live_stats_stream(request: Request):
     import json
     
     async def event_generator():
-        logger.info("[SSE] Client connected to /live/stream (VPC HOT CACHE)")
-        last_update_cycle = 0
+        logger.info("[SSE] Client connected to /live/stream (Firestore-backed)")
+        last_update_hash = None
         
         try:
             while True:
@@ -774,26 +766,29 @@ async def live_stats_stream(request: Request):
                     logger.info("[SSE] Client disconnected")
                     break
                 
-                if HAS_PULSE_CACHE and pulse_cache:
-                    data = pulse_cache.get_latest()
+                # Read live data from Firestore (written by CloudAsyncPulseProducer)
+                try:
+                    db = get_firestore_db()
+                    games_doc = db.collection('live_games').document('current').get()
                     
-                    # Only send if there's new data
-                    current_cycle = data.get('meta', {}).get('update_cycle', 0)
-                    if current_cycle != last_update_cycle:
-                        last_update_cycle = current_cycle
-                        yield {
-                            "event": "pulse",
-                            "data": json.dumps(data)
-                        }
-                else:
-                    # No cache available
+                    if games_doc.exists:
+                        data = games_doc.to_dict()
+                        # Simple change detection via update_cycle or hash
+                        current_hash = data.get('meta', {}).get('update_cycle', 0)
+                        if current_hash != last_update_hash:
+                            last_update_hash = current_hash
+                            yield {
+                                "event": "pulse",
+                                "data": json.dumps(data)
+                            }
+                except Exception as e:
                     yield {
                         "event": "error",
-                        "data": json.dumps({"error": "Live pulse cache not available"})
+                        "data": json.dumps({"error": f"Firestore read failed: {str(e)}"})
                     }
                 
-                # Check for updates every 1 second
-                await asyncio.sleep(1)
+                # Poll Firestore every 3 seconds (CloudAsyncPulseProducer writes every 10s)
+                await asyncio.sleep(3)
                 
         except asyncio.CancelledError:
             logger.info("[SSE] Live stream cancelled")
@@ -809,18 +804,27 @@ async def get_live_leaders_endpoint(limit: int = Query(10)):
     Get top live players from LivePulseCache by PIE.
     Used for Alpha Leaderboard component.
     """
-    if not HAS_PULSE_CACHE or not pulse_cache:
-        return {
-            "leaders": [],
-            "error": "Live pulse cache not available",
-            "count": 0
-        }
+    # Read leaders from Firestore (written by CloudAsyncPulseProducer)
+    try:
+        db = get_firestore_db()
+        leaders_ref = db.collection('live_leaders').document('current')
+        leaders_doc = leaders_ref.get()
+        if leaders_doc.exists:
+            leaders_list = leaders_doc.to_dict().get('leaders', [])[:limit]
+            return {
+                "leaders": leaders_list,
+                "count": len(leaders_list),
+                "timestamp": datetime.now().isoformat(),
+                "source": "firebase"
+            }
+    except Exception as e:
+        logger.warning(f"Failed to read live leaders from Firestore: {e}")
     
     return {
-        "leaders": pulse_cache.get_leaders(limit=limit),
-        "count": limit,
+        "leaders": [],
+        "count": 0,
         "timestamp": datetime.now().isoformat(),
-        "source": "vpc_hot_cache"
+        "source": "unavailable"
     }
 
 
@@ -884,14 +888,20 @@ def get_live_games():
     REST endpoint for current live game data.
     Returns the same data as /live/stream but as a single snapshot.
     """
-    if not HAS_PULSE_CACHE or not pulse_cache:
-        return {
-            "games": [],
-            "error": "Live pulse cache not available",
-            "meta": {"game_count": 0, "live_count": 0}
-        }
+    # Read live games from Firestore (written by CloudAsyncPulseProducer)
+    try:
+        db = get_firestore_db()
+        games_ref = db.collection('live_games').document('current')
+        games_doc = games_ref.get()
+        if games_doc.exists:
+            return games_doc.to_dict()
+    except Exception as e:
+        logger.warning(f"Failed to read live games from Firestore: {e}")
     
-    return pulse_cache.get_latest()
+    return {
+        "games": [],
+        "meta": {"game_count": 0, "live_count": 0, "source": "unavailable"}
+    }
 
 
 @router.get("/live/status")
@@ -900,13 +910,18 @@ def get_live_status():
     Health check for the live pulse system.
     Shows producer status, update count, and cache size.
     """
-    if not HAS_PULSE_CACHE or not pulse_cache:
-        return {
-            "status": "unavailable",
-            "error": "Live pulse cache not available"
-        }
+    # Return cloud producer status
+    try:
+        producer = get_cloud_producer()
+        if producer:
+            return producer.get_status()
+    except Exception as e:
+        logger.warning(f"Could not get cloud producer status: {e}")
     
-    return pulse_cache.get_status()
+    return {
+        "status": "unavailable",
+        "error": "Cloud producer not running"
+    }
 
 
 # ================== GAME LOGS ENDPOINTS ==================

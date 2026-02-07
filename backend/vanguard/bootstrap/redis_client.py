@@ -5,6 +5,7 @@ Async Redis connection pool with health checks.
 """
 
 from typing import Optional
+import os
 import redis.asyncio as redis_async
 from redis.asyncio import Redis, ConnectionPool
 
@@ -29,6 +30,10 @@ async def get_redis() -> Redis:
         return _redis_client
     
     config = get_vanguard_config()
+    
+    # Skip Redis if using default localhost on Cloud Run (no local Redis available)
+    if 'localhost' in config.redis_url and os.getenv('K_SERVICE'):
+        raise ConnectionError("Redis not available in Cloud Run (no REDIS_URL configured)")
     
     try:
         # Create connection pool
@@ -76,5 +81,8 @@ async def ping_redis() -> bool:
         await client.ping()
         return True
     except Exception as e:
-        logger.warning("redis_ping_failed", error=str(e))
+        # Only log warning once, not every 30s health check cycle
+        if not getattr(ping_redis, '_warned', False):
+            logger.warning("redis_ping_failed", error=str(e))
+            ping_redis._warned = True
         return False

@@ -7,7 +7,7 @@ Uses the new google.genai SDK.
 import json
 import re
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 from pydantic import BaseModel
 import logging
@@ -235,7 +235,7 @@ Return ONLY valid JSON. No markdown, no extra text.
             last_seen=incident['last_seen'],
             traceback=traceback,
             code_contexts=self._format_code_contexts(code_contexts or []),
-            system_time=datetime.utcnow().isoformat() + "Z",
+            system_time=datetime.now(timezone.utc).isoformat(),
             vanguard_mode=kwargs.get('system_context', {}).get('mode', 'UNKNOWN'),
             revision=kwargs.get('system_context', {}).get('revision', 'local'),
             available_routes=json.dumps(kwargs.get('system_context', {}).get('routes', []))
@@ -263,7 +263,7 @@ Return ONLY valid JSON. No markdown, no extra text.
                 raise ValueError(f"Missing required field: {field}")
         
         # Create analysis object
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
         
         return IncidentAnalysis(
@@ -280,7 +280,7 @@ Return ONLY valid JSON. No markdown, no extra text.
     
     def _create_fallback_analysis(self, incident: Dict) -> IncidentAnalysis:
         """Create basic analysis when AI is unavailable"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
         
         return IncidentAnalysis(
@@ -330,7 +330,7 @@ Return ONLY valid JSON. No markdown, no extra text.
             
             # Check expiration
             expires_at = datetime.fromisoformat(data["expires_at"].replace('Z', '+00:00'))
-            if expires_at < datetime.utcnow():
+            if expires_at < datetime.now(timezone.utc):
                 logger.info(f"Cached analysis expired for {fingerprint}")
                 return None
             

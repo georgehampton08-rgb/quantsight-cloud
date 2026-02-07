@@ -104,12 +104,14 @@ export const PlayerApi = {
         }
     },
     analyzeMatchup: async (playerId: string, opponent: string) => {
+        // Defensive: extract ID if opponent is accidentally passed as an object
+        const opponentId = typeof opponent === 'object' ? (opponent as any).id || String(opponent) : opponent;
         if (window.electronAPI) {
-            return window.electronAPI.analyzeMatchup(playerId, opponent);
+            return window.electronAPI.analyzeMatchup(playerId, opponentId);
         }
         // Browser fallback
         try {
-            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/matchup/${playerId}/${opponent}`);
+            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/matchup/${playerId}/${opponentId}`);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             return res.json();
         } catch (error) {

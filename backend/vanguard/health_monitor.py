@@ -46,7 +46,7 @@ class SystemHealthMonitor:
         Uses a lightweight endpoint to minimize impact.
         """
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=3.0) as client:
                 # Use scoreboard endpoint with old date (cached, fast)
                 start_time = datetime.now()
                 resp = await client.get(
@@ -82,7 +82,7 @@ class SystemHealthMonitor:
             return {
                 "status": "critical",
                 "error": "Timeout",
-                "details": "NBA API request timed out after 10s"
+                "details": "NBA API request timed out after 3s"
             }
         except Exception as e:
             return {
@@ -186,8 +186,19 @@ class SystemHealthMonitor:
                 "details": f"Firestore connection error: {type(e).__name__}"
             }
     
+    # Health check result caching (avoid hammering external APIs on every poll)
+    _last_check_results = None
+    _last_check_time = None
+    CACHE_TTL_SECONDS = 30
+    
     async def run_all_checks(self) -> Dict[str, Dict]:
-        """Run all health checks concurrently."""
+        """Run all health checks concurrently with 30s caching."""
+        # Return cached results if within TTL
+        now = datetime.now()
+        if self._last_check_results and self._last_check_time:
+            if (now - self._last_check_time).total_seconds() < self.CACHE_TTL_SECONDS:
+                return self._last_check_results
+        
         results = {}
         
         # Run checks in parallel
@@ -213,6 +224,10 @@ class SystemHealthMonitor:
                 # Report to Vanguard if unhealthy
                 if result.get('status') in ['warning', 'critical'] and self.archivist:
                     await self.report_health_incident(name, result)
+        
+        # Cache results
+        self._last_check_results = results
+        self._last_check_time = now
         
         return results
     

@@ -75,7 +75,7 @@ class GitHubContextFetcher:
     }
     
     def __init__(self):
-        self.token = os.getenv('GITHUB_TOKEN')
+        self.token = (os.getenv('GITHUB_TOKEN') or '').strip()
         self.repo = os.getenv('GITHUB_REPO', 'georgehampton08-rgb/quantsight-cloud')
         self.branch = os.getenv('GITHUB_BRANCH', 'main')
         self.base_url = f'https://api.github.com/repos/{self.repo}'
