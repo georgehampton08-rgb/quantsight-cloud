@@ -34,9 +34,40 @@ async def admin_status():
             "/admin/init-collections",
             "/admin/collections/status",
             "/admin/seed/sample-data",
-            "/admin/seed/all-teams"
+            "/admin/baselines/populate",
+            "/admin/baselines/status",
         ]
     }
+
+
+@router.post("/baselines/populate")
+async def populate_baselines():
+    """
+    Populate season baselines from NBA API → Firestore.
+    Fetches player season averages + team defense/pace.
+    Takes 15-30s due to NBA API rate limits.
+    """
+    try:
+        from services.baseline_populator import populate_all_baselines
+        result = await populate_all_baselines()
+        return result
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"Populator not available: {e}")
+    except Exception as e:
+        logger.error(f"Baseline population failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/baselines/status")
+async def baselines_status():
+    """
+    Get current season baseline cache status.
+    """
+    try:
+        from services.season_baseline_service import get_baseline_status
+        return get_baseline_status()
+    except ImportError:
+        return {"status": "service_not_available"}
 
 
 @router.post("/init-collections")

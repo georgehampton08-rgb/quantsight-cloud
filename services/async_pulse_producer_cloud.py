@@ -45,11 +45,19 @@ try:
         get_nba_adapter,
         is_garbage_time
     )
-    from engines.pie_calculator import calculate_live_pie
+    from engines.pie_calculator import calculate_live_pie, calculate_pie_percentile
     from calculators.advanced_stats import (
         calculate_true_shooting, 
         calculate_effective_fg,
-        calculate_in_game_usage
+        calculate_in_game_usage,
+        calculate_assist_rate,
+        calculate_per_36
+    )
+    from engines.fatigue_engine import get_in_game_fatigue_penalty
+    from calculators.matchup_grades import (
+        calculate_matchup_grade,
+        calculate_target_fade_classification,
+        calculate_confidence_score
     )
     ADAPTER_AVAILABLE = True
     logging.info("✅ Shared core loaded successfully")
@@ -60,36 +68,17 @@ except ImportError as e:
 # Firebase service
 from services.firebase_admin_service import get_firebase_service
 
-# Cloud SQL data service for Alpha metrics (optional — not all deployments have this)
-try:
-    from services.cloud_sql_data_service import (
-        get_team_defense_rating,
-        get_player_season_usage,
-        get_player_rolling_ts,
-        calculate_usage_vacuum,
-        calculate_heat_scale,
-        LEAGUE_AVG_DEF_RATING
-    )
-    CLOUD_SQL_AVAILABLE = True
-except ImportError:
-    CLOUD_SQL_AVAILABLE = False
-    LEAGUE_AVG_DEF_RATING = 110.0
-    
-    def get_team_defense_rating(team_tricode: str):
-        """Fallback: return league average when Cloud SQL unavailable."""
-        return LEAGUE_AVG_DEF_RATING, 'average'
-    
-    def get_player_season_usage(player_id: str):
-        return 0.20  # League average usage rate
-    
-    def get_player_rolling_ts(player_id: str):
-        return 0.55  # League average TS%
-    
-    def calculate_usage_vacuum(current_usage, season_avg):
-        return False
-    
-    def calculate_heat_scale(current_ts, season_avg_ts):
-        return 'steady'
+# Season baselines service (Firestore-backed, replaces dead cloud_sql_data_service)
+from services.season_baseline_service import (
+    get_team_defense_rating,
+    get_player_season_usage,
+    get_player_rolling_ts,
+    get_player_season_ppg,
+    calculate_usage_vacuum,
+    calculate_heat_scale,
+    LEAGUE_AVG_DEF_RATING,
+    warm_cache as warm_baseline_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +100,12 @@ class CloudAsyncPulseProducer:
         self._update_count = 0
         self._last_update_duration: float = 0.0
         self._firebase_write_errors = 0
+        
+        # Warm season baseline cache at startup
+        try:
+            warm_baseline_cache()
+        except Exception as e:
+            logger.warning(f"Could not warm baseline cache at startup: {e}")
         
         logger.info(f"🚀 CloudAsyncPulseProducer v{self.VERSION} initialized")
         if self._firebase:
@@ -223,6 +218,18 @@ class CloudAsyncPulseProducer:
                     away_score=game_info.away_score
                 )
                 
+                # Phase 3: Game-level intelligence
+                score_margin = abs(game_info.home_score - game_info.away_score)
+                game_phase = self._determine_game_phase(
+                    period=game_info.period,
+                    score_margin=score_margin,
+                    is_garbage_time=garbage_time_active
+                )
+                pace_multiplier = self._calculate_pace_multiplier(
+                    game_info.home_team_tricode,
+                    game_info.away_team_tricode
+                )
+                
                 # Build game state for Firebase
                 game_data = {
                     'game_id': game_id,
@@ -234,91 +241,157 @@ class CloudAsyncPulseProducer:
                     'period': game_info.period,
                     'status': game_info.status,
                     'is_garbage_time': garbage_time_active,
-                    'leaders': leaders[:10]  # Top 10 for this game
+                    # Phase 3 additions
+                    'game_phase': game_phase,
+                    'score_margin': score_margin,
+                    'pace_multiplier': pace_multiplier,
+                    'leaders': leaders[:15]  # Top 15 for this game
                 }
                 
                 # Write to Firebase (non-blocking)
                 asyncio.create_task(self._firebase.upsert_game_state(game_data))
             
-            # Step 5: Update global leaderboard (top 10 across all games)
+            # Step 5: Update global leaderboard (top 15 across all games)
             if all_leaders:
                 all_leaders.sort(key=lambda x: x['pie'], reverse=True)
-                top_10_leaders = all_leaders[:10]
+                top_15_leaders = all_leaders[:15]
                 
-                asyncio.create_task(self._firebase.upsert_live_leaders(top_10_leaders))
+                asyncio.create_task(self._firebase.upsert_live_leaders(top_15_leaders))
             
         except Exception as e:
             logger.error(f"❌ Firebase update failed: {e}", exc_info=True)
     
+    def _parse_minutes(self, minutes_str: str) -> float:
+        """Parse MM:SS or PT format minutes to float."""
+        try:
+            if ':' in minutes_str:
+                parts = minutes_str.split(':')
+                return float(parts[0]) + float(parts[1]) / 60
+            return float(minutes_str) if minutes_str else 0.0
+        except (ValueError, IndexError):
+            return 0.0
+
     def _extract_leaders_from_normalized(
         self, 
-        boxscore: 'NormalizedBoxScore',  # String annotation to avoid import-time NameError
+        boxscore: 'NormalizedBoxScore',
         home_team: str = '',
         away_team: str = ''
     ) -> List[Dict]:
-
         """
-        Extract player stats from normalized boxscore.
-        Simplified cloud version - no rolling averages (for now).
+        Extract per-player analytics from normalized boxscore.
+        Phase 2: Enhanced with PIE percentile, assist rate, fatigue,
+        per-36, +/- context, and Firestore-backed baselines.
         """
         leaders = []
+        game_info = boxscore.game_info
+        
+        # ─── Precompute team-level stats once per extraction ─────────────
+        home_stats = boxscore.get_team_stats(home_team) if home_team else {}
+        away_stats = boxscore.get_team_stats(away_team) if away_team else {}
+        
+        # Real PIE game denominator from both teams
+        game_pie_total = self._calculate_game_pie_denominator(home_stats, away_stats)
+        
+        # Elapsed game minutes for usage rate
+        elapsed_minutes = min(game_info.period * 12, 48) if game_info.period else 12
         
         for player in boxscore.all_active_players():
-            # Calculate PIE using shared_core
+            minutes_played = self._parse_minutes(player.minutes)
+            opponent_team = away_team if player.team_tricode == home_team else home_team
+            team_stats = home_stats if player.team_tricode == home_team else away_stats
+            
+            # ═══ CORE METRICS ═══════════════════════════════════════════
+            
+            # PIE — now with real game denominator
             pie = calculate_live_pie(
                 pts=player.pts, fgm=player.fgm, fga=player.fga,
                 ftm=player.ftm, fta=player.fta,
                 oreb=player.oreb, dreb=player.dreb,
                 ast=player.ast, stl=player.stl, blk=player.blk,
-                pf=player.pf, tov=player.tov
+                pf=player.pf, tov=player.tov,
+                game_total_estimate=game_pie_total
             )
             
-            # Calculate efficiency metrics
+            # PIE percentile (1-100 league ranking)
+            pie_percentile = calculate_pie_percentile(pie)
+            
+            # Efficiency
             ts_pct = round(calculate_true_shooting(player.pts, player.fga, player.fta), 4)
             efg_pct = round(calculate_effective_fg(player.fgm, player.fg3m, player.fga), 4)
             
-            # Determine opponent for matchup context
-            opponent_team = away_team if player.team_tricode == home_team else home_team
+            # ═══ +/- CONTEXT ════════════════════════════════════════════
+            pm_per_min = round(player.plus_minus / minutes_played, 3) if minutes_played > 0 else 0.0
+            if pm_per_min > 0.5:
+                pm_label = 'dominant'
+            elif pm_per_min > 0:
+                pm_label = 'positive'
+            elif pm_per_min > -0.5:
+                pm_label = 'negative'
+            else:
+                pm_label = 'liability'
             
-            # =================================================================
-            # ALPHA PATCHER: USAGE VACUUM DETECTION (LIVE)
-            # =================================================================
+            # ═══ ADVANCED METRICS ═══════════════════════════════════════
+            
+            # Assist rate
+            ast_rate = 0.0
+            try:
+                if team_stats and minutes_played > 0:
+                    ast_rate = round(calculate_assist_rate(
+                        ast=player.ast,
+                        minutes=minutes_played,
+                        team_fgm=team_stats.get('fgm', 0),
+                        player_fgm=player.fgm,
+                        team_minutes=elapsed_minutes * 5
+                    ), 4)
+            except Exception:
+                pass
+            
+            # In-game fatigue penalty
+            fatigue_penalty = 0.0
+            try:
+                fatigue_penalty = round(get_in_game_fatigue_penalty(
+                    continuous_minutes=minutes_played
+                ), 4)
+            except Exception:
+                pass
+            
+            # Per-36 normalization
+            pts_per_36 = round(calculate_per_36(player.pts, minutes_played), 1)
+            reb_per_36 = round(calculate_per_36(player.reb, minutes_played), 1)
+            
+            # ═══ USAGE & VACUUM ═════════════════════════════════════════
             usage_rate = None
             usage_vacuum = False
             
             try:
-                # Calculate current in-game usage rate
-                team_stats = boxscore.get_team_stats(player.team_tricode)
-                if team_stats and ADAPTER_AVAILABLE:
-                    usage_rate = calculate_in_game_usage(
-                        player_pts=player.pts,
-                        player_fga=player.fga,
-                        player_fta=player.fta,
-                        player_tov=player.tov,
-                        team_fga=team_stats.fga,
-                        team_fta=team_stats.fta,
-                        team_tov=team_stats.tov
-                    )
+                if team_stats and ADAPTER_AVAILABLE and minutes_played > 0:
+                    usage_rate = round(calculate_in_game_usage(
+                        fga=player.fga,
+                        fta=player.fta,
+                        tov=player.tov,
+                        minutes=minutes_played,
+                        team_fga=team_stats.get('fga', 0),
+                        team_fta=team_stats.get('fta', 0),
+                        team_tov=team_stats.get('tov', 0),
+                        elapsed_game_minutes=elapsed_minutes
+                    ), 2)
                     
-                    # Query season baseline from Cloud SQL
                     season_avg_usage = get_player_season_usage(player.player_id)
-                    usage_vacuum = calculate_usage_vacuum(usage_rate, season_avg_usage)
+                    usage_vacuum = calculate_usage_vacuum(
+                        usage_rate / 100.0 if usage_rate else 0, 
+                        season_avg_usage
+                    )
             except Exception as e:
                 logger.debug(f"Usage calculation failed for {player.name}: {e}")
             
-            # =================================================================
-            # ALPHA PATCHER: MATCHUP DIFFICULTY DETECTION (LIVE)
-            # =================================================================
+            # ═══ MATCHUP & DEFENSE ══════════════════════════════════════
             opponent_def_rating, matchup_difficulty = get_team_defense_rating(opponent_team)
             
-            # =================================================================
-            # ALPHA PATCHER: HEAT SCALE CALCULATION (LIVE)
-            # =================================================================
+            # ═══ HEAT SCALE ═════════════════════════════════════════════
             season_avg_ts = get_player_rolling_ts(player.player_id)
             heat_scale = calculate_heat_scale(ts_pct, season_avg_ts)
             
-            # Detect garbage time
-            game_info = boxscore.game_info
+            # ═══ GARBAGE TIME ═══════════════════════════════════════════
             player_is_garbage_time = is_garbage_time(
                 period=game_info.period,
                 clock_str=game_info.clock,
@@ -326,24 +399,94 @@ class CloudAsyncPulseProducer:
                 away_score=game_info.away_score
             )
             
+            # ═══ BETTING SIGNALS (Phase 4) ═══════════════════════════════
+            betting_signals = {}
+            try:
+                season_ppg = get_player_season_ppg(player.player_id)
+                
+                # Project total points from current pace
+                expected_minutes = 36.0  # Typical starter minutes
+                projected_pts = round(pts_per_36 * (expected_minutes / 36), 1)
+                
+                # TARGET/FADE classification
+                tf_class, tf_reason = calculate_target_fade_classification(
+                    projection=projected_pts,
+                    threshold=season_ppg
+                )
+                
+                # Defense friction modifier (how much harder/easier the matchup is)
+                defense_friction = (LEAGUE_AVG_DEF_RATING - opponent_def_rating) / 100.0
+                
+                # Matchup grade (A-F)
+                grade, grade_score = calculate_matchup_grade(
+                    projected_points=projected_pts,
+                    matchup_bonus=0.0,
+                    friction_modifier=defense_friction
+                )
+                
+                # Confidence score
+                confidence, conf_breakdown = calculate_confidence_score(
+                    sample_size=0,  # No H2H data yet
+                    h2h_weight=0.0,
+                    form_clarity=0.05 if heat_scale == 'hot' else (0.02 if heat_scale == 'steady' else 0.0),
+                    environment_balance=0.05
+                )
+                
+                # Delta vs season average
+                delta_vs_season = round(projected_pts - season_ppg, 1) if season_ppg > 0 else 0.0
+                
+                betting_signals = {
+                    'target_fade': tf_class,
+                    'target_fade_reason': tf_reason,
+                    'matchup_grade': grade,
+                    'matchup_score': round(grade_score, 1),
+                    'confidence': round(confidence, 3),
+                    'projected_pts': projected_pts,
+                    'season_ppg': season_ppg,
+                    'vs_season_avg': delta_vs_season,
+                }
+            except Exception as e:
+                logger.debug(f"Betting signal calculation failed for {player.name}: {e}")
+            
+            # ═══ BUILD LEADER ENTRY ═════════════════════════════════════
             leaders.append({
+                # Identity
                 'player_id': player.player_id,
                 'name': player.name,
                 'team': player.team_tricode,
+                'opponent': opponent_team,
+                
+                # Core metrics (improved)
                 'pie': pie,
-                'plus_minus': player.plus_minus,
+                'pie_percentile': pie_percentile,
                 'ts_pct': ts_pct,
                 'efg_pct': efg_pct,
-                'opponent': opponent_team,
+                'plus_minus': player.plus_minus,
+                'pm_per_min': pm_per_min,
+                'pm_label': pm_label,
                 'minutes': player.minutes,
-                'is_garbage_time': player_is_garbage_time,
-                # Alpha metrics (placeholders until Cloud SQL)
+                
+                # Advanced metrics (new)
+                'ast_rate': ast_rate,
+                'fatigue_penalty': fatigue_penalty,
+                'pts_per_36': pts_per_36,
+                'reb_per_36': reb_per_36,
+                
+                # Context signals (now real from Firestore)
                 'usage_rate': usage_rate,
                 'usage_vacuum': usage_vacuum,
                 'opponent_def_rating': opponent_def_rating,
                 'matchup_difficulty': matchup_difficulty,
                 'season_avg_ts': season_avg_ts,
                 'heat_scale': heat_scale,
+                
+                # Betting signals (Phase 4 — frontend-facing)
+                'betting_signals': betting_signals,
+                
+                # Game state
+                'is_garbage_time': player_is_garbage_time,
+                
+                # Raw stats (expanded)
                 'stats': {
                     'pts': player.pts,
                     'reb': player.reb,
@@ -351,15 +494,78 @@ class CloudAsyncPulseProducer:
                     'stl': player.stl,
                     'blk': player.blk,
                     'fg3m': player.fg3m,
+                    'fgm': player.fgm,
+                    'fga': player.fga,
+                    'ftm': player.ftm,
+                    'fta': player.fta,
+                    'oreb': player.oreb,
+                    'dreb': player.dreb,
                     'pf': player.pf,
                     'tov': player.tov
                 }
             })
-
         
         # Sort by PIE descending
         leaders.sort(key=lambda x: x['pie'], reverse=True)
         return leaders
+    
+    @staticmethod
+    def _calculate_game_pie_denominator(home_stats: dict, away_stats: dict) -> float:
+        """Calculate real PIE game denominator from both teams' combined stats."""
+        total = 0.0
+        for stats in [home_stats, away_stats]:
+            if not stats:
+                continue
+            pts = stats.get('pts', 0) or 0
+            fgm = stats.get('fgm', 0) or 0
+            fga = stats.get('fga', 0) or 0
+            ftm = stats.get('ftm', 0) or 0
+            fta = stats.get('fta', 0) or 0
+            tov = stats.get('tov', 0) or 0
+            total += (pts + fgm + ftm - fga - fta - tov)
+        
+        # Minimum 10 to prevent division issues early in games
+        return max(total, 10.0)
+    
+    @staticmethod
+    def _determine_game_phase(period: int, score_margin: int, is_garbage_time: bool) -> str:
+        """
+        Classify the current game phase for contextual decisions.
+        
+        Returns: 'clutch', 'blowout', 'garbage', or 'normal'
+        """
+        if is_garbage_time:
+            return 'garbage'
+        
+        # Clutch: Q4 or OT with margin <= 5
+        if period >= 4 and score_margin <= 5:
+            return 'clutch'
+        
+        # Blowout: any period with margin >= 20
+        if score_margin >= 20:
+            return 'blowout'
+        
+        return 'normal'
+    
+    @staticmethod
+    def _calculate_pace_multiplier(home_team: str, away_team: str) -> float:
+        """
+        Calculate game pace multiplier from team baselines.
+        Uses average of both teams' pace / league average.
+        
+        Returns: ~1.0 for average pace, >1.0 for fast, <1.0 for slow.
+        """
+        try:
+            from services.season_baseline_service import get_team_pace
+            
+            home_pace = get_team_pace(home_team)
+            away_pace = get_team_pace(away_team)
+            avg_pace = (home_pace + away_pace) / 2
+            
+            # Normalize to league average (100.0 possessions per 48 min)
+            return round(avg_pace / 100.0, 3)
+        except Exception:
+            return 1.0
     
     def get_status(self) -> Dict:
         """Get producer status for health checks."""
