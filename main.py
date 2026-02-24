@@ -168,13 +168,9 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Nexus service not available: {e}")
 
-# Include game logs routes
-try:
-    from api.game_logs_routes import router as game_logs_router
-    app.include_router(game_logs_router)
-    logger.info("✅ Game logs routes registered")
-except ImportError as e:
-    logger.warning(f"⚠️ Game logs routes not available: {e}")
+# Game logs routes: /api/game-logs is already defined in public_routes.py with
+# Firestore-backed implementation. The separate game_logs_routes.py was a placeholder
+# that shadowed the real endpoint. Removed to prevent duplicate route conflicts.
 
 # Include H2H population routes
 try:
@@ -199,8 +195,8 @@ if VANGUARD_AVAILABLE:
         
     # Vanguard Admin API (incident management) - separate try block
     try:
-        from vanguard.api.admin_routes import router as admin_router
-        app.include_router(admin_router)
+        from vanguard.api.admin_routes import router as vanguard_admin_router
+        app.include_router(vanguard_admin_router)
         logger.info("✅ Vanguard admin routes registered at /vanguard/admin/*")
     except ImportError as e:
         logger.warning(f"⚠️ Vanguard admin router not available: {e}")
@@ -226,7 +222,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 

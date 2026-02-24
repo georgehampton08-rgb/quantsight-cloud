@@ -210,20 +210,8 @@ async def search_players_endpoint(q: str = Query("")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/roster/{team_id}")
-async def get_team_roster(team_id: str):
-    """
-    Get roster (players) for a specific team
-    """
-    try:
-        players = get_players_by_team(team_id.upper())
-        
-        logger.info(f"✅ Returned {len(players)} players for team {team_id}")
-        return players
-        
-    except Exception as e:
-        logger.error(f"Error fetching roster for {team_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# NOTE: /roster/{team_id} is defined below (L373) with active_only filtering + 404 handling.
+# The duplicate here was removed to prevent route shadowing.
 
 
 # ================== NEXUS ENDPOINTS ==================
@@ -372,16 +360,29 @@ async def get_matchup_lab_games(force_refresh: bool = Query(False)):
 
 @router.get("/roster/{team_id}")
 async def get_roster(team_id: str):
-    """Get team roster from players collection"""
+    """Get team roster from players collection.
+    Returns wrapped format: {team_id, team_name, roster, source, count}
+    matching the desktop API contract expected by the frontend.
+    """
     try:
         players = get_players_by_team(team_id, active_only=True)
-        
+
         if not players:
             raise HTTPException(status_code=404, detail=f"No roster found for team {team_id}")
-        
+
+        # Get team name from team data
+        team = get_team_by_tricode(team_id)
+        team_name = team.get('full_name', team.get('name', team_id)) if team else team_id
+
         logger.info(f"✅ Returned {len(players)} players for {team_id}")
-        return players
-        
+        return {
+            "team_id": team_id.upper(),
+            "team_name": team_name,
+            "roster": players,
+            "source": "firestore",
+            "count": len(players)
+        }
+
     except HTTPException:
         raise
     except Exception as e:
@@ -452,10 +453,8 @@ async def save_gemini_key(data: dict):
     }
 
 
-@router.get("/matchup-lab/games")
-async def get_matchup_lab_games():
-    """Get today's games for Matchup Lab - reuses schedule endpoint"""
-    return await get_schedule()
+# NOTE: /matchup-lab/games is defined above (L332) with full NBAScheduleService implementation.
+# The duplicate stub here was removed to prevent route shadowing.
 
 
 @router.get("/analyze/usage-vacuum")
@@ -728,39 +727,9 @@ def get_live_status():
         }
     
     return pulse_cache.get_status()
-@router.get("/live/games")
-async def get_live_games_endpoint():
-    """Get all currently live NBA games from Firestore."""
-    try:
-        db = get_firestore_db()
-        
-        # Query live games collection
-        games_ref = db.collection('live_games')
-        docs = games_ref.stream()
-        
-        live_games = []
-        for doc in docs:
-            game_data = doc.to_dict()
-            game_data['game_id'] = doc.id
-            
-            # Only include if status is 'live'
-            if game_data.get('status') == 'live':
-                live_games.append(game_data)
-        
-        return {
-            "status": "ok",
-            "count": len(live_games),
-            "games": live_games,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"[LiveGames] Error: {e}")
-        return {
-            "status": "error",
-            "games": [],
-            "error": str(e)
-        }
+# NOTE: /live/games is defined above (L702) using pulse cache (hot data).
+# The duplicate Firestore-direct query was removed to prevent route shadowing.
+# If Firestore-direct live games query is needed, use a different path (e.g., /live/games/firestore).
 
 
 # ================== GAME LOGS ENDPOINTS ==================

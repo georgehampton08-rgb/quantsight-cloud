@@ -9,8 +9,13 @@ import os
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from git import Repo
 import logging
+
+try:
+    from git import Repo
+    HAS_GIT = True
+except ImportError:
+    HAS_GIT = False
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +155,9 @@ class CodebaseKnowledgeBase:
     
     def _get_recent_changes(self, days: int = 7) -> List[Dict]:
         """Get recent git commits"""
+        if not HAS_GIT:
+            logger.info("GitPython not available, skipping recent changes")
+            return []
         try:
             repo = Repo(".")
             since = datetime.now() - timedelta(days=days)

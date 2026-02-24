@@ -31,11 +31,13 @@ async def get_redis() -> Redis:
     config = get_vanguard_config()
     
     try:
-        # Create connection pool
+        # Create connection pool with connect timeout
         _redis_pool = ConnectionPool.from_url(
             config.redis_url,
             max_connections=config.redis_max_connections,
             decode_responses=True,  # Auto-decode bytes to strings
+            socket_connect_timeout=3,  # Fail fast if Redis unreachable
+            socket_timeout=3,
         )
         
         # Create Redis client
@@ -70,11 +72,13 @@ async def ping_redis() -> bool:
     """
     Health check: Ping Redis.
     Returns True if healthy, False otherwise.
+    Uses a 2-second timeout to avoid blocking the health endpoint.
     """
+    import asyncio
     try:
-        client = await get_redis()
-        await client.ping()
+        client = await asyncio.wait_for(get_redis(), timeout=2.0)
+        await asyncio.wait_for(client.ping(), timeout=2.0)
         return True
-    except Exception as e:
+    except (asyncio.TimeoutError, Exception) as e:
         logger.warning("redis_ping_failed", error=str(e))
         return False

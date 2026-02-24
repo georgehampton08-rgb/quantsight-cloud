@@ -44,6 +44,16 @@ stratos_narrative_relay/
 apex_data_vault/
 kaggle_data_feed/
 
+# Dead backend copies (not used by cloud main.py, saves ~80MB)
+backend/
+
+# Frontend/Electron assets (not used by cloud API)
+node_modules/
+electron/
+src/
+public/
+assets/
+
 # Git
 .git/
 .gitignore
@@ -52,13 +62,20 @@ kaggle_data_feed/
 *.md
 !README.md
 
-# Scripts (not needed in runtime)
+# Scripts and tests (not needed in runtime)
 *.ps1
 *.sh
-cloud_ignition.ps1
-test_docker_build.ps1
-deploy_cloud_run.sh
+*.bat
+test_*.py
+tests/
+*_test.py
+verify_*.py
+check_*.py
+scan_*.py
+stress_*.py
+comprehensive_*.py
+expanded_*.py
 
 # Build artifacts
-backend/data/*.db
-backend/data/*.db-journal
+*.db
+*.db-journal
