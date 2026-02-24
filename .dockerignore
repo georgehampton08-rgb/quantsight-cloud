@@ -44,8 +44,17 @@ stratos_narrative_relay/
 apex_data_vault/
 kaggle_data_feed/
 
-# Dead backend copies (not used by cloud main.py, saves ~80MB)
-backend/
+# Root-level stale copies (backend/ is the authoritative source — exclude duplicates)
+# These were previously deployed but backend/ is now the source of truth
+vanguard/
+api/
+services/
+shared_core/
+aegis/
+nexus/
+engines/
+matchup/
+core/
 
 # Frontend/Electron assets (not used by cloud API)
 node_modules/

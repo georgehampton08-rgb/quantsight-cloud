@@ -2,6 +2,9 @@
 Cloud Admin Routes - Firestore Database Initialization & Data Seeding
 ====================================================================
 Protected endpoints for database management (call once per environment).
+
+Feature flags used:
+  FEATURE_SEED_ADMIN — gates /admin/seed/* endpoints (default: false in cloud)
 """
 import os
 import logging
@@ -24,16 +27,23 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/status")
 async def admin_status():
     """
-    Quick admin status check - works without Firestore
+    Quick admin status check - works without Firestore.
+    Now surfaces feature flag states for observability.
     """
+    try:
+        from vanguard.core.feature_flags import flag_defaults
+        flags = flag_defaults()
+    except ImportError:
+        flags = {}
     return {
         "status": "admin_routes_active",
         "timestamp": datetime.utcnow().isoformat(),
+        "feature_flags": flags,
         "endpoints_available": [
             "/admin/status",
             "/admin/init-collections",
             "/admin/collections/status",
-            "/admin/seed/sample-data",
+            "/admin/seed/sample-data (requires FEATURE_SEED_ADMIN=true)",
             "/admin/seed/all-teams"
         ]
     }
@@ -101,10 +111,23 @@ async def get_collections_status():
 
 
 @router.post("/seed/sample-data")
-async def seed_sample_data():
+async def seed_sample_data(
+    _confirmed: bool = False  # kept for backward compat; flag is the real guard
+):
     """
-    Seed Firestore with sample data (for testing)
+    Seed Firestore with sample data (for testing).
+
+    Requires FEATURE_SEED_ADMIN=true. Returns 403 in cloud unless explicitly enabled.
     """
+    from vanguard.core.feature_flags import flag, forbidden_response
+    if not flag("FEATURE_SEED_ADMIN"):
+        raise HTTPException(
+            status_code=403,
+            detail=forbidden_response(
+                "Seed endpoint is disabled in this environment. Set FEATURE_SEED_ADMIN=true to enable.",
+                "FEATURE_SEED_ADMIN"
+            )
+        )
     try:
         sample_team = {
             "abbreviation": "LAL",

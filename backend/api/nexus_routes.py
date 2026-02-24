@@ -3,11 +3,17 @@ Nexus Hub API Routes
 ====================
 Exposes Nexus Hub functionality via REST API.
 
-Provides endpoints for:
-- System overview and health monitoring
-- Route recommendations
-- Cooldown management
-- Performance metrics
+DEPLOYMENT STATUS:
+  Cloud Run:  NEXUS_AVAILABLE=False (NexusHub is a desktop-only dependency).
+              All endpoints return a structured 503 when the hub is not loaded.
+  Desktop:    NEXUS_AVAILABLE=True — full functionality enabled.
+
+Feature Flag: FEATURE_NEXUS_ENABLED (default: False in cloud)
+  When False: endpoints return structured 503 (soft-disable, not HTTP 200)
+  When True:  endpoints resolve against live NexusHub
+
+IMPORTANT: Do NOT return HTTP 200 with {"status":"unavailable"} — that
+           confuses monitoring and masks real failures. Use HTTP 503 + detail.
 """
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
@@ -26,26 +32,21 @@ except ImportError as e:
     NEXUS_AVAILABLE = False
 
 
+def _nexus_unavailable_detail() -> dict:
+    """Standard 503 detail body for all unavailable Nexus endpoints."""
+    from vanguard.core.feature_flags import flag, disabled_response
+    return disabled_response("FEATURE_NEXUS_ENABLED", "Nexus Hub")
+
+
 @router.get("/overview")
 async def get_nexus_overview():
     """
     Get complete Nexus Hub system overview.
-    
-    Returns detailed information about:
-    - System status and uptime
-    - Registered endpoints
-    - Health status
-    - Routing statistics
-    - Queue metrics
-    - Error statistics
+    Returns 503 in cloud (NexusHub is desktop-only).
     """
     if not NEXUS_AVAILABLE:
-        return {
-            "status": "unavailable",
-            "message": "Nexus Hub module not loaded",
-            "reason": "Desktop-only feature or missing dependencies"
-        }
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         overview = hub.get_system_overview()
@@ -58,21 +59,12 @@ async def get_nexus_overview():
 @router.get("/health")
 async def get_nexus_health():
     """
-    Get unified health status for all services.
-    
-    Returns health status for:
-    - NBA API
-    - Database
-    - Aegis components
-    - System resources
+    Get Nexus unified health status.
+    Returns 503 in cloud (NexusHub is desktop-only).
     """
     if not NEXUS_AVAILABLE:
-        return {
-            "status": "unavailable",
-            "overall": "unknown",
-            "services": {}
-        }
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         health = hub.get_health()
@@ -86,13 +78,11 @@ async def get_nexus_health():
 async def get_active_cooldowns():
     """
     Get all active service cooldowns.
-    
-    Returns dictionary of services currently in cooldown mode
-    with their expiration times and reasons.
+    Returns 503 in cloud (NexusHub is desktop-only).
     """
     if not NEXUS_AVAILABLE:
-        return {}
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         return hub.get_cooldowns()
@@ -104,17 +94,11 @@ async def get_active_cooldowns():
 @router.get("/route-matrix")
 async def get_route_matrix():
     """
-    Get routing matrix showing recommended strategies for all endpoints.
-    
-    Returns list of endpoints with their:
-    - Path
-    - Recommended strategy (cache, direct, race)
-    - Cache availability
-    - Expected latency
+    Get routing matrix. Returns 503 in cloud (NexusHub is desktop-only).
     """
     if not NEXUS_AVAILABLE:
-        return []
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         return hub.get_route_matrix()
@@ -131,22 +115,11 @@ async def get_route_recommendation(
 ):
     """
     Get routing recommendation for a specific path.
-    
-    Args:
-        path: API path to get recommendation for
-        priority: Request priority level
-        force_fresh: Whether to bypass cache
-        
-    Returns:
-        RouteDecision with recommended strategy and metadata
+    Returns 503 in cloud (NexusHub is desktop-only).
     """
     if not NEXUS_AVAILABLE:
-        return {
-            "strategy": "direct",
-            "cache_available": False,
-            "reason": "Nexus Hub not available"
-        }
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         context = {}
@@ -154,7 +127,7 @@ async def get_route_recommendation(
             context["priority"] = priority
         if force_fresh:
             context["force_fresh"] = force_fresh
-            
+
         decision = hub.recommend_route(f"/{path}", context if context else None)
         return decision.to_dict()
     except Exception as e:
@@ -168,21 +141,11 @@ async def enter_cooldown(
     duration: int = Query(60, description="Cooldown duration in seconds", ge=1, le=3600)
 ):
     """
-    Manually put a service in cooldown mode.
-    
-    Args:
-        service: Service name (e.g., 'nba_api', 'database')
-        duration: Cooldown duration in seconds (1-3600)
-        
-    Returns:
-        Confirmation with service name and duration
+    Manually put a service in cooldown. Returns 503 in cloud.
     """
     if not NEXUS_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Nexus Hub not available - cooldown management disabled"
-        )
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         hub.enter_cooldown(service, duration)
@@ -201,20 +164,11 @@ async def enter_cooldown(
 @router.delete("/cooldown/{service}")
 async def exit_cooldown(service: str):
     """
-    Manually exit a service from cooldown mode.
-    
-    Args:
-        service: Service name to exit from cooldown
-        
-    Returns:
-        Confirmation of cooldown exit
+    Manually exit a service from cooldown. Returns 503 in cloud.
     """
     if not NEXUS_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Nexus Hub not available - cooldown management disabled"
-        )
-    
+        raise HTTPException(status_code=503, detail=_nexus_unavailable_detail())
+
     try:
         hub = get_nexus_hub()
         hub.exit_cooldown(service)
