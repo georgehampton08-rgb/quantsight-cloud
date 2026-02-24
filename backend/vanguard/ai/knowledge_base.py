@@ -9,7 +9,12 @@ import os
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from git import Repo
+try:
+    from git import Repo
+    HAS_GIT = True
+except ImportError:
+    Repo = None
+    HAS_GIT = False
 import logging
 
 logger = logging.getLogger(__name__)
@@ -150,8 +155,8 @@ class CodebaseKnowledgeBase:
     
     def _get_recent_changes(self, days: int = 7) -> List[Dict]:
         """Get recent git commits"""
-        # Skip on Cloud Run — no .git directory available in container
-        if os.getenv('K_SERVICE'):
+        # Skip on Cloud Run — no .git directory or gitpython available in container
+        if os.getenv('K_SERVICE') or not HAS_GIT:
             return []
         
         try:
