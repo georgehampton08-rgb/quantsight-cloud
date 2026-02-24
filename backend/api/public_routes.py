@@ -423,6 +423,42 @@ async def get_matchup_roster(team_id: str, game_id: Optional[str] = Query(None))
         players = get_players_by_team(team_id.upper(), active_only=True)
         
         if not players:
+            # --- Firestore empty: fall back to NBA API ---
+            logger.warning(f"[MATCHUP ROSTER] Firestore empty for {team_id}, trying NBA API fallback")
+            try:
+                from services.h2h_fetcher import get_h2h_fetcher
+                # Use CommonTeamRoster via nba_api
+                from nba_api.stats.endpoints import commonteamroster
+                # Map abbreviation to numeric team id
+                NBA_TEAM_IDS = {
+                    "ATL": 1610612737, "BOS": 1610612738, "BKN": 1610612751, "CHA": 1610612766,
+                    "CHI": 1610612741, "CLE": 1610612739, "DAL": 1610612742, "DEN": 1610612743,
+                    "DET": 1610612765, "GSW": 1610612744, "HOU": 1610612745, "IND": 1610612754,
+                    "LAC": 1610612746, "LAL": 1610612747, "MEM": 1610612763, "MIA": 1610612748,
+                    "MIL": 1610612749, "MIN": 1610612750, "NOP": 1610612740, "NYK": 1610612752,
+                    "OKC": 1610612760, "ORL": 1610612753, "PHI": 1610612755, "PHX": 1610612756,
+                    "POR": 1610612757, "SAC": 1610612758, "SAS": 1610612759, "TOR": 1610612761,
+                    "UTA": 1610612762, "WAS": 1610612764,
+                }
+                numeric_id = NBA_TEAM_IDS.get(team_id.upper())
+                if numeric_id:
+                    roster_ep = commonteamroster.CommonTeamRoster(team_id=numeric_id, timeout=10)
+                    roster_df = roster_ep.get_data_frames()[0]
+                    players = []
+                    for _, row in roster_df.iterrows():
+                        players.append({
+                            "player_id": str(row.get("PLAYER_ID", "")),
+                            "name": row.get("PLAYER", "Unknown"),
+                            "position": row.get("POSITION", ""),
+                            "jersey_number": str(row.get("NUM", "")),
+                            "team_abbreviation": team_id.upper(),
+                            "is_active": True,
+                        })
+                    logger.info(f"[MATCHUP ROSTER] NBA API fallback: {len(players)} players for {team_id}")
+            except Exception as nba_err:
+                logger.error(f"[MATCHUP ROSTER] NBA API fallback failed: {nba_err}")
+
+        if not players:
             raise HTTPException(status_code=404, detail=f"No roster found for team {team_id}")
         
         # Try to enrich with live Firebase stats

@@ -32,6 +32,9 @@ class BulkResolveRequest(BaseModel):
 class ResolveAllRequest(BaseModel):
     confirm: bool
     resolution_notes: Optional[str] = "Batch resolution"
+    exclude_red: bool = False          # Skip RED-severity incidents
+    created_before: Optional[str] = None  # ISO timestamp — only resolve incidents first_seen before this
+    only_stable: bool = False          # Only resolve if last_seen < created_before (not actively recurring)
 
 
 class ModeRequest(BaseModel):
@@ -118,44 +121,97 @@ async def list_all_incidents(status: Optional[str] = None, limit: int = 100):
 
 @router.post("/vanguard/admin/incidents/{fingerprint}/resolve")
 async def resolve_incident(fingerprint: str, request: ResolveRequest):
-    """Mark a single incident as resolved."""
+    """Mark a single incident as resolved with AI analysis + learning."""
     try:
         storage = get_incident_storage()
-        
+
         # Load incident first to verify it exists
         incident = await storage.load(fingerprint)
         if not incident:
             raise HTTPException(404, f"Incident {fingerprint} not found")
-        
+
         if incident.get("status") == "resolved":
             return {
                 "success": True,
                 "message": "Incident already resolved",
                 "fingerprint": fingerprint
             }
-        
+
         # Require explicit approval to resolve (prevents accidental resolution)
         if not request.approved:
             raise HTTPException(
-                400, 
+                400,
                 "Resolution requires explicit approval. Send {'approved': true} in request body."
             )
-        
+
+        # Get AI analysis for record keeping (non-blocking)
+        ai_confidence = 0
+        try:
+            from vanguard.ai.ai_analyzer import get_ai_analyzer
+            analyzer = get_ai_analyzer()
+            analysis = await analyzer.analyze_incident(incident, storage)
+            ai_confidence = analysis.confidence
+        except Exception as e:
+            logger.warning(f"Could not get AI analysis during resolution: {e}")
+
+        # Record to learning system
+        try:
+            learner = VanguardResolutionLearner()
+            incident_pattern = f"{incident.get('endpoint', 'unknown')} {incident.get('http_status', 0)} {incident.get('error_type', 'unknown')}"
+            learner.record_fix(
+                incident_pattern=incident_pattern,
+                fix_description=request.resolution_notes or "Resolved via admin",
+                fix_files=["admin_resolution"],
+                deployed_revision=os.getenv("K_REVISION", "local"),
+                incidents_before=incident.get('occurrence_count', 1),
+                fix_commit=None
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record resolution to learner: {e}")
+
         # Resolve the incident
         success = await storage.resolve(fingerprint)
-        
+
         if success:
+            # Store resolution metadata (git mapping)
+            resolved_at = datetime.utcnow().isoformat() + "Z"
+            try:
+                from vanguard.services.github_context import GitHubContextFetcher
+                from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
+                github = GitHubContextFetcher()
+                related_file = github._endpoint_to_file(incident.get("endpoint", ""))
+                related_files = [related_file] if related_file else []
+
+                # Stacktrace-first: extract file paths from traceback
+                trace_files = VanguardAIAnalyzer.extract_files_from_traceback(incident)
+                for tf in trace_files:
+                    if tf not in related_files:
+                        related_files.append(tf)
+
+                resolution_metadata = {
+                    "resolved_by": "admin_ui",
+                    "resolved_at": resolved_at,
+                    "resolution_notes": request.resolution_notes,
+                    "revision": os.getenv("K_REVISION", "local"),
+                    "ai_confidence": ai_confidence,
+                    "related_files": related_files,
+                }
+                await storage.update_incident(fingerprint, {"resolution_metadata": resolution_metadata})
+            except Exception as e:
+                logger.warning(f"Failed to store resolution metadata: {e}")
+
             logger.info(f"Incident resolved: {fingerprint}")
             return {
                 "success": True,
-                "message": "Incident resolved",
+                "message": "Incident resolved and added to learning corpus",
                 "fingerprint": fingerprint,
                 "resolution_notes": request.resolution_notes,
-                "resolved_at": datetime.utcnow().isoformat() + "Z"
+                "ai_confidence": ai_confidence,
+                "resolved_at": resolved_at
             }
         else:
             raise HTTPException(500, "Failed to resolve incident")
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -293,30 +349,76 @@ async def batch_analyze_incidents(request: Request, force: bool = False):
 @router.post("/vanguard/admin/incidents/resolve-all")
 async def resolve_all_incidents(request: ResolveAllRequest):
     """
-    Resolve ALL active incidents.
-    
-    WARNING: This resolves every active incident. Requires confirm=true.
+    Resolve active incidents with optional safety filters.
+
+    Filters (all optional):
+      - exclude_red: Skip RED-severity incidents
+      - created_before: Only resolve incidents first_seen before this ISO timestamp
+      - only_stable: Only resolve if last_seen < created_before (not actively recurring)
+
+    Requires confirm=true.
     """
     if not request.confirm:
         raise HTTPException(400, "Must set confirm=true to resolve all incidents")
-    
+
     storage = get_incident_storage()
     fingerprints = await storage.list_incidents(limit=1000)
-    
+
+    # Parse the cutoff timestamp once
+    cutoff = None
+    if request.created_before:
+        try:
+            from datetime import timezone as _tz
+            cutoff = datetime.fromisoformat(request.created_before.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(400, f"Invalid created_before timestamp: {request.created_before}")
+
     resolved = []
     already_resolved = []
+    skipped_red = []
+    skipped_unstable = []
+    skipped_too_new = []
     failed = []
-    
+
     for fp in fingerprints:
         try:
             incident = await storage.load(fp)
             if not incident:
                 continue
-            
+
             if incident.get("status") == "resolved":
                 already_resolved.append(fp)
                 continue
-            
+
+            # Guard: exclude RED
+            if request.exclude_red and incident.get("severity", "").upper() == "RED":
+                skipped_red.append(fp)
+                continue
+
+            # Guard: created_before
+            if cutoff:
+                first_seen_str = incident.get("first_seen", "")
+                if first_seen_str:
+                    try:
+                        first_seen = datetime.fromisoformat(first_seen_str.replace("Z", "+00:00"))
+                        if first_seen >= cutoff:
+                            skipped_too_new.append(fp)
+                            continue
+                    except ValueError:
+                        pass
+
+            # Guard: only_stable (last_seen must be before cutoff)
+            if request.only_stable and cutoff:
+                last_seen_str = incident.get("last_seen", "")
+                if last_seen_str:
+                    try:
+                        last_seen = datetime.fromisoformat(last_seen_str.replace("Z", "+00:00"))
+                        if last_seen >= cutoff:
+                            skipped_unstable.append(fp)
+                            continue
+                    except ValueError:
+                        pass
+
             success = await storage.resolve(fp)
             if success:
                 resolved.append(fp)
@@ -324,12 +426,19 @@ async def resolve_all_incidents(request: ResolveAllRequest):
                 failed.append(fp)
         except Exception as e:
             failed.append({"fingerprint": fp, "reason": str(e)})
-    
-    logger.info(f"Resolve-all: {len(resolved)} resolved, {len(already_resolved)} already resolved, {len(failed)} failed")
-    
+
+    logger.info(
+        f"Resolve-all: {len(resolved)} resolved, {len(already_resolved)} already, "
+        f"{len(skipped_red)} red-skipped, {len(skipped_unstable)} unstable-skipped, "
+        f"{len(skipped_too_new)} too-new-skipped, {len(failed)} failed"
+    )
+
     return {
         "resolved_count": len(resolved),
         "already_resolved_count": len(already_resolved),
+        "skipped_red_count": len(skipped_red),
+        "skipped_unstable_count": len(skipped_unstable),
+        "skipped_too_new_count": len(skipped_too_new),
         "failed_count": len(failed),
         "resolution_notes": request.resolution_notes,
         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -511,71 +620,10 @@ async def trigger_incident_analysis(request: Request, fingerprint: str):
 @router.post("/vanguard/admin/resolve/{fingerprint}")
 async def resolve_incident_with_approval(fingerprint: str, body: ResolveRequest):
     """
-    Resolve incident with manual approval.
-    
-    IMPORTANT: This now requires explicit approval via the 'approved' field.
-    The AI will suggest readiness, but human approval is mandatory.
-    
-    Args:
-        fingerprint: Incident to resolve
-        body: Must include approved=true
-    
-    Returns:
-        Resolution status
+    Legacy resolve endpoint — delegates to the primary resolve endpoint.
+    Kept for backwards compatibility with existing callers.
     """
-    try:
-        # Require explicit approval
-        if not body.approved:
-            raise HTTPException(
-                400,
-                "Manual approval required. Set 'approved': true to resolve."
-            )
-        
-        storage = get_incident_storage()
-        incident = await storage.load(fingerprint)
-        
-        if not incident:
-            raise HTTPException(404, f"Incident {fingerprint} not found")
-        
-        # Get AI analysis for record keeping
-        try:
-            analysis = await ai_analyzer.analyze_incident(incident, storage)
-            ai_confidence = analysis.confidence
-            ai_recommendation = analysis.ready_to_resolve
-        except Exception as e:
-            logger.warning(f"Could not get AI analysis during resolution: {e}")
-            ai_confidence = 0
-            ai_recommendation = False
-        
-        # Record resolution with learning
-        learner = VanguardResolutionLearner()
-        await learner.record_resolution(
-            incident=incident,
-            resolution_notes=body.resolution_notes or "Manually approved from Control Room",
-            metadata={
-                "ai_confidence": ai_confidence,
-                "ai_recommended": ai_recommendation,
-                "approved_by": "admin_ui"
-            }
-        )
-        
-        # Mark as resolved
-        await storage.resolve_incident(fingerprint)
-        
-        logger.info(f"Incident {fingerprint} resolved (approval confirmed)")
-        
-        return {
-            "success": True,
-            "message": "Incident resolved and added to learning corpus",
-            "fingerprint": fingerprint,
-            "ai_confidence": ai_confidence,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to resolve {fingerprint}: {e}")
-        raise HTTPException(500, f"Resolution failed: {str(e)}")
+    return await resolve_incident(fingerprint, body)
 
 
 @router.get("/vanguard/admin/incidents/{fingerprint}/verification")
@@ -641,3 +689,88 @@ async def get_verification_status(fingerprint: str):
     except Exception as e:
         logger.error(f"Verification check failed for {fingerprint}: {e}")
         raise HTTPException(500, f"Verification failed: {str(e)}")
+
+
+# ============================================================================
+# VANGUARD STATS & HEALTH — dashboard summary endpoints
+# ============================================================================
+
+@router.get("/vanguard/stats")
+async def vanguard_stats():
+    """
+    Compact stats summary for the Vanguard Control Room dashboard.
+    Returns incident counts, active/resolved breakdown, and system status.
+    """
+    try:
+        storage = get_incident_storage()
+        fingerprints = await storage.list_incidents(limit=2000)
+
+        active, resolved, red, yellow = 0, 0, 0, 0
+        for fp in fingerprints:
+            incident = await storage.load(fp)
+            if not incident:
+                continue
+            status = incident.get("status", "active")
+            severity = incident.get("severity", "").upper()
+            if status == "resolved":
+                resolved += 1
+            else:
+                active += 1
+            if severity == "RED":
+                red += 1
+            elif severity == "YELLOW":
+                yellow += 1
+
+        from vanguard.core.config import get_vanguard_config
+        config = get_vanguard_config()
+
+        return {
+            "ok": True,
+            "total": len(fingerprints),
+            "active": active,
+            "resolved": resolved,
+            "red": red,
+            "yellow": yellow,
+            "mode": config.mode.value if hasattr(config.mode, "value") else str(config.mode),
+            "llm_model": config.llm_model,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+    except Exception as e:
+        logger.error(f"vanguard/stats failed: {e}")
+        return {"ok": False, "error": str(e), "total": 0, "active": 0, "resolved": 0}
+
+
+@router.get("/vanguard/admin/health")
+async def vanguard_admin_health():
+    """
+    Vanguard subsystem health check (Firestore-native, no Redis/SQL required).
+    Returns operational status of Vanguard components.
+    """
+    try:
+        storage = get_incident_storage()
+        fingerprints = await storage.list_incidents(limit=10)
+        firestore_ok = True
+    except Exception as e:
+        firestore_ok = False
+
+    try:
+        from vanguard.core.config import get_vanguard_config
+        config = get_vanguard_config()
+        config_ok = True
+    except Exception:
+        config = None
+        config_ok = False
+
+    gemini_key_set = bool(os.getenv("GEMINI_API_KEY"))
+
+    return {
+        "status": "operational" if (firestore_ok and config_ok) else "degraded",
+        "subsystems": {
+            "archivist": {"status": "ok" if firestore_ok else "error", "backend": "firestore"},
+            "ai_analyzer": {"status": "ok" if gemini_key_set else "warning", "model": config.llm_model if config else "unknown"},
+            "config": {"status": "ok" if config_ok else "error"},
+        },
+        "gemini_key_set": gemini_key_set,
+        "mode": config.mode.value if config and hasattr(config.mode, "value") else "unknown",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }

@@ -146,10 +146,12 @@ if ADMIN_ROUTES_AVAILABLE:
     app.include_router(admin_router)
     logger.info("✅ Admin routes registered")
 
-# Include public routes if available
+# Include public routes if available (bare path: /teams, /players, etc.)
 if PUBLIC_ROUTES_AVAILABLE:
     app.include_router(public_router)
-    logger.info("✅ Public routes registered")
+    # Also mount with /public prefix for frontend compatibility (/public/teams, /public/players, etc.)
+    app.include_router(public_router, prefix="/public", include_in_schema=False)
+    logger.info("✅ Public routes registered at / and /public/*")
 
 # Include admin injury routes
 try:
