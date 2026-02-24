@@ -1,13 +1,21 @@
 """
-NBA API Adapter - Schema Isolation Layer (v2.0 - Native aiohttp)
-=================================================================
+NBA API Adapter - Schema Isolation Layer (v2.1 - Hardened aiohttp)
+===================================================================
 Centralizes all NBA API interactions and normalizes responses.
 If NBA changes their schema, update THIS FILE ONLY.
 
-Uses native aiohttp for true async HTTP requests - no ThreadPoolExecutor.
+v2.1 Hardening:
+- Proper NBA CDN headers on every request (User-Agent, Referer, Origin)
+- 3-attempt retry with exponential backoff + jitter
+- Typed error classification (network vs 4xx vs parsing)
+- atexit session cleanup for Cloud Run container shutdown
+- Configurable timeout (connect=5s, read=10s)
 """
 
+import asyncio
+import atexit
 import logging
+import random
 import re
 from typing import Dict, List, Optional, Any, Literal
 from dataclasses import dataclass, asdict, field
@@ -378,36 +386,168 @@ class NBAApiAdapter:
 class AsyncNBAApiAdapter(NBAApiAdapter):
     """
     Async version of NBA API Adapter using native aiohttp.
-    
-    v2.0: Pure async implementation - no ThreadPoolExecutor needed.
+
+    v2.1: Hardened with proper NBA headers, retry/backoff, and atexit cleanup.
     Directly hits NBA CDN endpoints for minimal latency.
     """
-    
-    VERSION = "2.0.0"
-    
+
+    VERSION = "2.1.0"
+
+    # ── Request hardening constants ───────────────────────────────────────
+    MAX_RETRIES = 3
+    RETRY_BASE_DELAY = 0.5   # seconds
+    RETRY_MAX_DELAY  = 5.0   # seconds
+
+    # Standard NBA CDN headers — required to avoid bot-detection blocks
+    NBA_HEADERS = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.nba.com/",
+        "Origin": "https://www.nba.com",
+        "x-nba-stats-origin": "stats",
+        "x-nba-stats-token": "true",
+    }
+
     def __init__(self):
         self._session: Optional[Any] = None
         self._aiohttp_available = False
-        
+        self._last_success: Optional[datetime] = None
+        self._last_error: Optional[str] = None
+        self._request_count: int = 0
+        self._error_count: int = 0
+
         try:
             import aiohttp
             self._aiohttp_available = True
+            # Register cleanup on process exit (Cloud Run SIGTERM)
+            atexit.register(self._sync_close)
         except ImportError:
-            logger.warning("aiohttp not installed - falling back to ThreadPoolExecutor")
-    
+            logger.warning("aiohttp not installed — falling back to ThreadPoolExecutor")
+
+    def _sync_close(self):
+        """Synchronous atexit cleanup — schedules session close if event loop running."""
+        if self._session and not self._session.closed:
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self.close())
+                else:
+                    loop.run_until_complete(self.close())
+            except Exception:
+                pass  # Best-effort cleanup
+
     async def _get_session(self):
-        """Get or create aiohttp session."""
-        if self._session is None and self._aiohttp_available:
+        """Get or create aiohttp session with NBA headers and conservative timeouts."""
+        if self._session is None or self._session.closed:
+            if not self._aiohttp_available:
+                return None
             import aiohttp
-            timeout = aiohttp.ClientTimeout(total=10)
-            self._session = aiohttp.ClientSession(timeout=timeout)
+            # connect=5s prevents slow TCP hangs; read=10s budget per response
+            timeout = aiohttp.ClientTimeout(connect=5, sock_read=10, total=20)
+            self._session = aiohttp.ClientSession(
+                timeout=timeout,
+                headers=self.NBA_HEADERS,
+            )
         return self._session
-    
+
     async def close(self):
-        """Close the aiohttp session."""
-        if self._session:
+        """Close the aiohttp session cleanly."""
+        if self._session and not self._session.closed:
             await self._session.close()
-            self._session = None
+        self._session = None
+
+    async def _get_with_retry(self, url: str) -> Optional[Dict]:
+        """
+        GET a URL with up to MAX_RETRIES attempts, exponential backoff + jitter.
+
+        Returns parsed JSON dict or None.
+        Raises only on non-retryable errors (4xx except 429).
+        """
+        session = await self._get_session()
+        if session is None:
+            return None
+
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                async with session.get(url) as response:
+                    self._request_count += 1
+
+                    if response.status == 200:
+                        self._last_success = datetime.now()
+                        return await response.json(content_type=None)
+
+                    if response.status == 429:
+                        # Rate limited — always retry with longer delay
+                        retry_after = int(response.headers.get("Retry-After", 2))
+                        wait = min(retry_after + random.uniform(0, 1), self.RETRY_MAX_DELAY)
+                        logger.warning(
+                            f"NBA CDN rate-limited (429) on attempt {attempt}/{self.MAX_RETRIES}. "
+                            f"Sleeping {wait:.1f}s ..."
+                        )
+                        await asyncio.sleep(wait)
+                        continue
+
+                    if 400 <= response.status < 500:
+                        # Non-retryable client error (404, 403, etc.)
+                        logger.debug(f"Non-retryable NBA CDN response {response.status} for {url}")
+                        self._last_error = f"HTTP {response.status}"
+                        return None
+
+                    # 5xx — retryable server error
+                    logger.warning(
+                        f"NBA CDN server error {response.status} on attempt {attempt}/{self.MAX_RETRIES}"
+                    )
+                    last_error = Exception(f"HTTP {response.status}")
+
+            except Exception as e:
+                import aiohttp
+                if isinstance(e, (aiohttp.ServerTimeoutError, aiohttp.ClientConnectorError,
+                                  aiohttp.ClientConnectionError, asyncio.TimeoutError)):
+                    # Network-level error — always retry
+                    logger.warning(
+                        f"NBA CDN network error on attempt {attempt}/{self.MAX_RETRIES}: "
+                        f"{type(e).__name__}: {e}"
+                    )
+                    last_error = e
+                else:
+                    # Unexpected error — log and abort
+                    logger.error(f"Unexpected NBA CDN error: {type(e).__name__}: {e}")
+                    self._last_error = str(e)
+                    self._error_count += 1
+                    return None
+
+            # Backoff before retry: 0.5s, 1s, 2s + jitter
+            if attempt < self.MAX_RETRIES:
+                delay = min(self.RETRY_BASE_DELAY * (2 ** (attempt - 1)), self.RETRY_MAX_DELAY)
+                delay += random.uniform(0, 0.3)   # jitter
+                await asyncio.sleep(delay)
+
+        # All retries exhausted
+        self._error_count += 1
+        self._last_error = f"Exhausted {self.MAX_RETRIES} retries: {last_error}"
+        logger.error(f"NBA CDN fetch failed after {self.MAX_RETRIES} attempts for {url}: {last_error}")
+        return None
+
+    def get_health(self) -> Dict:
+        """Return adapter health metrics for the /health endpoint."""
+        return {
+            "adapter_version": self.VERSION,
+            "aiohttp_available": self._aiohttp_available,
+            "last_success": self._last_success.isoformat() if self._last_success else None,
+            "last_error": self._last_error,
+            "request_count": self._request_count,
+            "error_count": self._error_count,
+            "error_rate": (
+                round(self._error_count / self._request_count, 3)
+                if self._request_count > 0 else 0.0
+            ),
+        }
     
     async def fetch_scoreboard_async(self) -> List[NormalizedGameInfo]:
         """
@@ -420,19 +560,13 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
             return await self._fetch_scoreboard_fallback()
     
     async def _fetch_scoreboard_native(self) -> List[NormalizedGameInfo]:
-        """Native aiohttp scoreboard fetch - fastest method."""
-        try:
-            session = await self._get_session()
-            async with session.get(self.SCOREBOARD_URL) as response:
-                if response.status == 200:
-                    raw_data = await response.json(content_type=None)
-                    return self.normalize_scoreboard(raw_data)
-                else:
-                    logger.warning(f"Scoreboard fetch returned {response.status}")
-                    return []
-        except Exception as e:
-            logger.error(f"Native scoreboard fetch failed: {e}")
-            return await self._fetch_scoreboard_fallback()
+        """Native aiohttp scoreboard fetch with retry + headers."""
+        raw_data = await self._get_with_retry(self.SCOREBOARD_URL)
+        if raw_data is not None:
+            return self.normalize_scoreboard(raw_data)
+        # _get_with_retry exhausted retries — fall back to nba_api library
+        logger.warning("CDN scoreboard failed after retries, trying nba_api fallback")
+        return await self._fetch_scoreboard_fallback()
     
     async def _fetch_scoreboard_fallback(self) -> List[NormalizedGameInfo]:
         """Fallback using nba_api with ThreadPoolExecutor."""
@@ -466,20 +600,13 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
             return await self._fetch_boxscore_fallback(game_id)
     
     async def _fetch_boxscore_native(self, game_id: str) -> Optional[NormalizedBoxScore]:
-        """Native aiohttp boxscore fetch - fastest method."""
-        try:
-            url = self.BOXSCORE_URL_TEMPLATE.format(game_id=game_id)
-            session = await self._get_session()
-            async with session.get(url) as response:
-                if response.status == 200:
-                    raw_data = await response.json(content_type=None)
-                    return self.normalize_boxscore(raw_data)
-                else:
-                    logger.debug(f"Boxscore {game_id} returned {response.status}")
-                    return None
-        except Exception as e:
-            logger.debug(f"Native boxscore fetch failed for {game_id}: {e}")
-            return await self._fetch_boxscore_fallback(game_id)
+        """Native aiohttp boxscore fetch with retry + headers."""
+        url = self.BOXSCORE_URL_TEMPLATE.format(game_id=game_id)
+        raw_data = await self._get_with_retry(url)
+        if raw_data is not None:
+            return self.normalize_boxscore(raw_data)
+        # _get_with_retry returned None (404 = game not started, or retries exhausted)
+        return await self._fetch_boxscore_fallback(game_id)
     
     async def _fetch_boxscore_fallback(self, game_id: str) -> Optional[NormalizedBoxScore]:
         """Fallback using nba_api with ThreadPoolExecutor."""
