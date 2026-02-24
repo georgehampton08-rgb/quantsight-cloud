@@ -18,16 +18,12 @@ class GeminiInsights:
     Falls back to rule-based insights if API unavailable.
     """
     
-    DEFAULT_MODEL = 'gemini-1.5-flash'
+    DEFAULT_MODEL = 'gemini-2.0-flash'
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         self.client = None
         self.model_id = os.getenv('GEMINI_MODEL', self.DEFAULT_MODEL)
-        
-        if '2.0-flash-exp' in self.model_id:
-             self.model_id = 'gemini-1.5-flash'
-             
         self._init_gemini()
     
     def _init_gemini(self):

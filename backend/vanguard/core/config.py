@@ -40,8 +40,8 @@ class VanguardConfig(BaseSettings):
     firebase_project_id: Optional[str] = Field(default=None, validation_alias="FIREBASE_PROJECT_ID")
     
     # LLM Profiler Configuration
-    llm_enabled: bool = Field(default=True, validation_alias="VANGUARD_LLM_ENABLED")
-    llm_model: str = Field(default="gemini-2.5-flash", validation_alias="VANGUARD_LLM_MODEL")
+    llm_enabled: bool = Field(default=False, validation_alias="VANGUARD_LLM_ENABLED")
+    llm_model: str = Field(default="gemini-2.0-flash", validation_alias="VANGUARD_LLM_MODEL")
     llm_timeout_sec: int = Field(default=30, validation_alias="VANGUARD_LLM_TIMEOUT_SEC")
     gemini_api_key: Optional[str] = Field(default=None, validation_alias="GEMINI_API_KEY")
     
@@ -56,6 +56,10 @@ class VanguardConfig(BaseSettings):
     # Chaos Vaccine
     vaccine_enabled: bool = Field(default=False, validation_alias="VANGUARD_VACCINE_ENABLED")
     vaccine_schedule: str = Field(default="0 3 * * 0", validation_alias="VANGUARD_VACCINE_SCHEDULE")  # Sunday 3 AM
+    vaccine_max_daily_fixes: int = Field(default=5, validation_alias="VANGUARD_VACCINE_MAX_DAILY")
+    vaccine_min_confidence: int = Field(default=85, validation_alias="VANGUARD_VACCINE_MIN_CONFIDENCE")
+    vaccine_repo: str = Field(default="georgehampton08-rgb/quantsight-cloud", validation_alias="VANGUARD_VACCINE_REPO")
+    vaccine_base_branch: str = Field(default="main", validation_alias="VANGUARD_VACCINE_BASE_BRANCH")
     
     # Inquisitor Settings
     sampling_rate: float = Field(default=0.05, validation_alias="VANGUARD_SAMPLING_RATE")  # 5% default

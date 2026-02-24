@@ -4,6 +4,7 @@ Vanguard AI Analyzer
 Gemini-powered incident analysis with 24-hour caching.
 Uses the new google.genai SDK.
 """
+import hashlib
 import json
 import re
 import os
@@ -30,19 +31,27 @@ class IncidentAnalysis(BaseModel):
     confidence: int  # 0-100
     generated_at: str
     expires_at: str
+    cached: bool = False
+    code_references: List[str] = []
+    prompt_version: str = "1.0"
+    model_id: str = ""
+    input_hash: str = ""        # Hash of normalised analysis input
+    incident_last_seen: str = ""  # last_seen at analysis time -- stale if incident recurred
 
 
 class VanguardAIAnalyzer:
     """
     Gemini-powered incident analyzer with intelligent caching
     """
-    
+
+    PROMPT_VERSION = "1.0"  # Bump to invalidate cached analyses when prompt changes
+
     def __init__(self):
         self.kb = CodebaseKnowledgeBase()
         self.github = GitHubContextFetcher()
         self.client = None
         self._genai_loaded = False
-        
+
         # Load config for model name
         config = get_vanguard_config()
         self.model_name = config.llm_model
@@ -191,18 +200,26 @@ Return ONLY valid JSON. No markdown, no extra text.
         )
         logger.info(f"[AI_DEBUG] Prompt built: {len(prompt)} chars")
         
+        # Compute input hash for cache integrity
+        input_hash = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+        # New google-genai SDK uses bare model name (no "models/" prefix)
+        model_id = self.model_name
+
         try:
             # Generate analysis using new API
-            logger.info(f"[AI_DEBUG] Calling Gemini API with model {self.model_name}")
+            logger.info(f"[AI_DEBUG] Calling Gemini API with model {model_id}")
             response = self.client.models.generate_content(
-                model=f'models/{self.model_name}',
+                model=model_id,
                 contents=prompt
             )
             logger.info(f"[AI_DEBUG] Gemini API responded successfully")
-            
+
             # Parse AI response
             analysis = self._parse_ai_response(response.text, incident)
-            
+            analysis.model_id = model_id
+            analysis.input_hash = input_hash
+            analysis.incident_last_seen = str(incident.get("last_seen", ""))
+
             # Cache for 24 hours
             await self._cache_analysis(analysis, storage)
             
@@ -228,11 +245,11 @@ Return ONLY valid JSON. No markdown, no extra text.
             fingerprint=incident['fingerprint'][:16] + "...",
             error_type=incident['error_type'],
             endpoint=incident['endpoint'],
-            occurrence_count=incident['occurrence_count'],
+            occurrence_count=incident.get('occurrence_count', 1),
             severity=incident['severity'],
             labels=json.dumps(incident.get('labels', {})),
-            first_seen=incident['first_seen'],
-            last_seen=incident['last_seen'],
+            first_seen=incident.get('first_seen', incident.get('timestamp', 'unknown')),
+            last_seen=incident.get('last_seen', incident.get('timestamp', 'unknown')),
             traceback=traceback,
             code_contexts=self._format_code_contexts(code_contexts or []),
             system_time=datetime.now(timezone.utc).isoformat(),
@@ -265,24 +282,34 @@ Return ONLY valid JSON. No markdown, no extra text.
         # Create analysis object
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
-        
+
+        # Extract code references from recommended_fix text (file paths)
+        code_refs = []
+        fix_list = data["recommended_fix"] if isinstance(data["recommended_fix"], list) else [data["recommended_fix"]]
+        for fix_text in fix_list:
+            refs = re.findall(r'[\w/]+\.(?:py|ts|js|tsx|jsx)\b', str(fix_text))
+            code_refs.extend(refs)
+
         return IncidentAnalysis(
             fingerprint=incident["fingerprint"],
             root_cause=data["root_cause"],
             impact=data["impact"],
-            recommended_fix=data["recommended_fix"] if isinstance(data["recommended_fix"], list) else [data["recommended_fix"]],
+            recommended_fix=fix_list,
             ready_to_resolve=bool(data["ready_to_resolve"]),
             ready_reasoning=data["ready_reasoning"],
             confidence=int(data["confidence"]),
-            generated_at=now.isoformat() + "Z",
-            expires_at=expires.isoformat() + "Z"
+            generated_at=now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+            expires_at=expires.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+            cached=False,
+            code_references=list(set(code_refs)),
+            prompt_version=self.PROMPT_VERSION
         )
-    
+
     def _create_fallback_analysis(self, incident: Dict) -> IncidentAnalysis:
         """Create basic analysis when AI is unavailable"""
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
-        
+
         return IncidentAnalysis(
             fingerprint=incident["fingerprint"],
             root_cause=f"{incident['error_type']} on {incident['endpoint']} - AI analysis unavailable",
@@ -295,8 +322,10 @@ Return ONLY valid JSON. No markdown, no extra text.
             ready_to_resolve=False,
             ready_reasoning="AI analysis unavailable - manual review required",
             confidence=0,
-            generated_at=now.isoformat() + "Z",
-            expires_at=expires.isoformat() + "Z"
+            generated_at=now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+            expires_at=expires.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+            cached=False,
+            prompt_version=self.PROMPT_VERSION
         )
     
     
@@ -325,20 +354,71 @@ Return ONLY valid JSON. No markdown, no extra text.
             incident = await storage.load(fingerprint)
             if not incident or 'ai_analysis' not in incident:
                 return None
-            
+
             data = incident['ai_analysis']
-            
+
             # Check expiration
-            expires_at = datetime.fromisoformat(data["expires_at"].replace('Z', '+00:00'))
+            # Robust ISO parse: handle both "Z" suffix and "+00:00" suffix
+            expires_raw = data["expires_at"].rstrip("Z")
+            if "+" not in expires_raw and not expires_raw.endswith("+00:00"):
+                expires_raw += "+00:00"
+            expires_at = datetime.fromisoformat(expires_raw)
             if expires_at < datetime.now(timezone.utc):
                 logger.info(f"Cached analysis expired for {fingerprint}")
                 return None
-            
-            return IncidentAnalysis(**data)
+
+            # Check prompt version -- invalidate if prompt changed
+            if data.get("prompt_version", "0") != self.PROMPT_VERSION:
+                logger.info(f"Cached analysis has stale prompt version for {fingerprint}")
+                return None
+
+            # Check model_id -- invalidate if model changed
+            expected_model = self.model_name
+            if data.get("model_id") and data["model_id"] != expected_model:
+                logger.info(f"Cached analysis used different model for {fingerprint}")
+                return None
+
+            # Check incident_last_seen -- invalidate if incident recurred since analysis
+            cached_last_seen = data.get("incident_last_seen", "")
+            current_last_seen = str(incident.get("last_seen", ""))
+            if cached_last_seen and current_last_seen and cached_last_seen != current_last_seen:
+                logger.info(f"Incident {fingerprint} recurred since cached analysis (cached: {cached_last_seen}, now: {current_last_seen})")
+                return None
+
+            analysis = IncidentAnalysis(**data)
+            analysis.cached = True
+            return analysis
         except Exception as e:
             logger.warning(f"Failed to retrieve cached analysis: {e}")
             return None
     
+    @staticmethod
+    def extract_files_from_traceback(incident: Dict) -> List[str]:
+        """Parse Python traceback lines for file paths (high-confidence related_files).
+
+        Looks for standard traceback patterns like:
+            File "/app/vanguard/api/admin_routes.py", line 42, in func
+        Returns de-duplicated list of relative file paths.
+        """
+        tb = incident.get("metadata", {}).get("traceback", "")
+        if not tb:
+            return []
+
+        # Standard CPython traceback: File "...", line N
+        raw = re.findall(r'File "([^"]+)"', tb)
+        seen: set = set()
+        result: List[str] = []
+        for path in raw:
+            # Normalise: strip leading /app/ or /workspace/ prefixes
+            rel = re.sub(r'^/(app|workspace|src)/', '', path)
+            # Skip stdlib / site-packages
+            if "site-packages" in rel or rel.startswith("/usr") or rel.startswith("lib/python"):
+                continue
+            if rel not in seen:
+                seen.add(rel)
+                result.append(rel)
+        return result
+
     def _format_code_contexts(self, code_contexts: List) -> str:
         """Format GitHub code contexts with line numbers for anti-hallucination"""
         if not code_contexts:

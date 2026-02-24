@@ -689,8 +689,8 @@ async def analyze_matchup(
         raise HTTPException(status_code=400, detail="Both home_team and away_team are required")
     
     try:
-        # Run multi-stat confluence analysis (now async with parallel H2H fetching)
-        confluence_data = await multi_stat_engine.analyze_game(home_team.upper(), away_team.upper())
+        # Run multi-stat confluence analysis (sync method - do NOT await)
+        confluence_data = multi_stat_engine.analyze_game(home_team.upper(), away_team.upper())
         
         # Add game_id to response if provided
         if game_id:
