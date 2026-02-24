@@ -147,10 +147,9 @@ if ADMIN_ROUTES_AVAILABLE:
     logger.info("✅ Admin routes registered")
 
 # Include public routes if available (bare path: /teams, /players, etc.)
+# NOTE: /public/* aliases are defined directly in public_routes.py
 if PUBLIC_ROUTES_AVAILABLE:
     app.include_router(public_router)
-    # Also mount with /public prefix for frontend compatibility (/public/teams, /public/players, etc.)
-    app.include_router(public_router, prefix="/public", include_in_schema=False)
     logger.info("✅ Public routes registered at / and /public/*")
 
 # Include admin injury routes
@@ -201,52 +200,53 @@ if VANGUARD_AVAILABLE:
         app.include_router(health_router)
         logger.info("✅ Vanguard health router registered at /vanguard/health")
     except ImportError as e:
-        logger.error(f"❌ Vanguard health router FAILED to import: {e}")
-        VANGUARD_AVAILABLE = False
+        logger.warning(f"⚠️ Vanguard health router not available: {e}")
+        # NOTE: Do NOT set VANGUARD_AVAILABLE=False here — health.py is non-critical
     except Exception as e:
-        logger.error(f"❌ Vanguard health router registration FAILED: {e}")
-        
-    # Vanguard Admin API (incident management) - separate try block
-    try:
-        from vanguard.api.admin_routes import router as admin_router
-        app.include_router(admin_router)
-        logger.info("✅ Vanguard admin routes registered at /vanguard/admin/*")
-    except ImportError as e:
-        logger.warning(f"⚠️ Vanguard admin router not available: {e}")
-    except Exception as e:
-        logger.warning(f"⚠️ Vanguard admin router registration failed: {e}")
-    
-    # Vanguard Cron API (scheduled tasks) - separate try block
-    try:
-        from vanguard.api.cron_routes import router as cron_router
-        app.include_router(cron_router)
-        logger.info("✅ Vanguard cron routes registered at /vanguard/admin/cron/*")
-    except ImportError as e:
-        logger.warning(f"⚠️ Vanguard cron router not available: {e}")
-    except Exception as e:
-        logger.warning(f"⚠️ Vanguard cron router registration failed: {e}")
+        logger.warning(f"⚠️ Vanguard health router registration failed: {e}")
 
-    # Vanguard Vaccine API (AI code fix generation + application)
-    try:
-        from vanguard.api.vaccine_routes import router as vaccine_router
-        app.include_router(vaccine_router)
-        logger.info("✅ Vanguard vaccine routes registered at /vanguard/admin/vaccine/*")
-    except ImportError as e:
-        logger.warning(f"⚠️ Vanguard vaccine router not available: {e}")
-    except Exception as e:
-        logger.warning(f"⚠️ Vanguard vaccine router registration failed: {e}")
+# Vanguard Admin API — always attempt independently (not gated on health router success)
+try:
+    from vanguard.api.admin_routes import router as admin_router
+    app.include_router(admin_router)
+    logger.info("✅ Vanguard admin routes registered at /vanguard/admin/*")
+except ImportError as e:
+    logger.warning(f"⚠️ Vanguard admin router not available: {e}")
+except Exception as e:
+    logger.warning(f"⚠️ Vanguard admin router registration failed: {e}")
 
-    # Vanguard Surgeon API (remediation actions + quarantine management)
-    try:
-        from vanguard.api.surgeon_routes import router as surgeon_router
-        app.include_router(surgeon_router)
-        logger.info("✅ Vanguard surgeon routes registered at /vanguard/surgeon/*")
-    except ImportError as e:
-        logger.warning(f"⚠️ Vanguard surgeon router not available: {e}")
-    except Exception as e:
-        logger.warning(f"⚠️ Vanguard surgeon router registration failed: {e}")
-else:
-    logger.warning("⚠️ Vanguard not available - health endpoint not registered")
+# Vanguard Cron API
+try:
+    from vanguard.api.cron_routes import router as cron_router
+    app.include_router(cron_router)
+    logger.info("✅ Vanguard cron routes registered at /vanguard/admin/cron/*")
+except ImportError as e:
+    logger.warning(f"⚠️ Vanguard cron router not available: {e}")
+except Exception as e:
+    logger.warning(f"⚠️ Vanguard cron router registration failed: {e}")
+
+# Vanguard Vaccine API
+try:
+    from vanguard.api.vaccine_routes import router as vaccine_router
+    app.include_router(vaccine_router)
+    logger.info("✅ Vanguard vaccine routes registered at /vanguard/admin/vaccine/*")
+except ImportError as e:
+    logger.warning(f"⚠️ Vanguard vaccine router not available: {e}")
+except Exception as e:
+    logger.warning(f"⚠️ Vanguard vaccine router registration failed: {e}")
+
+# Vanguard Surgeon API
+try:
+    from vanguard.api.surgeon_routes import router as surgeon_router
+    app.include_router(surgeon_router)
+    logger.info("✅ Vanguard surgeon routes registered at /vanguard/surgeon/*")
+except ImportError as e:
+    logger.warning(f"⚠️ Vanguard surgeon router not available: {e}")
+except Exception as e:
+    logger.warning(f"⚠️ Vanguard surgeon router registration failed: {e}")
+
+if not VANGUARD_AVAILABLE:
+    logger.warning("⚠️ Vanguard core unavailable — only admin routes attempted via fallback")
 
 
 

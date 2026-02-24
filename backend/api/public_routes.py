@@ -1162,3 +1162,36 @@ async def get_boxscore(game_id: str):
         logger.error(f"Error fetching boxscore for game {game_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve boxscore")
 
+
+# ============================================================================
+# /public/* ALIAS ROUTES
+# ============================================================================
+# FastAPI won't re-register duplicate routes from the same router instance.
+# These explicit aliases ensure /public/teams, /public/players, /public/roster/{id}
+# all resolve correctly, matching what the frontend expects.
+
+@router.get("/public/teams", include_in_schema=False)
+async def public_teams_alias():
+    """Alias: /public/teams → /teams"""
+    return await get_teams()
+
+
+@router.get("/public/players", include_in_schema=False)
+async def public_players_alias(is_active: Optional[bool] = Query(None)):
+    """Alias: /public/players → /players"""
+    return await get_all_players_endpoint(is_active=is_active)
+
+
+@router.get("/public/players/search", include_in_schema=False)
+async def public_players_search_alias(q: Optional[str] = Query(None, min_length=0, max_length=50)):
+    """Alias: /public/players/search → /players/search"""
+    return await search_players_endpoint(q=q)
+
+
+@router.get("/public/roster/{team_id}", include_in_schema=False)
+async def public_roster_alias(team_id: str):
+    """Alias: /public/roster/{team_id} → /roster/{team_id}"""
+    from fastapi import Request as _Request
+    # Build a minimal request-like for the roster handler
+    # The actual /roster/{team_id} is in server.py (SQLite), replicate logic here for cloud
+    return await get_matchup_roster(team_id=team_id)
