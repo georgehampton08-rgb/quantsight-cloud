@@ -162,11 +162,19 @@ except ImportError as e:
 
 # Include Nexus service routes
 try:
-    from nexus import router as nexus_router
+    from api.nexus_routes import router as nexus_router
     app.include_router(nexus_router)
-    logger.info("✅ Nexus service routes registered")
+    logger.info("✅ Nexus API routes registered (/nexus/*)")
 except ImportError as e:
-    logger.warning(f"⚠️ Nexus service not available: {e}")
+    logger.warning(f"⚠️ Nexus API routes not available: {e}")
+
+# Include Aegis simulation routes
+try:
+    from app.routers.aegis import router as aegis_router
+    app.include_router(aegis_router, prefix="/aegis", tags=["aegis"])
+    logger.info("✅ Aegis routes registered (/aegis/*)")
+except ImportError as e:
+    logger.warning(f"⚠️ Aegis routes not available: {e}")
 
 # Game logs routes: /api/game-logs is already defined in public_routes.py with
 # Firestore-backed implementation. The separate game_logs_routes.py was a placeholder

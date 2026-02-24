@@ -737,7 +737,12 @@ async def get_radar_dimensions(player_id: str, opponent_id: str = Query("NBA")):
     try:
         stats = get_player_stats(player_id)
         if not stats:
-            raise HTTPException(status_code=404, detail=f"Stats not found for player {player_id}")
+            # Use league-average defaults rather than 404 — radar still renders
+            logger.info(f"No stats for {player_id}, using league-average defaults for radar")
+            stats = {
+                "points_avg": 0.0, "rebounds_avg": 0.0, "assists_avg": 0.0,
+                "fg_pct": 0.45, "three_p_pct": 0.33
+            }
 
         ppg = stats.get('points_avg', 0)
         rpg = stats.get('rebounds_avg', 0)
@@ -1059,78 +1064,132 @@ async def crucible_sim(data: dict = None):
 @router.get("/live/stream")
 async def live_stats_stream(request: Request):
     """
-    SSE endpoint for real-time live game stats (DESKTOP PATTERN WITH VPC).
-    All clients stream from shared LivePulseCache - no per-client NBA API hits.
-    
-    Updates pushed every 1s (checks cache for changes).
-    Data includes:
-    - All live games with scores and clock
-    - Top 10 players by in-game PIE
-    - Stat changes for gold pulse animation
+    SSE endpoint for real-time live game stats.
+    Primary: reads from LivePulseCache (VPC hot path).
+    Fallback: polls Firestore every 10s when VPC cache unavailable.
+
+    Data schema: {games, leaders, changes, meta}
     """
     from sse_starlette.sse import EventSourceResponse
     from fastapi import Request
     import asyncio
     import json
-    
+
+    def _read_firestore_snapshot() -> dict:
+        """Read live snapshot from Firestore (fallback path)."""
+        try:
+            from services.firebase_admin_service import get_firebase_service
+            fb = get_firebase_service()
+            if not fb or not fb.db:
+                return {"games": [], "leaders": [], "changes": {},
+                        "meta": {"game_count": 0, "live_count": 0, "source": "firestore_unavailable"}}
+
+            # Read live_games collection
+            game_docs = fb.db.collection('live_games').stream()
+            games = [d.to_dict() for d in game_docs]
+            # Strip SERVER_TIMESTAMP sentinel objects (not JSON-serialisable)
+            for g in games:
+                g.pop('updated_at', None)
+
+            # Read live_leaders collection (sorted by rank)
+            leader_docs = fb.db.collection('live_leaders').order_by('rank').limit(15).stream()
+            leaders = [d.to_dict() for d in leader_docs]
+            for l in leaders:
+                l.pop('updated_at', None)
+
+            live_count = sum(1 for g in games if g.get('status') == 'LIVE')
+            return {
+                "games": games,
+                "leaders": leaders,
+                "changes": {},
+                "meta": {
+                    "game_count": len(games),
+                    "live_count": live_count,
+                    "source": "firestore",
+                    "timestamp": datetime.now().isoformat()
+                }
+            }
+        except Exception as e:
+            logger.warning(f"[SSE] Firestore fallback read failed: {e}")
+            return {"games": [], "leaders": [], "changes": {},
+                    "meta": {"game_count": 0, "live_count": 0, "source": "error"}}
+
     async def event_generator():
-        logger.info("[SSE] Client connected to /live/stream (VPC HOT CACHE)")
-        last_update_cycle = 0
-        
+        logger.info("[SSE] Client connected to /live/stream")
+        last_update_cycle = -1
+        last_firestore_hash = ""
+
         try:
             while True:
                 if await request.is_disconnected():
                     logger.info("[SSE] Client disconnected")
                     break
-                
+
+                # ── Primary: VPC hot cache ─────────────────────────────────
                 if HAS_PULSE_CACHE and pulse_cache:
                     data = pulse_cache.get_latest()
-                    
-                    # Only send if there's new data
                     current_cycle = data.get('meta', {}).get('update_cycle', 0)
                     if current_cycle != last_update_cycle:
                         last_update_cycle = current_cycle
-                        yield {
-                            "event": "pulse",
-                            "data": json.dumps(data)
-                        }
+                        yield {"event": "pulse", "data": json.dumps(data)}
+
+                # ── Fallback: Firestore read every ~10s ────────────────────
                 else:
-                    # No cache available
-                    yield {
-                        "event": "error",
-                        "data": json.dumps({"error": "Live pulse cache not available"})
-                    }
-                
-                # Check for updates every 1 second
+                    snapshot = await asyncio.get_event_loop().run_in_executor(
+                        None, _read_firestore_snapshot
+                    )
+                    # Only push when data actually changed
+                    key = f"{snapshot['meta'].get('game_count')}{snapshot['meta'].get('live_count')}{len(snapshot.get('leaders',[]))}"
+                    if key != last_firestore_hash:
+                        last_firestore_hash = key
+                        # Normalise to pulse envelope so frontend hook doesn't need changes
+                        yield {"event": "pulse", "data": json.dumps(snapshot)}
+
                 await asyncio.sleep(1)
-                
+
         except asyncio.CancelledError:
             logger.info("[SSE] Live stream cancelled")
         except Exception as e:
             logger.error(f"[SSE] Stream error: {e}")
-    
+
     return EventSourceResponse(event_generator())
 
 
 @router.get("/live/leaders")
 async def get_live_leaders_endpoint(limit: int = Query(10)):
     """
-    Get top live players from LivePulseCache by PIE.
-    Used for Alpha Leaderboard component.
+    Get top live players by PIE.
+    Primary: LivePulseCache. Fallback: Firestore live_leaders collection.
     """
-    if not HAS_PULSE_CACHE or not pulse_cache:
+    # Primary: VPC hot cache
+    if HAS_PULSE_CACHE and pulse_cache:
         return {
-            "leaders": [],
-            "error": "Live pulse cache not available",
-            "count": 0
+            "leaders": pulse_cache.get_leaders(limit=limit),
+            "count": limit,
+            "timestamp": datetime.now().isoformat(),
+            "source": "vpc_hot_cache"
         }
-    
-    return {
-        "leaders": pulse_cache.get_leaders(limit=limit),
-        "count": limit,
-        "timestamp": datetime.now().isoformat(),
-        "source": "vpc_hot_cache"
-    }
+
+    # Fallback: read from Firestore (written by AsyncPulseProducer)
+    try:
+        from services.firebase_admin_service import get_firebase_service
+        fb = get_firebase_service()
+        if fb and fb.db:
+            docs = fb.db.collection('live_leaders').order_by('rank').limit(limit).stream()
+            leaders = [d.to_dict() for d in docs]
+            for l in leaders:
+                l.pop('updated_at', None)
+            return {
+                "leaders": leaders,
+                "count": len(leaders),
+                "timestamp": datetime.now().isoformat(),
+                "source": "firestore"
+            }
+    except Exception as e:
+        logger.warning(f"Firestore leaders fallback failed: {e}")
+
+    return {"leaders": [], "count": 0, "source": "unavailable",
+            "timestamp": datetime.now().isoformat()}
 
 
 @router.get("/game-dates")
@@ -1190,17 +1249,36 @@ async def get_game_dates(
 @router.get("/live/games")
 def get_live_games():
     """
-    REST endpoint for current live game data.
-    Returns the same data as /live/stream but as a single snapshot.
+    REST snapshot of live game data.
+    Primary: LivePulseCache (VPC). Fallback: Firestore live_games collection.
     """
-    if not HAS_PULSE_CACHE or not pulse_cache:
-        return {
-            "games": [],
-            "error": "Live pulse cache not available",
-            "meta": {"game_count": 0, "live_count": 0}
-        }
-    
-    return pulse_cache.get_latest()
+    # Primary: VPC hot cache
+    if HAS_PULSE_CACHE and pulse_cache:
+        return pulse_cache.get_latest()
+
+    # Fallback: read from Firestore
+    try:
+        from services.firebase_admin_service import get_firebase_service
+        fb = get_firebase_service()
+        if fb and fb.db:
+            docs = fb.db.collection('live_games').stream()
+            games = [d.to_dict() for d in docs]
+            for g in games:
+                g.pop('updated_at', None)
+            live_count = sum(1 for g in games if g.get('status') == 'LIVE')
+            return {
+                "games": games,
+                "meta": {
+                    "game_count": len(games),
+                    "live_count": live_count,
+                    "source": "firestore",
+                    "update_cycle": 0
+                }
+            }
+    except Exception as e:
+        logger.warning(f"Firestore games fallback failed: {e}")
+
+    return {"games": [], "meta": {"game_count": 0, "live_count": 0, "source": "unavailable"}}
 
 
 @router.get("/live/status")
