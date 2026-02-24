@@ -913,9 +913,19 @@ async def crucible_sim(data: dict = None):
     if not data:
         raise HTTPException(status_code=400, detail="Request body required")
 
-    home_abbr = data.get('home_team', '').upper()
-    away_abbr = data.get('away_team', '').upper()
+    raw_home = data.get('home_team', '')
+    raw_away = data.get('away_team', '')
     n_sims = min(data.get('num_simulations', 200), 500)  # Cap at 500 for cloud
+
+    # Accept both string ("LAL") and dict ({team_id: "LAL", players: [...]}) formats
+    home_abbr = raw_home.get('team_id', '') if isinstance(raw_home, dict) else str(raw_home)
+    away_abbr = raw_away.get('team_id', '') if isinstance(raw_away, dict) else str(raw_away)
+    home_abbr = home_abbr.upper() if home_abbr else ''
+    away_abbr = away_abbr.upper() if away_abbr else ''
+
+    # If frontend sent embedded players, use them directly
+    embedded_home = raw_home.get('players', []) if isinstance(raw_home, dict) else []
+    embedded_away = raw_away.get('players', []) if isinstance(raw_away, dict) else []
 
     if not home_abbr or not away_abbr:
         raise HTTPException(status_code=400, detail="home_team and away_team required")
@@ -923,8 +933,15 @@ async def crucible_sim(data: dict = None):
     try:
         start = _time.perf_counter()
 
-        home_players = get_players_by_team(home_abbr, active_only=True)
-        away_players = get_players_by_team(away_abbr, active_only=True)
+        # Use embedded players if provided, otherwise fetch from Firestore
+        if embedded_home:
+            home_players = embedded_home
+        else:
+            home_players = get_players_by_team(home_abbr, active_only=True)
+        if embedded_away:
+            away_players = embedded_away
+        else:
+            away_players = get_players_by_team(away_abbr, active_only=True)
 
         if not home_players or not away_players:
             raise HTTPException(status_code=404, detail="Team(s) not found")
