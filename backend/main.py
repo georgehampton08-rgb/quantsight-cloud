@@ -223,6 +223,26 @@ if VANGUARD_AVAILABLE:
         logger.warning(f"⚠️ Vanguard cron router not available: {e}")
     except Exception as e:
         logger.warning(f"⚠️ Vanguard cron router registration failed: {e}")
+
+    # Vanguard Vaccine API (AI code fix generation + application)
+    try:
+        from vanguard.api.vaccine_routes import router as vaccine_router
+        app.include_router(vaccine_router)
+        logger.info("✅ Vanguard vaccine routes registered at /vanguard/admin/vaccine/*")
+    except ImportError as e:
+        logger.warning(f"⚠️ Vanguard vaccine router not available: {e}")
+    except Exception as e:
+        logger.warning(f"⚠️ Vanguard vaccine router registration failed: {e}")
+
+    # Vanguard Surgeon API (remediation actions + quarantine management)
+    try:
+        from vanguard.api.surgeon_routes import router as surgeon_router
+        app.include_router(surgeon_router)
+        logger.info("✅ Vanguard surgeon routes registered at /vanguard/surgeon/*")
+    except ImportError as e:
+        logger.warning(f"⚠️ Vanguard surgeon router not available: {e}")
+    except Exception as e:
+        logger.warning(f"⚠️ Vanguard surgeon router registration failed: {e}")
 else:
     logger.warning("⚠️ Vanguard not available - health endpoint not registered")
 

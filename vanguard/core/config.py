@@ -56,6 +56,10 @@ class VanguardConfig(BaseSettings):
     # Chaos Vaccine
     vaccine_enabled: bool = Field(default=False, validation_alias="VANGUARD_VACCINE_ENABLED")
     vaccine_schedule: str = Field(default="0 3 * * 0", validation_alias="VANGUARD_VACCINE_SCHEDULE")  # Sunday 3 AM
+    vaccine_max_daily_fixes: int = Field(default=5, validation_alias="VANGUARD_VACCINE_MAX_DAILY")
+    vaccine_min_confidence: int = Field(default=85, validation_alias="VANGUARD_VACCINE_MIN_CONFIDENCE")
+    vaccine_repo: str = Field(default="georgehampton08-rgb/quantsight-cloud", validation_alias="VANGUARD_VACCINE_REPO")
+    vaccine_base_branch: str = Field(default="main", validation_alias="VANGUARD_VACCINE_BASE_BRANCH")
     
     # Inquisitor Settings
     sampling_rate: float = Field(default=0.05, validation_alias="VANGUARD_SAMPLING_RATE")  # 5% default
