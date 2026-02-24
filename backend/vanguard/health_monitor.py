@@ -42,54 +42,93 @@ class SystemHealthMonitor:
     
     async def check_nba_api(self) -> Dict:
         """
-        Ping NBA stats API to verify availability.
-        Uses a lightweight endpoint to minimize impact.
+        Ping NBA data APIs to verify availability.
+
+        Strategy (Cloud Run safe):
+          1. Primary: cdn.nba.com CDN endpoint — no VPC needed, always fast
+          2. Secondary: stats.nba.com — blocked on Cloud Run VPC; absence = warning only
         """
+        CDN_URL = "https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json"
+        STATS_URL = "https://stats.nba.com/stats/scoreboardv2"
+        STATS_HEADERS = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Referer": "https://stats.nba.com/",
+            "x-nba-stats-origin": "stats",
+            "x-nba-stats-token": "true",
+        }
+
+        # ── Step 1: CDN check (required — fast, no VPC) ──────────────────────
+        cdn_status = "unknown"
+        cdn_latency_ms: float = 0.0
+        cdn_error: Optional[str] = None
+
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                # Use scoreboard endpoint with old date (cached, fast)
-                start_time = datetime.now()
-                resp = await client.get(
-                    "https://stats.nba.com/stats/scoreboardv2",
-                    params={
-                        "GameDate": "2024-01-01",
-                        "LeagueID": "00",
-                        "DayOffset": "0"
-                    },
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        "Accept": "application/json",
-                        "Referer": "https://stats.nba.com/"
-                    }
-                )
-                latency_ms = (datetime.now() - start_time).total_seconds() * 1000
-                
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                start = datetime.now()
+                resp = await client.get(CDN_URL)
+                cdn_latency_ms = (datetime.now() - start).total_seconds() * 1000
+
                 if resp.status_code == 200:
-                    return {
-                        "status": "healthy" if latency_ms < 2000 else "warning",
-                        "latency_ms": latency_ms,
-                        "details": f"NBA API responding ({resp.status_code})",
-                        "endpoint": "stats.nba.com"
-                    }
+                    cdn_status = "healthy" if cdn_latency_ms < 2000 else "warning"
                 else:
-                    return {
-                        "status": "critical",
-                        "error": f"HTTP {resp.status_code}",
-                        "details": f"NBA API returned {resp.status_code}"
-                    }
-                    
+                    cdn_status = "critical"
+                    cdn_error = f"CDN HTTP {resp.status_code}"
         except httpx.TimeoutException:
-            return {
-                "status": "critical",
-                "error": "Timeout",
-                "details": "NBA API request timed out after 3s"
-            }
+            cdn_status = "critical"
+            cdn_error = "CDN timeout after 8s"
         except Exception as e:
+            cdn_status = "critical"
+            cdn_error = f"CDN unreachable: {type(e).__name__}"
+
+        # If CDN is down, NBA data pipeline is truly broken
+        if cdn_status == "critical":
             return {
                 "status": "critical",
-                "error": str(e),
-                "details": f"NBA API unreachable: {type(e).__name__}"
+                "error": cdn_error,
+                "details": "NBA CDN unreachable — live data pipeline down",
+                "endpoint": "cdn.nba.com",
+                "cdn_latency_ms": cdn_latency_ms,
             }
+
+        # ── Step 2: stats.nba.com check (optional — blocked on Cloud Run VPC) ─
+        stats_status = "unknown"
+        stats_latency_ms: float = 0.0
+        stats_error: Optional[str] = None
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                start = datetime.now()
+                resp = await client.get(
+                    STATS_URL,
+                    params={"GameDate": "2024-01-01", "LeagueID": "00", "DayOffset": "0"},
+                    headers=STATS_HEADERS,
+                )
+                stats_latency_ms = (datetime.now() - start).total_seconds() * 1000
+                stats_status = "healthy" if resp.status_code == 200 else f"HTTP {resp.status_code}"
+        except httpx.TimeoutException:
+            stats_error = "Timeout (expected on Cloud Run VPC)"
+            stats_status = "blocked"
+        except Exception as e:
+            stats_error = f"{type(e).__name__}: {e}"
+            stats_status = "blocked"
+
+        # CDN OK is all we need for healthy status
+        return {
+            "status": cdn_status,  # healthy or warning based on CDN only
+            "latency_ms": cdn_latency_ms,
+            "details": f"NBA CDN responding ({cdn_latency_ms:.0f}ms)",
+            "endpoint": "cdn.nba.com",
+            "cdn_status": cdn_status,
+            "cdn_latency_ms": cdn_latency_ms,
+            "stats_nba_status": stats_status,
+            "stats_nba_latency_ms": stats_latency_ms,
+            "stats_nba_note": (
+                stats_error or
+                ("stats.nba.com healthy" if stats_status == "healthy" else
+                 "stats.nba.com blocked (normal on Cloud Run VPC — CDN path is the workaround)")
+            ),
+        }
     
     async def check_gemini(self) -> Dict:
         """Check Gemini AI availability."""
@@ -186,19 +225,8 @@ class SystemHealthMonitor:
                 "details": f"Firestore connection error: {type(e).__name__}"
             }
     
-    # Health check result caching (avoid hammering external APIs on every poll)
-    _last_check_results = None
-    _last_check_time = None
-    CACHE_TTL_SECONDS = 30
-    
     async def run_all_checks(self) -> Dict[str, Dict]:
-        """Run all health checks concurrently with 30s caching."""
-        # Return cached results if within TTL
-        now = datetime.now()
-        if self._last_check_results and self._last_check_time:
-            if (now - self._last_check_time).total_seconds() < self.CACHE_TTL_SECONDS:
-                return self._last_check_results
-        
+        """Run all health checks concurrently."""
         results = {}
         
         # Run checks in parallel
@@ -224,10 +252,6 @@ class SystemHealthMonitor:
                 # Report to Vanguard if unhealthy
                 if result.get('status') in ['warning', 'critical'] and self.archivist:
                     await self.report_health_incident(name, result)
-        
-        # Cache results
-        self._last_check_results = results
-        self._last_check_time = now
         
         return results
     
