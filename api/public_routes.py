@@ -1076,15 +1076,18 @@ async def live_stats_stream(request: Request):
     import json
 
     def _read_firestore_snapshot() -> dict:
-        """Read live snapshot from Firestore (fallback path)."""
+        """Read live snapshot from Firestore (fallback path).
+        Also enriches with today's schedule so upcoming/final games appear
+        even when the cloud producer hasn't written live_games yet.
+        """
         try:
             from services.firebase_admin_service import get_firebase_service
             fb = get_firebase_service()
             if not fb or not fb.db:
-                return {"games": [], "leaders": [], "changes": {},
-                        "meta": {"game_count": 0, "live_count": 0, "source": "firestore_unavailable"}}
+                # Try schedule-only path so page isn't completely empty
+                return _build_schedule_snapshot()
 
-            # Read live_games collection
+            # Read live_games collection (written by CloudAsyncPulseProducer for LIVE games)
             game_docs = fb.db.collection('live_games').stream()
             games = [d.to_dict() for d in game_docs]
             # Strip SERVER_TIMESTAMP sentinel objects (not JSON-serialisable)
@@ -1096,6 +1099,41 @@ async def live_stats_stream(request: Request):
             leaders = [d.to_dict() for d in leader_docs]
             for l in leaders:
                 l.pop('updated_at', None)
+
+            # ── Augment with today's full schedule so upcoming/final games show ──
+            # The cloud producer only writes LIVE games to Firestore.
+            # Pull the schedule to fill in upcoming + final games not in live_games.
+            existing_game_ids = {g.get('game_id') for g in games}
+            try:
+                from services.nba_schedule import get_schedule_service
+                svc = get_schedule_service()
+                raw_games = svc.get_todays_games(force_refresh=False)
+                for rg in raw_games:
+                    gid = rg.get('game_id', '')
+                    if gid and gid not in existing_game_ids:
+                        status_raw = rg.get('status', 'scheduled')
+                        if status_raw == 'live':
+                            status = 'LIVE'
+                        elif status_raw == 'final':
+                            status = 'FINAL'
+                        else:
+                            status = 'UPCOMING'
+                        games.append({
+                            'game_id': gid,
+                            'home_team': rg.get('home_team', ''),
+                            'away_team': rg.get('away_team', ''),
+                            'home_score': rg.get('home_score', 0),
+                            'away_score': rg.get('away_score', 0),
+                            'clock': rg.get('status_text', 'Scheduled'),
+                            'period': rg.get('period', 0),
+                            'status': status,
+                            'leaders': [],
+                            'last_updated': datetime.now().isoformat(),
+                            'is_garbage_time': False,
+                        })
+                        existing_game_ids.add(gid)
+            except Exception as sched_err:
+                logger.debug(f"[SSE] Schedule augment skipped: {sched_err}")
 
             live_count = sum(1 for g in games if g.get('status') == 'LIVE')
             return {
@@ -1111,6 +1149,51 @@ async def live_stats_stream(request: Request):
             }
         except Exception as e:
             logger.warning(f"[SSE] Firestore fallback read failed: {e}")
+            # Last resort: try schedule-only
+            return _build_schedule_snapshot()
+
+    def _build_schedule_snapshot() -> dict:
+        """Build a snapshot using only the schedule service (no Firestore)."""
+        try:
+            from services.nba_schedule import get_schedule_service
+            svc = get_schedule_service()
+            raw_games = svc.get_todays_games(force_refresh=False)
+            games = []
+            for rg in raw_games:
+                status_raw = rg.get('status', 'scheduled')
+                if status_raw == 'live':
+                    status = 'LIVE'
+                elif status_raw == 'final':
+                    status = 'FINAL'
+                else:
+                    status = 'UPCOMING'
+                games.append({
+                    'game_id': rg.get('game_id', ''),
+                    'home_team': rg.get('home_team', ''),
+                    'away_team': rg.get('away_team', ''),
+                    'home_score': rg.get('home_score', 0),
+                    'away_score': rg.get('away_score', 0),
+                    'clock': rg.get('status_text', 'Scheduled'),
+                    'period': rg.get('period', 0),
+                    'status': status,
+                    'leaders': [],
+                    'last_updated': datetime.now().isoformat(),
+                    'is_garbage_time': False,
+                })
+            live_count = sum(1 for g in games if g.get('status') == 'LIVE')
+            return {
+                "games": games,
+                "leaders": [],
+                "changes": {},
+                "meta": {
+                    "game_count": len(games),
+                    "live_count": live_count,
+                    "source": "schedule_only",
+                    "timestamp": datetime.now().isoformat()
+                }
+            }
+        except Exception as e:
+            logger.warning(f"[SSE] Schedule snapshot failed: {e}")
             return {"games": [], "leaders": [], "changes": {},
                     "meta": {"game_count": 0, "live_count": 0, "source": "error"}}
 
@@ -1118,6 +1201,7 @@ async def live_stats_stream(request: Request):
         logger.info("[SSE] Client connected to /live/stream")
         last_update_cycle = -1
         last_firestore_hash = ""
+        is_first_event = True  # Always send an initial snapshot on connect
 
         try:
             while True:
@@ -1129,23 +1213,31 @@ async def live_stats_stream(request: Request):
                 if HAS_PULSE_CACHE and pulse_cache:
                     data = pulse_cache.get_latest()
                     current_cycle = data.get('meta', {}).get('update_cycle', 0)
-                    if current_cycle != last_update_cycle:
+                    # Always send first event; thereafter only on cycle change
+                    if is_first_event or current_cycle != last_update_cycle:
                         last_update_cycle = current_cycle
+                        is_first_event = False
                         yield {"event": "pulse", "data": json.dumps(data)}
 
-                # ── Fallback: Firestore read every ~10s ────────────────────
+                # ── Fallback: Firestore + Schedule read ────────────────────
                 else:
                     snapshot = await asyncio.get_event_loop().run_in_executor(
                         None, _read_firestore_snapshot
                     )
-                    # Only push when data actually changed
-                    key = f"{snapshot['meta'].get('game_count')}{snapshot['meta'].get('live_count')}{len(snapshot.get('leaders',[]))}"
-                    if key != last_firestore_hash:
+                    key = (
+                        f"{snapshot['meta'].get('game_count')}"
+                        f"{snapshot['meta'].get('live_count')}"
+                        f"{len(snapshot.get('leaders', []))}"
+                        f"{len(snapshot.get('games', []))}"
+                    )
+                    # Always send first event; thereafter only when data changed
+                    if is_first_event or key != last_firestore_hash:
                         last_firestore_hash = key
+                        is_first_event = False
                         # Normalise to pulse envelope so frontend hook doesn't need changes
                         yield {"event": "pulse", "data": json.dumps(snapshot)}
 
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
 
         except asyncio.CancelledError:
             logger.info("[SSE] Live stream cancelled")
