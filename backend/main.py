@@ -28,6 +28,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# -----------------------------------------------------------------------
+# Suppress uvloop/asyncio SSL transport noise.
+# Cloud Run's load balancer frequently closes TCP connections mid-stream
+# (health probes, keep-alive resets), causing uvloop's SSL protocol to
+# emit RuntimeError tracebacks that are infrastructure noise, not bugs.
+# Setting these to ERROR (above WARNING) silences them without masking
+# real application-level errors.
+# -----------------------------------------------------------------------
+logging.getLogger("uvloop").setLevel(logging.ERROR)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
+# h11 and httpcore also emit benign connection-reset warnings
+logging.getLogger("h11").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 
 # Vanguard Sovereign Imports - Enhanced Debugging
 import os
@@ -191,6 +205,14 @@ try:
     logger.info("✅ Aegis router registered at /aegis/*")
 except ImportError as e:
     logger.warning(f"⚠️ Aegis router not available: {e}")
+
+# Include Live Pulse status router
+try:
+    from app.routers.live_pulse import router as live_pulse_router
+    app.include_router(live_pulse_router, prefix="/pulse", tags=["Live Pulse"])
+    logger.info("✅ Live Pulse router registered at /pulse/*")
+except ImportError as e:
+    logger.warning(f"⚠️ Live Pulse router not available: {e}")
 
 
 # Include Vanguard health endpoint (MUST BE BEFORE MIDDLEWARE)
