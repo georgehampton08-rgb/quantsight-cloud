@@ -406,7 +406,83 @@ class IncidentStorage:
         
         return list(dict.fromkeys(incidents))[:limit]
     
+    async def query_collection(
+        self,
+        collection: str,
+        filters: Optional[List[tuple]] = None,
+        order_by: Optional[List[tuple]] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query a Firestore collection with optional filters and ordering.
+
+        Args:
+            collection: Firestore collection name
+            filters: List of (field, op, value) tuples e.g. [("active", "==", True)]
+            order_by: List of (field, direction) tuples e.g. [("logged_at", "desc")]
+            limit: Max documents to return
+        """
+        try:
+            import firebase_admin
+            from firebase_admin import firestore
+            db = firestore.client()
+            ref = db.collection(collection)
+
+            if filters:
+                for field, op, value in filters:
+                    ref = ref.where(filter=firestore.FieldFilter(field, op, value))
+
+            if order_by:
+                for field, direction in order_by:
+                    ref = ref.order_by(
+                        field,
+                        direction=firestore.Query.DESCENDING if direction == "desc" else firestore.Query.ASCENDING
+                    )
+
+            ref = ref.limit(limit)
+            docs = ref.stream()
+            results = []
+            for doc in docs:
+                data = doc.to_dict() or {}
+                data["_id"] = doc.id
+                results.append(data)
+            return results
+        except Exception as e:
+            logger.warning(f"query_collection failed [{collection}]: {e}")
+            return []
+
+    async def get_document(self, collection: str, document_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a single document by collection and document ID."""
+        try:
+            import firebase_admin
+            from firebase_admin import firestore
+            db = firestore.client()
+            doc = db.collection(collection).document(document_id).get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                data["_id"] = doc.id
+                return data
+        except Exception as e:
+            logger.warning(f"get_document failed [{collection}/{document_id}]: {e}")
+        return None
+
+    async def update_document(
+        self, collection: str, document_id: str, updates: Dict[str, Any]
+    ) -> bool:
+        """Partial update a Firestore document."""
+        try:
+            import firebase_admin
+            from firebase_admin import firestore
+            db = firestore.client()
+            ref = db.collection(collection).document(document_id)
+            ref.update(updates)
+            return True
+        except Exception as e:
+            logger.warning(f"update_document failed [{collection}/{document_id}]: {e}")
+        return False
+
     def get_storage_size_mb(self) -> float:
+
         """Estimate storage size."""
         try:
             total_bytes = sum(f.stat().st_size for f in self.storage_path.glob("*.json"))

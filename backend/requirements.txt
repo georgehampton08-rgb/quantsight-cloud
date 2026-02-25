@@ -26,6 +26,7 @@ requests==2.31.0
 python-dateutil==2.8.2
 pytz==2023.3
 python-dotenv==1.0.0
+tenacity==9.0.0  # Retry logic with exponential backoff for NBA API
 
 # NBA Stats API
 nba_api==1.4.1

@@ -64,3 +64,8 @@ VANGUARD_DEPLOYMENT.md
 setup_redis.sh
 setup_redis_cloudshell.sh
 
+
+# Local dev artifacts
+.venv/
+reports/
+
