@@ -128,7 +128,7 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
         
         # Check if endpoint is quarantined
         storage = _safe_get_storage()
-        if storage is not None:
+        if storage is not None and hasattr(storage, "get_document"):
             try:
                 quarantine_doc = await storage.get_document(
                     collection="vanguard_quarantine",
