@@ -17,7 +17,8 @@ import atexit
 import logging
 import random
 import re
-from typing import Dict, List, Optional, Any, Literal
+import time
+from typing import Dict, List, Optional, Any, Literal, Tuple
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 
@@ -413,6 +414,10 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
         "x-nba-stats-token": "true",
     }
 
+    # ── In-memory TTL cache constants ─────────────────────────────────────
+    SCOREBOARD_CACHE_TTL = 15   # seconds — one poll cycle
+    BOXSCORE_CACHE_TTL   = 30   # seconds — slow enough to avoid CDN throttle
+
     def __init__(self):
         self._session: Optional[Any] = None
         self._aiohttp_available = False
@@ -420,6 +425,12 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
         self._last_error: Optional[str] = None
         self._request_count: int = 0
         self._error_count: int = 0
+
+        # ── TTL cache stores ──────────────────────────────────────────────
+        # scoreboard: (value, fetched_at)
+        self._scoreboard_cache: Optional[Tuple[List, float]] = None
+        # boxscores: { game_id: (value, fetched_at) }
+        self._boxscore_cache: Dict[str, Tuple[Optional[Any], float]] = {}
 
         try:
             import aiohttp
@@ -551,13 +562,22 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
     
     async def fetch_scoreboard_async(self) -> List[NormalizedGameInfo]:
         """
-        Fetch today's scoreboard using native aiohttp.
-        Falls back to nba_api library if aiohttp unavailable.
+        Fetch today's scoreboard — returns cached result if within TTL.
+        Falls back to nba_api library when native aiohttp is unavailable.
         """
-        if self._aiohttp_available:
-            return await self._fetch_scoreboard_native()
-        else:
-            return await self._fetch_scoreboard_fallback()
+        now = time.monotonic()
+        if self._scoreboard_cache is not None:
+            cached_val, fetched_at = self._scoreboard_cache
+            if now - fetched_at < self.SCOREBOARD_CACHE_TTL:
+                return cached_val
+
+        result = (
+            await self._fetch_scoreboard_native()
+            if self._aiohttp_available
+            else await self._fetch_scoreboard_fallback()
+        )
+        self._scoreboard_cache = (result, now)
+        return result
     
     async def _fetch_scoreboard_native(self) -> List[NormalizedGameInfo]:
         """Native aiohttp scoreboard fetch with retry + headers."""
@@ -591,13 +611,23 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
     
     async def fetch_boxscore_async(self, game_id: str) -> Optional[NormalizedBoxScore]:
         """
-        Fetch boxscore for a single game using native aiohttp.
-        Falls back to nba_api library if aiohttp unavailable.
+        Fetch boxscore for a single game — returns cached result if within TTL.
+        Falls back to nba_api library when native aiohttp is unavailable.
         """
-        if self._aiohttp_available:
-            return await self._fetch_boxscore_native(game_id)
-        else:
-            return await self._fetch_boxscore_fallback(game_id)
+        now = time.monotonic()
+        cached = self._boxscore_cache.get(game_id)
+        if cached is not None:
+            cached_val, fetched_at = cached
+            if now - fetched_at < self.BOXSCORE_CACHE_TTL:
+                return cached_val
+
+        result = (
+            await self._fetch_boxscore_native(game_id)
+            if self._aiohttp_available
+            else await self._fetch_boxscore_fallback(game_id)
+        )
+        self._boxscore_cache[game_id] = (result, now)
+        return result
     
     async def _fetch_boxscore_native(self, game_id: str) -> Optional[NormalizedBoxScore]:
         """Native aiohttp boxscore fetch with retry + headers."""
@@ -634,22 +664,27 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
         game_ids: List[str]
     ) -> Dict[str, Optional[NormalizedBoxScore]]:
         """
-        Fetch boxscores for multiple games CONCURRENTLY.
-        
-        This is the key optimization: instead of fetching one game at a time,
-        we fire off all requests simultaneously using asyncio.gather().
-        
-        With native aiohttp, this is significantly faster than ThreadPoolExecutor.
+        Fetch boxscores for multiple games concurrently, with a semaphore cap.
+
+        The NBA CDN silently throttles burst requests with timeouts (not 429s)
+        when too many fire simultaneously. A semaphore of 3 staggers the fetches
+        enough to avoid throttling while remaining much faster than serial fetches.
         """
         import asyncio
-        
+
         if not game_ids:
             return {}
-        
-        # Fire off all requests concurrently
-        tasks = [self.fetch_boxscore_async(gid) for gid in game_ids]
+
+        # Cap to 3 concurrent requests — CDN throttles bursts of 7+ silently
+        sem = asyncio.Semaphore(3)
+
+        async def _fetch_with_sem(gid: str):
+            async with sem:
+                return await self.fetch_boxscore_async(gid)
+
+        tasks = [_fetch_with_sem(gid) for gid in game_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Map results back to game IDs
         boxscores = {}
         for game_id, result in zip(game_ids, results):
@@ -658,7 +693,7 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
                 boxscores[game_id] = None
             else:
                 boxscores[game_id] = result
-        
+
         return boxscores
 
 

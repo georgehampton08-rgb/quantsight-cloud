@@ -58,7 +58,7 @@ async def vanguard_lifespan(app: FastAPI) -> AsyncIterator[None]:
             redis_healthy = await ping_redis()
             logger.info("vanguard_redis_initialized", healthy=redis_healthy)
         except Exception as e:
-            logger.error("vanguard_redis_failed", error=str(e), fallback="standalone mode")
+            logger.warning("vanguard_redis_failed", error=str(e), fallback="standalone mode")
             # Continue without Redis (standalone mode)
         
         # Step 3.5: Initialize Firebase/Firestore (Shared Storage)

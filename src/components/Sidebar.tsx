@@ -10,6 +10,7 @@ const NAV_ITEMS = [
     { name: 'Matchup Lab', icon: '🔬', path: '/matchup-lab' },
     { name: 'Team Central', icon: '🛡️', path: '/team' },
     { name: 'Settings', icon: '⚙️', path: '/settings' },
+    { name: 'Vanguard', icon: '🔒', path: '/vanguard' },
     { name: 'Injury Admin', icon: '⚕️', path: '/injury-admin' },
 ]
 
