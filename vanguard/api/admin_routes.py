@@ -116,6 +116,49 @@ async def list_all_incidents(status: Optional[str] = None, limit: int = 100):
         raise HTTPException(500, f"Failed to list incidents: {str(e)}")
 
 
+@router.get("/vanguard/admin/stats")
+async def get_vanguard_stats():
+    """
+    Live stat summary for the Control Room header cards.
+    Computes counts live from Firestore to avoid stale metadata drift.
+    """
+    try:
+        from vanguard.core.config import get_vanguard_config
+        config = get_vanguard_config()
+        storage = get_incident_storage()
+        fingerprints = await storage.list_incidents(limit=2000)
+
+        active = 0
+        resolved = 0
+        for fp in fingerprints:
+            inc = await storage.load(fp)
+            if inc:
+                if inc.get("status") == "active":
+                    active += 1
+                else:
+                    resolved += 1
+
+        # Health score: 100 with no incidents, -10 per active incident, floor 0
+        health_score = max(0.0, 100.0 - (active * 10.0))
+
+        return {
+            "active_incidents": active,
+            "resolved_incidents": resolved,
+            "health_score": round(health_score, 1),
+            "vanguard_mode": config.mode.value,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+    except Exception as e:
+        logger.error(f"Stats fetch failed: {e}")
+        return {
+            "active_incidents": 0,
+            "resolved_incidents": 0,
+            "health_score": 100.0,
+            "vanguard_mode": "UNKNOWN",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+
+
 @router.post("/vanguard/admin/incidents/{fingerprint}/resolve")
 async def resolve_incident(fingerprint: str, request: ResolveRequest):
     """Mark a single incident as resolved."""
@@ -550,8 +593,8 @@ async def resolve_incident_with_approval(fingerprint: str, body: ResolveRequest)
         )
         
         # Mark as resolved
-        await storage.resolve_incident(fingerprint)
-        
+        await storage.resolve(fingerprint)
+
         logger.info(f"Incident {fingerprint} resolved (approval confirmed)")
         
         return {
@@ -566,6 +609,27 @@ async def resolve_incident_with_approval(fingerprint: str, body: ResolveRequest)
     except Exception as e:
         logger.error(f"Failed to resolve {fingerprint}: {e}")
         raise HTTPException(500, f"Resolution failed: {str(e)}")
+
+
+@router.post("/vanguard/admin/incidents/{fingerprint}/analyze")
+async def regenerate_incident_analysis(request: Request, fingerprint: str):
+    """
+    Force-regenerate AI analysis for an incident, bypassing the 24h cache.
+    Equivalent to GET /analysis?regenerate=True but callable via POST
+    (used by the Regenerate button in VanguardControlRoom).
+    """
+    return await get_incident_analysis(request, fingerprint, regenerate=True)
+
+
+@router.post("/vanguard/admin/resolve/bulk")
+async def bulk_resolve_incidents_compat(request: BulkResolveRequest):
+    """
+    Path alias for deployed-bundle compatibility.
+    The deployed bundle POSTs to /vanguard/admin/resolve/bulk;
+    the canonical endpoint is /vanguard/admin/incidents/bulk-resolve.
+    Both call the same handler.
+    """
+    return await bulk_resolve_incidents(request)
 
 
 @router.get("/vanguard/admin/incidents/{fingerprint}/verification")
