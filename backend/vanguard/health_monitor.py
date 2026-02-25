@@ -14,6 +14,7 @@ Features:
 import asyncio
 import httpx
 import os
+import time
 from datetime import datetime
 from typing import Dict, Optional
 from pathlib import Path
@@ -31,7 +32,11 @@ except ImportError:
 
 class SystemHealthMonitor:
     """Monitors system component health and reports to Vanguard."""
-    
+
+    # Cache health results for 25s — just under the 30s frontend poll cycle.
+    # Prevents 3 external HTTP calls per frontend hit.
+    CACHE_TTL = 25.0
+
     def __init__(self, archivist: Optional[VanguardArchivist] = None):
         self.archivist = archivist
         self.checks = {
@@ -39,6 +44,8 @@ class SystemHealthMonitor:
             'gemini_ai': self.check_gemini,
             'firestore': self.check_firestore
         }
+        self._cache: Optional[Dict[str, Dict]] = None
+        self._cache_at: float = 0.0
     
     async def check_nba_api(self) -> Dict:
         """
@@ -91,43 +98,16 @@ class SystemHealthMonitor:
                 "cdn_latency_ms": cdn_latency_ms,
             }
 
-        # ── Step 2: stats.nba.com check (optional — blocked on Cloud Run VPC) ─
-        stats_status = "unknown"
-        stats_latency_ms: float = 0.0
-        stats_error: Optional[str] = None
-
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                start = datetime.now()
-                resp = await client.get(
-                    STATS_URL,
-                    params={"GameDate": "2024-01-01", "LeagueID": "00", "DayOffset": "0"},
-                    headers=STATS_HEADERS,
-                )
-                stats_latency_ms = (datetime.now() - start).total_seconds() * 1000
-                stats_status = "healthy" if resp.status_code == 200 else f"HTTP {resp.status_code}"
-        except httpx.TimeoutException:
-            stats_error = "Timeout (expected on Cloud Run VPC)"
-            stats_status = "blocked"
-        except Exception as e:
-            stats_error = f"{type(e).__name__}: {e}"
-            stats_status = "blocked"
-
-        # CDN OK is all we need for healthy status
+        # CDN OK — skip stats.nba.com (always blocked on Cloud Run VPC).
         return {
-            "status": cdn_status,  # healthy or warning based on CDN only
+            "status": cdn_status,
             "latency_ms": cdn_latency_ms,
             "details": f"NBA CDN responding ({cdn_latency_ms:.0f}ms)",
             "endpoint": "cdn.nba.com",
             "cdn_status": cdn_status,
             "cdn_latency_ms": cdn_latency_ms,
-            "stats_nba_status": stats_status,
-            "stats_nba_latency_ms": stats_latency_ms,
-            "stats_nba_note": (
-                stats_error or
-                ("stats.nba.com healthy" if stats_status == "healthy" else
-                 "stats.nba.com blocked (normal on Cloud Run VPC — CDN path is the workaround)")
-            ),
+            "stats_nba_status": "skipped",
+            "stats_nba_note": "stats.nba.com always blocked on Cloud Run VPC — CDN path is the data source",
         }
     
     async def check_gemini(self) -> Dict:
@@ -226,18 +206,22 @@ class SystemHealthMonitor:
             }
     
     async def run_all_checks(self) -> Dict[str, Dict]:
-        """Run all health checks concurrently."""
+        """Run all health checks concurrently, with a 25s TTL cache."""
+        now = time.monotonic()
+        if self._cache is not None and (now - self._cache_at) < self.CACHE_TTL:
+            return self._cache
+
         results = {}
-        
+
         # Run checks in parallel
         check_tasks = {
             name: check_func()
             for name, check_func in self.checks.items()
         }
-        
+
         # Wait for all checks to complete
         completed = await asyncio.gather(*check_tasks.values(), return_exceptions=True)
-        
+
         # Map results
         for (name, _), result in zip(check_tasks.items(), completed):
             if isinstance(result, Exception):
@@ -248,11 +232,13 @@ class SystemHealthMonitor:
                 }
             else:
                 results[name] = result
-                
+
                 # Report to Vanguard if unhealthy
                 if result.get('status') in ['warning', 'critical'] and self.archivist:
                     await self.report_health_incident(name, result)
-        
+
+        self._cache = results
+        self._cache_at = now
         return results
     
     async def report_health_incident(self, component: str, result: Dict):
