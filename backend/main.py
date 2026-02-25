@@ -97,9 +97,21 @@ except ImportError as e:
 
 # Nexus routes disabled (uses SQL - will convert later)
 NEXUS_ROUTES_AVAILABLE = False
-
 # Database diagnostics removed - using Firestore now
 DIAGNOSTICS_AVAILABLE = False
+
+# ── Live SSE stream router (/live/stream) ────────────────────────────────────
+# The frontend Pulse page opens an EventSource to /live/stream.
+# This router bridges the CloudAsyncPulseProducer in-memory snapshot to clients.
+try:
+    from api.live_stream_routes import router as live_stream_router
+    LIVE_STREAM_AVAILABLE = True
+    logger.info("✅ Live stream routes imported successfully")
+except ImportError as e:
+    import traceback
+    logger.error(f"❌ Live stream routes not available: {e}")
+    logger.error(f"Full traceback:\n{traceback.format_exc()}")
+    LIVE_STREAM_AVAILABLE = False
 
 
 @asynccontextmanager
@@ -165,6 +177,12 @@ if ADMIN_ROUTES_AVAILABLE:
 if PUBLIC_ROUTES_AVAILABLE:
     app.include_router(public_router)
     logger.info("✅ Public routes registered at / and /public/*")
+
+# Include Live SSE stream router (/live/stream)
+# MUST be registered with no prefix — frontend hardcodes /live/stream
+if LIVE_STREAM_AVAILABLE:
+    app.include_router(live_stream_router)
+    logger.info("✅ Live stream router registered at /live/*")
 
 # Include admin injury routes
 try:

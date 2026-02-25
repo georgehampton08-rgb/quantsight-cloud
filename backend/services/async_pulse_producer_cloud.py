@@ -117,6 +117,12 @@ class CloudAsyncPulseProducer:
         self._firebase_write_errors = 0
         self._game_statuses: Dict[str, str] = {}  # Track game status changes
         self._game_quarters: Dict[str, int] = {}  # Track quarter changes
+
+        # ── In-memory SSE snapshot ──────────────────────────────────────────
+        # Populated every _update_firebase() cycle so SSE clients can read
+        # the latest payload without re-hitting Firestore per connection.
+        self._latest_snapshot: Optional[Dict] = None
+        self._latest_leaders: List[Dict] = []
         
         # Set Firebase on archiver
         if self._firebase and self._pulse_archiver:
@@ -297,9 +303,36 @@ class CloudAsyncPulseProducer:
             if all_leaders:
                 all_leaders.sort(key=lambda x: x['pie'], reverse=True)
                 top_10_leaders = all_leaders[:10]
-                
+
+                self._latest_leaders = top_10_leaders
                 asyncio.create_task(self._firebase.upsert_live_leaders(top_10_leaders))
-            
+
+            # Step 6: Store in-memory SSE snapshot (games + leaders + meta)
+            live_games_list = [
+                {
+                    'game_id': g.game_id,
+                    'home_team': g.home_team_tricode,
+                    'away_team': g.away_team_tricode,
+                    'home_score': g.home_score,
+                    'away_score': g.away_score,
+                    'clock': g.status_text,
+                    'period': g.period,
+                    'status': g.status,
+                }
+                for g in games
+            ]
+            self._latest_snapshot = {
+                'games': live_games_list,
+                'leaders': self._latest_leaders,
+                'meta': {
+                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'game_count': len(live_games_list),
+                    'live_count': sum(1 for g in games if g.status == 'LIVE'),
+                    'update_cycle': self._update_count,
+                },
+                'changes': {},
+            }
+
         except Exception as e:
             logger.error(f"❌ Firebase update failed: {e}", exc_info=True)
     
@@ -414,6 +447,10 @@ class CloudAsyncPulseProducer:
         leaders.sort(key=lambda x: x['pie'], reverse=True)
         return leaders
     
+    def get_latest_snapshot(self) -> Optional[Dict]:
+        """Return the most recent live-data snapshot for SSE streaming."""
+        return self._latest_snapshot
+
     def get_status(self) -> Dict:
         """Get producer status for health checks."""
         return {
@@ -424,7 +461,8 @@ class CloudAsyncPulseProducer:
             "update_count": self._update_count,
             "last_update_duration_seconds": round(self._last_update_duration, 3),
             "poll_interval_seconds": self.POLL_INTERVAL_SECONDS,
-            "firebase_write_errors": self._firebase_write_errors
+            "firebase_write_errors": self._firebase_write_errors,
+            "snapshot_available": self._latest_snapshot is not None,
         }
 
 
