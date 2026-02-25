@@ -339,3 +339,18 @@ async def populate_players_only(player_ids: List[str] = None, season: str = CURR
         'players_written': written,
         'filtered_by_ids': player_ids is not None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Public aliases — backwards-compatible names expected by smoke harness
+# and external callers that pre-date the _sync/_async refactor.
+# ---------------------------------------------------------------------------
+
+def fetch_player_season_stats(season: str = CURRENT_SEASON) -> List[dict]:
+    """Public alias for _fetch_player_stats_sync (used by smoke harness + external callers)."""
+    return _fetch_player_stats_sync()
+
+
+def fetch_team_season_stats(season: str = CURRENT_SEASON) -> List[dict]:
+    """Public alias for _fetch_team_stats_sync."""
+    return _fetch_team_stats_sync()
