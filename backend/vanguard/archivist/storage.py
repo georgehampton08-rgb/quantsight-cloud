@@ -2,6 +2,10 @@
 Incident Storage
 ================
 Async JSON file I/O for incident persistence with Redis fallback.
+
+Phase 3 (FEATURE_INCIDENT_SCHEMA_V1):
+  - New incidents stamped with schema_version="v1" + structured blocks
+  - v0 incidents migrated on-the-fly when loaded (no Firestore bulk rewrite)
 """
 
 import json
@@ -18,6 +22,19 @@ from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# --- Phase 3: schema v1 optional import ---
+try:
+    from ..core.incident_schema_v1 import migrate_incident_v0_to_v1, stamp_new_incident_v1
+    _SCHEMA_V1_AVAILABLE = True
+except ImportError:
+    _SCHEMA_V1_AVAILABLE = False
+
+def _schema_v1_enabled() -> bool:
+    try:
+        from ..core.feature_flags import flag
+        return flag("FEATURE_INCIDENT_SCHEMA_V1") and _SCHEMA_V1_AVAILABLE
+    except ImportError:
+        return False
 
 class IncidentStorage:
     """Manages incident file storage with async I/O and Redis fallback."""
@@ -167,7 +184,11 @@ class IncidentStorage:
     async def store(self, incident: Incident) -> bool:
         """Store an incident with support for Firestore and state-based persistence."""
         fingerprint = incident["fingerprint"]
-        
+
+        # Phase 3: stamp v1 schema on new incidents
+        if _schema_v1_enabled():
+            incident = stamp_new_incident_v1(incident)
+
         # Auto-label the incident
         labels = self._auto_label_incident(incident)
         incident["labels"] = labels
@@ -283,6 +304,8 @@ class IncidentStorage:
     
     async def load(self, fingerprint: str) -> Optional[Incident]:
         """Load an incident (Firestore with Tier fallback)."""
+        result = None
+
         # Firestore
         if self.config.storage_mode == "FIRESTORE":
             try:
@@ -291,17 +314,28 @@ class IncidentStorage:
                 db = firestore.client()
                 doc = db.collection('vanguard_incidents').document(fingerprint).get()
                 if doc.exists:
-                    return doc.to_dict()
+                    result = doc.to_dict()
             except Exception: pass
 
-        # File
-        try:
-            file_path = self._get_incident_path(fingerprint)
-            if file_path.exists():
-                async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
-                    return json.loads(await f.read())
-        except Exception: pass
-        return self._memory_cache.get(fingerprint)
+        # File fallback
+        if result is None:
+            try:
+                file_path = self._get_incident_path(fingerprint)
+                if file_path.exists():
+                    async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+                        result = json.loads(await f.read())
+            except Exception: pass
+
+        # Memory cache fallback
+        if result is None:
+            result = self._memory_cache.get(fingerprint)
+
+        # Phase 3: on-the-fly v0 → v1 migration
+        if result is not None and _schema_v1_enabled():
+            result = migrate_incident_v0_to_v1(result)
+
+        return result
+
     
     async def update_incident(self, fingerprint: str, update_data: Dict[str, Any]) -> bool:
         """Update specific fields in an incident (Firestore update or File rewrite)."""

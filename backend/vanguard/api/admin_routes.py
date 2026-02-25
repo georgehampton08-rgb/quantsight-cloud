@@ -196,7 +196,20 @@ async def resolve_incident(fingerprint: str, request: ResolveRequest):
                     "ai_confidence": ai_confidence,
                     "related_files": related_files,
                 }
-                await storage.update_incident(fingerprint, {"resolution_metadata": resolution_metadata})
+
+                # Phase 4: also populate the v1 resolution block
+                v1_resolution = {
+                    "resolved_by": "admin_ui",
+                    "resolution_type": "manual",
+                    "notes": request.resolution_notes,
+                    "resolved_at": resolved_at,
+                    "verified": False,
+                }
+
+                await storage.update_incident(fingerprint, {
+                    "resolution_metadata": resolution_metadata,
+                    "resolution": v1_resolution,
+                })
             except Exception as e:
                 logger.warning(f"Failed to store resolution metadata: {e}")
 
@@ -209,6 +222,7 @@ async def resolve_incident(fingerprint: str, request: ResolveRequest):
                 "ai_confidence": ai_confidence,
                 "resolved_at": resolved_at
             }
+
         else:
             raise HTTPException(500, "Failed to resolve incident")
 
@@ -266,14 +280,34 @@ async def bulk_resolve_incidents(request: BulkResolveRequest):
 
 @router.get("/vanguard/admin/incidents/{fingerprint}")
 async def get_incident_detail_admin(fingerprint: str):
-    """Get full details for a specific incident (Admin version)."""
+    """
+    Get full details for a specific incident (Admin version).
+
+    Phase 4: Returns v1 schema data when FEATURE_INCIDENT_SCHEMA_V1 is enabled,
+    including structured resolution, remediation, ai_analysis, and labels blocks.
+    """
     storage = get_incident_storage()
     incident = await storage.load(fingerprint)
-    
+
     if not incident:
         raise HTTPException(404, f"Incident {fingerprint} not found")
-        
-    return incident
+
+    # Phase 4: enrich with convenience fields for the UI
+    enriched = dict(incident)
+    enriched["is_v1"] = incident.get("schema_version") == "v1"
+    enriched["has_resolution"] = bool(
+        incident.get("resolution", {}).get("resolved_at")
+        or incident.get("resolved_at")
+    )
+    enriched["has_ai_analysis"] = bool(
+        incident.get("ai_analysis", {}).get("summary")
+    )
+    enriched["has_remediation"] = bool(
+        incident.get("remediation", {}).get("plan")
+    )
+
+    return enriched
+
 
 
 @router.post("/vanguard/admin/incidents/analyze-all")
@@ -705,7 +739,8 @@ async def vanguard_stats():
         storage = get_incident_storage()
         fingerprints = await storage.list_incidents(limit=2000)
 
-        active, resolved, red, yellow = 0, 0, 0, 0
+        active, resolved, red, amber, yellow = 0, 0, 0, 0, 0
+        v1_count = 0
         for fp in fingerprints:
             incident = await storage.load(fp)
             if not incident:
@@ -718,8 +753,12 @@ async def vanguard_stats():
                 active += 1
             if severity == "RED":
                 red += 1
+            elif severity == "AMBER":
+                amber += 1
             elif severity == "YELLOW":
                 yellow += 1
+            if incident.get("schema_version") == "v1":
+                v1_count += 1
 
         from vanguard.core.config import get_vanguard_config
         config = get_vanguard_config()
@@ -730,7 +769,9 @@ async def vanguard_stats():
             "active": active,
             "resolved": resolved,
             "red": red,
+            "amber": amber,
             "yellow": yellow,
+            "schema_v1_count": v1_count,
             "mode": config.mode.value if hasattr(config.mode, "value") else str(config.mode),
             "llm_model": config.llm_model,
             "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -738,6 +779,7 @@ async def vanguard_stats():
     except Exception as e:
         logger.error(f"vanguard/stats failed: {e}")
         return {"ok": False, "error": str(e), "total": 0, "active": 0, "resolved": 0}
+
 
 
 @router.get("/vanguard/admin/health")

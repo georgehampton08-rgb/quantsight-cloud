@@ -11,9 +11,10 @@ from typing import TypedDict, Optional, Dict, Any, List
 
 class Severity(str, Enum):
     """Incident severity levels."""
-    GREEN = "GREEN"    # Healthy
-    YELLOW = "YELLOW"  # Warning
-    RED = "RED"        # Critical
+    GREEN = "GREEN"    # Healthy / suppressed
+    YELLOW = "YELLOW"  # Warning (minor 4xx)
+    AMBER = "AMBER"    # Phase 2: 4xx on known API prefixes
+    RED = "RED"        # Critical (5xx, unhandled exceptions)
 
 
 class IncidentStatus(str, Enum):
@@ -22,20 +23,35 @@ class IncidentStatus(str, Enum):
     RESOLVED = "RESOLVED"
 
 
-class Incident(TypedDict):
-    """Incident data structure."""
+class Incident(TypedDict, total=False):
+    """
+    Incident data structure.
+
+    Phase 3 (schema_version v1) adds structured blocks.
+    All v1 fields are Optional (total=False) for backward compatibility.
+    """
+    # --- v0 core fields (always present) ---
     fingerprint: str
     timestamp: str  # ISO format
-    severity: Severity
-    status: IncidentStatus
+    severity: str   # Severity enum value
+    status: str     # IncidentStatus enum value
     error_type: str
     error_message: str
     endpoint: str
     request_id: str
     traceback: Optional[str]
     context_vector: Dict[str, Any]  # Feature flags, business context
-    remediation_log: List[str]
-    resolved_at: Optional[str]  # ISO format
+    remediation_log: List[str]      # v0 legacy list
+    resolved_at: Optional[str]      # ISO format
+
+    # --- v1 structured fields (added in Phase 3) ---
+    schema_version: str             # "v1"
+    labels: Dict[str, Any]          # service, revision, region, component, team, player_id
+    duration_ms: Optional[float]
+    remediation: Dict[str, Any]     # plan, references, confidence, auto_generated, generated_at
+    ai_analysis: Dict[str, Any]     # summary, root_cause, suggested_fix, confidence, model
+    resolution: Dict[str, Any]      # resolved_by, resolution_type, notes, resolved_at, verified
+
 
 
 class Trace(TypedDict):

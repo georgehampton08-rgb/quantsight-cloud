@@ -54,20 +54,92 @@ async def run_aegis_simulation(
         )
 
     # ---------------------------------------------------------------
-    # Phase 6: Wire real Monte Carlo engine here.
-    # from shared_core.monte_carlo.engine import run_simulation
-    # from shared_core.monte_carlo.adapters import FirestoreSimAdapter
+    # Phase 6: Wire real Monte Carlo engine
     # ---------------------------------------------------------------
-    logger.warning(
-        f"[aegis/simulate] Flag enabled but engine not yet implemented. "
-        f"player={player_id} opponent={opponent_id}"
-    )
-    raise HTTPException(
-        status_code=501,
-        detail={
-            "status": "not_implemented",
-            "code": "ENGINE_NOT_WIRED",
-            "message": "Monte Carlo engine implementation scheduled for Phase 6.",
+    try:
+        from aegis.sim_adapter import FirestoreSimAdapter
+        from engines.deep_monte_carlo import DeepMonteCarloEngine
+
+        adapter = FirestoreSimAdapter()
+        player_stats = await adapter.get_player_stats(player_id)
+        if not player_stats:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "not_found",
+                    "code": "PLAYER_DATA_MISSING",
+                    "message": f"No statistical data found for player {player_id}. "
+                               "Data may not yet be hydrated.",
+                    "player_id": player_id,
+                }
+            )
+
+        opponent_defense = None
+        if opponent_id:
+            opponent_defense = await adapter.get_opponent_defense(opponent_id)
+
+        engine = DeepMonteCarloEngine(n_games=500, verbose=False)
+        projection = engine.run_deep_simulation(
+            player_stats=player_stats,
+            opponent_defense=opponent_defense,
+            schedule_context=None,
+        )
+
+        # Build response with probability overrides
+        result = {
             "player_id": player_id,
+            "opponent_id": opponent_id,
+            "game_date": game_date,
+            "projection": {
+                "floor": projection.floor_20th,
+                "expected": projection.expected_value,
+                "ceiling": projection.ceiling_80th,
+                "variance": projection.variance_metrics,
+            },
+            "execution_time_ms": round(projection.execution_time_ms, 1),
+            "engine": "deep_monte_carlo",
+            "n_games": 500,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
-    )
+
+        # Optional: compute over/under probabilities for prop lines
+        if any([pts_line, reb_line, ast_line]):
+            import numpy as np
+            probabilities = {}
+            if pts_line is not None and "pts" in projection.game_distributions:
+                dist = projection.game_distributions["pts"]
+                probabilities["pts_over"] = round(float(np.mean(dist > pts_line)), 4)
+            if reb_line is not None and "reb" in projection.game_distributions:
+                dist = projection.game_distributions["reb"]
+                probabilities["reb_over"] = round(float(np.mean(dist > reb_line)), 4)
+            if ast_line is not None and "ast" in projection.game_distributions:
+                dist = projection.game_distributions["ast"]
+                probabilities["ast_over"] = round(float(np.mean(dist > ast_line)), 4)
+            result["probabilities"] = probabilities
+
+        return result
+
+    except HTTPException:
+        raise
+    except ImportError as e:
+        logger.error(f"[aegis/simulate] Engine import failed: {e}")
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "status": "not_implemented",
+                "code": "ENGINE_IMPORT_FAILED",
+                "message": f"Monte Carlo engine not available: {e}",
+                "player_id": player_id,
+            }
+        )
+    except Exception as e:
+        logger.error(f"[aegis/simulate] Simulation error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "code": "SIMULATION_FAILED",
+                "message": f"Simulation failed: {str(e)}",
+                "player_id": player_id,
+            }
+        )

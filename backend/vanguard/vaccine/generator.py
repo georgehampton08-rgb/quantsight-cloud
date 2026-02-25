@@ -259,6 +259,15 @@ class VaccineGenerator:
         Returns:
             CodePatch if successful, None if not possible
         """
+        # Phase 5: feature flag gate
+        try:
+            from ..core.feature_flags import flag
+            if not flag("VANGUARD_VACCINE_ENABLED"):
+                logger.debug("💉 Vaccine disabled by feature flag VANGUARD_VACCINE_ENABLED")
+                return None
+        except ImportError:
+            pass  # flag module unavailable — allow fallback to existing can_generate_fix checks
+
         can_generate, reason = await self.can_generate_fix(analysis)
         if not can_generate:
             logger.info(f"💉 Skipping fix generation: {reason}")
