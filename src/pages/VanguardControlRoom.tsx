@@ -399,7 +399,7 @@ function IncidentCard({
 // ─── Subsystem Card ───────────────────────────────────────────────────────────
 function SubSystemCard({ name, active, subtitle }: { name: string; active: boolean; subtitle: string }) {
     return (
-        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 sm:p-4 flex justify-between items-start">
+        <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/40 rounded-xl p-3 sm:p-4 flex justify-between items-start">
             <div>
                 <h4 className="text-white font-bold text-xs sm:text-sm tracking-widest">{name}</h4>
                 {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
@@ -518,11 +518,11 @@ export default function VanguardControlRoom() {
         : 'text-slate-500';
 
     return (
-        <div className="p-4 sm:p-8 h-full overflow-y-auto space-y-6 sm:space-y-8 bg-slate-900 font-sans">
+        <div className="p-4 sm:p-8 h-full overflow-y-auto space-y-5 sm:space-y-8 bg-gradient-to-br from-[#0b1120] via-[#0f172a] to-[#0b1120] font-sans">
 
             {/* Toast */}
             {toast && (
-                <div className={`fixed top-4 right-4 z-50 px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/90 border-emerald-500/50 text-emerald-300' : 'bg-red-900/90 border-red-500/50 text-red-300'}`}>
+                <div className={`fixed top-4 right-4 z-50 px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
                     {toast.msg}
                 </div>
             )}
@@ -531,55 +531,54 @@ export default function VanguardControlRoom() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div>
                     <h1 className="text-xl sm:text-3xl font-extrabold text-white flex items-center gap-2 sm:gap-3">
-                        <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-financial-accent" />
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center backdrop-blur-sm">
+                            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                        </div>
                         Vanguard Control Room
                     </h1>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 pl-0.5">System Health & Incident Management • v3.2.0</p>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-0.5">System Health & Incident Management • v3.2.0</p>
                 </div>
                 <button
                     onClick={() => loadData(true)}
                     disabled={refreshing}
-                    className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-lg bg-financial-accent/10 border border-financial-accent/40 text-financial-accent hover:bg-financial-accent/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide"
+                    className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide backdrop-blur-sm"
                 >
                     <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
 
-            {/* Tabs — adaptive: scrollable snap on mobile, equal-width on desktop */}
-            <div className="relative">
-                <div className="flex gap-1.5 sm:gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
-                    {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
-                        const isActive = activeTab === tab;
-                        const baseClasses = "snap-start flex-shrink-0 sm:flex-1 px-3 sm:px-5 py-2.5 rounded-xl text-xs tracking-widest font-bold transition-all flex items-center justify-center gap-1.5 border";
+            {/* Tabs — full wording, glass style, web-first adaptive */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+                {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
+                    const isActive = activeTab === tab;
+                    const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-2.5 rounded-xl text-xs tracking-widest font-bold transition-all flex items-center justify-center gap-2 border backdrop-blur-sm";
 
-                        let activeCls = "bg-slate-800/50 text-slate-500 border-slate-700/40 hover:bg-slate-800 hover:text-slate-300";
-                        if (isActive) {
-                            if (tab === 'HEALTH') activeCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-[0_0_20px_rgba(0,229,160,0.15)]";
-                            else if (tab === 'INCIDENTS') activeCls = "bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]";
-                            else if (tab === 'ARCHIVES') activeCls = "bg-blue-500/15 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]";
-                            else if (tab === 'LEARNING') activeCls = "bg-financial-accent/15 text-financial-accent border-financial-accent/30 shadow-[0_0_20px_rgba(0,229,160,0.2)]";
-                        }
-                        return (
-                            <button key={tab} onClick={() => setActiveTab(tab)}
-                                className={`${baseClasses} ${activeCls}`}>
-                                {tab === 'HEALTH' && <Activity className="w-3.5 h-3.5" />}
-                                {tab === 'INCIDENTS' && <AlertTriangle className="w-3.5 h-3.5" />}
-                                {tab === 'ARCHIVES' && <FileKey className="w-3.5 h-3.5" />}
-                                {tab === 'LEARNING' && <Cpu className="w-3.5 h-3.5" />}
-                                <span className="hidden xs:inline">{tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}</span>
-                                <span className="xs:hidden">{tab === 'INCIDENTS' ? `${activeIncidents.length}` : tab.slice(0, 4)}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                    let colorCls = "bg-slate-800/30 text-slate-500 border-slate-700/30 hover:bg-slate-800/60 hover:text-slate-300";
+                    if (isActive) {
+                        if (tab === 'HEALTH') colorCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.2)]";
+                        else if (tab === 'INCIDENTS') colorCls = "bg-amber-500/15 text-amber-400 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]";
+                        else if (tab === 'ARCHIVES') colorCls = "bg-blue-500/15 text-blue-400 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]";
+                        else if (tab === 'LEARNING') colorCls = "bg-cyan-500/15 text-cyan-400 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.15)]";
+                    }
+                    return (
+                        <button key={tab} onClick={() => setActiveTab(tab)}
+                            className={`${baseCls} ${colorCls}`}>
+                            {tab === 'HEALTH' && <Activity className="w-3.5 h-3.5" />}
+                            {tab === 'INCIDENTS' && <AlertTriangle className="w-3.5 h-3.5" />}
+                            {tab === 'ARCHIVES' && <FileKey className="w-3.5 h-3.5" />}
+                            {tab === 'LEARNING' && <Cpu className="w-3.5 h-3.5" />}
+                            {tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* ── HEALTH TAB ───────────────────────────────────────────────── */}
             {activeTab === 'HEALTH' && (
                 <div className="space-y-5 sm:space-y-6">
                     {/* Main card */}
-                    <div className="bg-[#111827] border border-slate-700/50 rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 shadow-lg">
+                    <div className="bg-[#111827]/80 backdrop-blur-md border border-slate-700/40 rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 shadow-lg">
                         <div className="space-y-2 flex-1">
                             <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Overall System Health</h2>
                             {loading ? <Loader2 className="w-10 h-10 animate-spin text-slate-500" /> : (
@@ -642,7 +641,7 @@ export default function VanguardControlRoom() {
                             { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400' },
                             { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-emerald-500' : 'text-red-500' },
                         ].map(m => (
-                            <div key={m.label} className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 sm:p-5">
+                            <div key={m.label} className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/40 rounded-xl p-4 sm:p-5">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">{m.label}</div>
                                 <div className={`text-2xl sm:text-3xl font-bold font-mono ${m.color}`}>{m.value}</div>
                             </div>
