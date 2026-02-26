@@ -13,6 +13,8 @@ import { useDataFreshness } from '../hooks/useDataFreshness';
 import { useToast } from '../context/ToastContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiContract } from '../api/client';
+import { GameLogsViewer } from '../components/player/GameLogsViewer';
+import { H2HHistoryPanel } from '../components/player/H2HHistoryPanel';
 import { useOrbital } from '../context/OrbitalContext';
 import ProjectionMatrix from '../components/aegis/ProjectionMatrix';
 import PlayTypeEfficiency from '../components/aegis/PlayTypeEfficiency';
@@ -29,7 +31,7 @@ export default function PlayerProfilePage() {
 
     const [loading, setLoading] = useState(!!targetId);
     const [matchupData, setMatchupData] = useState<MatchupResult | null>(null);
-    const [activeTab, setActiveTab] = useState<'Overview' | 'Projection' | 'Matchup' | 'Advanced' | 'ShotChart'>('Overview');
+    const [activeTab, setActiveTab] = useState<'Overview' | 'Projection' | 'Matchup' | 'GameLogs' | 'Advanced' | 'ShotChart'>('Overview');
     const [currentOpponent, setCurrentOpponent] = useState<string>('1610612738'); // Default to Celtics
     const [teams, setTeams] = useState<{ team_id: string, name: string, abbreviation: string }[]>([]);
     const { showToast } = useToast();
@@ -85,7 +87,7 @@ export default function PlayerProfilePage() {
         const fetchRadar = async () => {
             try {
                 const base = import.meta.env.VITE_API_URL || '';
-                const res = await fetch(`${base}/aegis/radar?player_id=${targetId}&opponent_id=${currentOpponent}`);
+                const res = await fetch(`${base}/radar/${targetId}?opponent_id=${currentOpponent}`);
                 if (!res.ok) throw new Error(`Radar fetch failed: ${res.status}`);
                 const data = await res.json();
                 if (data.player_stats && data.opponent_defense) {
@@ -208,6 +210,7 @@ export default function PlayerProfilePage() {
         { id: 'Overview', label: 'Overview', icon: '📊' },
         { id: 'Projection', label: 'Monte Carlo', icon: '🎲' },
         { id: 'Matchup', label: 'Matchup Intelligence', icon: '⚔️' },
+        { id: 'GameLogs', label: 'Game Logs', icon: '📋' },
         { id: 'Advanced', label: 'Advanced Stats', icon: '📈' },
         { id: 'ShotChart', label: 'Shot Chart', icon: '🎯' }
     ] as const;
@@ -254,6 +257,33 @@ export default function PlayerProfilePage() {
                             <div className="lg:col-span-2 space-y-6">
                                 <NarrativeBlock text={profile.narrative} />
                                 <EnrichedPlayerCard playerId={targetId || '0'} playerName={profile.name} />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'GameLogs' && targetId && (
+                        <div className="space-y-6">
+                            <GameLogsViewer playerId={targetId} />
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                                {/* H2H Viewer with context from Matchup/Projection (currentOpponent) */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-bold text-slate-400">Target Opponent</h3>
+                                        <select
+                                            value={currentOpponent}
+                                            onChange={(e) => setCurrentOpponent(e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm"
+                                        >
+                                            {teams.map((team) => (
+                                                <option key={team.team_id} value={team.team_id}>
+                                                    {team.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <H2HHistoryPanel playerId={targetId} opponentId={currentOpponent} />
+                                </div>
                             </div>
                         </div>
                     )}
