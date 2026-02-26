@@ -33,9 +33,9 @@ _FLAG_DEFAULTS: dict = {
     # Each flag is AND-gated with VANGUARD_MODE (must be CIRCUIT_BREAKER or
     # FULL_SOVEREIGN).  Flags allow independent per-subsystem rollback without
     # demoting the entire Vanguard mode.
-    "FEATURE_SURGEON_MIDDLEWARE":      False,   # SurgeonMiddleware in-memory circuit checks
-    "FEATURE_LOAD_SHEDDER":            False,   # LoadSheddingMiddleware (psutil memory guard)
-    "FEATURE_INDEX_DOCTOR":            False,   # Auto-PR for missing Firestore indexes
+    "FEATURE_SURGEON_MIDDLEWARE":      True,    # SurgeonMiddleware in-memory circuit checks
+    "FEATURE_LOAD_SHEDDER":            True,    # LoadSheddingMiddleware (psutil memory guard)
+    "FEATURE_INDEX_DOCTOR":            True,    # Auto-PR for missing Firestore indexes
     # ── Phase 5: FULL_SOVEREIGN + Scale ──────────────────────────────────
     "PULSE_SERVICE_ENABLED":            True,    # Live pulse producer + SSE stream
     "FEATURE_HEURISTIC_TRIAGE":         True,    # Deterministic fallback triage engine
