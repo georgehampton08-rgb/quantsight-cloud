@@ -1,6 +1,7 @@
 import React from 'react'
-import { Activity, ShieldCheck, Zap } from 'lucide-react'
+import { Activity, ShieldCheck, Zap, BarChart3, LayoutDashboard } from 'lucide-react'
 import { ApiContract } from '../api/client'
+import { BoxScoreViewer } from '../components/dashboard/BoxScoreViewer'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
@@ -94,49 +95,82 @@ const ScheduleWidget = () => {
 };
 
 export default function CommandCenterPage() {
+    const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'BOXSCORE'>('OVERVIEW');
+
     return (
-        <div className="p-8 h-full overflow-y-auto">
-            <header className="mb-8 flex-shrink-0">
-                <h1 className="text-3xl font-bold text-gray-100 flex items-center gap-3">
-                    <Activity className="w-8 h-8 text-financial-accent" />
-                    Command Center
-                </h1>
-                <p className="text-slate-400 mt-2">Operational Overview • {new Date().toLocaleDateString()}</p>
+        <div className="p-4 sm:p-8 h-full overflow-y-auto w-full flex flex-col font-sans">
+            <header className="mb-6 flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center backdrop-blur-sm shadow-inner">
+                            <Activity className="w-6 h-6 text-indigo-400" />
+                        </div>
+                        Command Center
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium tracking-wide">Operational Overview • {new Date().toLocaleDateString()}</p>
+                </div>
+
+                <div className="flex bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50 self-start sm:self-auto shadow-inner">
+                    <button
+                        onClick={() => setActiveTab('OVERVIEW')}
+                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-wider transition-all flex items-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-indigo-500/20 text-indigo-400 shadow-sm border border-indigo-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span className="hidden sm:inline">OVERVIEW</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('BOXSCORE')}
+                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-wider transition-all flex items-center gap-2 ${activeTab === 'BOXSCORE' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm border border-emerald-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        <BarChart3 className="w-4 h-4" />
+                        <span className="hidden sm:inline">BOX SCORES</span>
+                    </button>
+                </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr animate-fade-in-up">
-                {/* Pillar 1: Today's Matchups */}
-                <DataCard title="Today's Matchups" icon={Zap}>
-                    <ScheduleWidget />
-                </DataCard>
+            <div className="flex-1 min-h-0 flex flex-col">
+                {activeTab === 'OVERVIEW' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                        {/* Dramatic glow hidden behind the card */}
+                        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-                {/* Pillar 2: System Health Matrix */}
-                <DataCard title="System Health Matrix" icon={ShieldCheck}>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-900/50 p-3 rounded text-center">
-                            <div className="text-xs text-slate-500 uppercase mb-1">API Latency</div>
-                            <div className="text-xl font-mono text-green-400">42ms</div>
-                        </div>
-                        <div className="bg-slate-900/50 p-3 rounded text-center">
-                            <div className="text-xs text-slate-500 uppercase mb-1">Model Drift</div>
-                            <div className="text-xl font-mono text-blue-400">0.03%</div>
-                        </div>
-                        <div className="col-span-2 bg-slate-900/50 p-3 rounded text-center border border-green-500/20">
-                            <div className="text-xs text-green-500 uppercase font-bold">All Systems Operational</div>
-                        </div>
-                    </div>
-                </DataCard>
+                        {/* Pillar 1: Today's Matchups */}
+                        <DataCard title="Today's Matchups" icon={Zap}>
+                            <ScheduleWidget />
+                        </DataCard>
 
-                {/* Pillar 3: Quick Insights */}
-                <DataCard title="Quick Insights" icon={Activity}>
-                    <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-                        <div className="text-center space-y-2">
-                            <Activity className="w-8 h-8 mx-auto opacity-30" />
-                            <div>AI-Generated Insights</div>
-                            <div className="text-xs opacity-50">Coming Soon</div>
-                        </div>
+                        {/* Pillar 2: System Health Matrix */}
+                        <DataCard title="System Health Matrix" icon={ShieldCheck}>
+                            <div className="grid grid-cols-2 gap-4 h-full content-start">
+                                <div className="bg-slate-900/40 p-4 rounded-xl text-center border border-slate-700/30 shadow-inner">
+                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1.5 shadow-sm">API Latency</div>
+                                    <div className="text-2xl font-black font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">42ms</div>
+                                </div>
+                                <div className="bg-slate-900/40 p-4 rounded-xl text-center border border-slate-700/30 shadow-inner">
+                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1.5 shadow-sm">Model Drift</div>
+                                    <div className="text-2xl font-black font-mono text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]">0.03%</div>
+                                </div>
+                                <div className="col-span-2 bg-emerald-950/20 p-4 rounded-xl text-center border border-emerald-500/30 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="text-sm text-emerald-400 uppercase font-black tracking-widest relative z-10">All Systems Operational</div>
+                                </div>
+                            </div>
+                        </DataCard>
+
+                        {/* Pillar 3: Quick Insights */}
+                        <DataCard title="Quick Insights" icon={Activity}>
+                            <div className="flex flex-col items-center justify-center p-12 h-full text-slate-500 bg-slate-900/30 rounded-xl border border-dashed border-slate-700/50">
+                                <Activity className="w-12 h-12 mb-4 opacity-30 text-indigo-400" />
+                                <div className="font-bold text-slate-400">AI-Generated Insights</div>
+                                <div className="text-xs mt-1 font-mono uppercase tracking-widest">Coming Soon</div>
+                            </div>
+                        </DataCard>
                     </div>
-                </DataCard>
+                ) : (
+                    <div className="animate-in fade-in flex-1 min-h-0">
+                        <BoxScoreViewer />
+                    </div>
+                )}
             </div>
         </div>
     )
