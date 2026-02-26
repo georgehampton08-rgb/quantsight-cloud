@@ -230,16 +230,16 @@ function AnalysisModal({
 
                             {/* Confidence bar */}
                             {confidence !== undefined && (
-                                <div className="flex items-center gap-3 px-1">
-                                    <span className="text-xs text-slate-500 w-20 flex-shrink-0">Confidence</span>
-                                    <div className="flex-1 bg-slate-800 rounded-full h-1.5">
+                                <div className="flex items-center gap-3 px-1 mt-4">
+                                    <span className="text-xs font-bold text-slate-400 w-20 flex-shrink-0">Confidence</span>
+                                    <div className="flex-1 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
                                         <div
-                                            className="h-1.5 rounded-full bg-purple-500 transition-all duration-700"
-                                            style={{ width: `${Math.min(100, (confidence ?? 0) * 100)}%` }}
+                                            className="h-full rounded-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-700 shadow-[0_0_12px_rgba(168,85,247,0.6)]"
+                                            style={{ width: `${Math.min(100, (confidence ?? 0) > 1 ? (confidence ?? 0) : ((confidence ?? 0) * 100))}%` }}
                                         />
                                     </div>
-                                    <span className="text-xs text-slate-400 w-8 text-right">
-                                        {((confidence ?? 0) * 100).toFixed(0)}%
+                                    <span className="text-xs font-black text-purple-300 w-10 text-right tracking-wider">
+                                        {((confidence ?? 0) > 1 ? (confidence ?? 0) : ((confidence ?? 0) * 100)).toFixed(0)}%
                                     </span>
                                 </div>
                             )}
@@ -335,48 +335,49 @@ function IncidentCard({
 
     return (
         <>
-            <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl transition-colors hover:border-slate-600">
-                <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl transition-all hover:bg-white/10 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 relative z-10">
                     {/* Checkbox */}
                     <input
                         type="checkbox"
                         checked={selected}
                         onChange={onToggle}
-                        className="w-4 h-4 bg-slate-900 border-slate-700 rounded text-amber-500 flex-shrink-0"
+                        className="w-5 h-5 bg-black/50 border-white/20 rounded text-amber-500 flex-shrink-0 cursor-pointer focus:ring-amber-500/50"
                     />
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                            <span className="text-white font-bold text-sm sm:text-base">{inc.error_type}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-black tracking-widest border ${severityStyle}`}>
+                        <div className="flex flex-wrap items-center gap-3 mb-1.5">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] flex-shrink-0" />
+                            <span className="text-white font-black text-sm sm:text-base tracking-wide drop-shadow-md">{inc.error_type}</span>
+                            <span className={`text-[10px] px-2.5 py-0.5 rounded font-black tracking-widest border shadow-sm ${severityStyle}`}>
                                 {inc.severity?.toUpperCase()}
                             </span>
                         </div>
-                        <div className="text-slate-400 font-mono text-xs sm:text-sm ml-6 truncate">{inc.endpoint}</div>
-                        <div className="text-slate-500 text-xs ml-6 mt-1.5 flex flex-wrap gap-3">
-                            <span className="flex items-center gap-1"><Hash className="w-3 h-3" /> {inc.occurrence_count}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(inc.last_seen).toLocaleString()}</span>
+                        <div className="text-slate-400 font-mono text-xs sm:text-sm ml-8 truncate">{inc.endpoint}</div>
+                        <div className="text-slate-500 text-xs ml-8 mt-2 flex flex-wrap gap-4 font-semibold">
+                            <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> {inc.occurrence_count} Occurrences</span>
+                            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(inc.last_seen).toLocaleString()}</span>
                         </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 ml-6 sm:ml-0 flex-shrink-0">
+                    <div className="flex gap-3 ml-8 sm:ml-0 flex-shrink-0 mt-2 sm:mt-0">
                         <button
                             onClick={() => setShowAnalysisModal(true)}
-                            className="px-3 sm:px-4 py-2 rounded border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition-colors text-xs font-bold tracking-wide flex items-center gap-1.5"
+                            className="px-4 py-2.5 rounded-xl border border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/60 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
                         >
-                            <Brain className="w-3 h-3" />
+                            <Brain className="w-4 h-4" />
                             <span className="hidden sm:inline">AI Analysis</span>
                             <span className="sm:hidden">AI</span>
                         </button>
                         <button
                             onClick={onResolve}
                             disabled={resolving}
-                            className="px-3 sm:px-4 py-2 rounded border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-colors text-xs font-bold tracking-wide flex items-center gap-1.5"
+                            className="px-4 py-2.5 rounded-xl border border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/60 disabled:opacity-50 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
                         >
-                            {resolving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                            {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                             Resolve
                         </button>
                     </div>
@@ -399,13 +400,14 @@ function IncidentCard({
 // ─── Subsystem Card ───────────────────────────────────────────────────────────
 function SubSystemCard({ name, active, subtitle }: { name: string; active: boolean; subtitle: string }) {
     return (
-        <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/40 rounded-xl p-3 sm:p-4 flex justify-between items-start">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-5 flex justify-between items-start shadow-xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div>
-                <h4 className="text-white font-bold text-xs sm:text-sm tracking-widest">{name}</h4>
-                {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+                <h4 className="text-white font-black text-xs sm:text-sm tracking-widest uppercase">{name}</h4>
+                {subtitle && <p className="text-xs text-slate-400 font-medium mt-1.5">{subtitle}</p>}
             </div>
-            <div className={`w-5 h-5 rounded-full flex justify-center items-center border flex-shrink-0 ${active ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10' : 'border-slate-600/50 text-slate-500 bg-slate-700/20'}`}>
-                {active ? <CheckCircle2 className="w-3 h-3" /> : <X className="w-3 h-3" />}
+            <div className={`w-6 h-6 rounded-full flex justify-center items-center border flex-shrink-0 relative z-10 ${active ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-600/50 text-slate-500 bg-slate-700/20'}`}>
+                {active ? <CheckCircle2 className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
             </div>
         </div>
     );
@@ -518,7 +520,7 @@ export default function VanguardControlRoom() {
         : 'text-slate-500';
 
     return (
-        <div className="p-4 sm:p-8 h-full overflow-y-auto space-y-5 sm:space-y-8 bg-gradient-to-br from-[#0b1120] via-[#0f172a] to-[#0b1120] font-sans">
+        <div className="p-4 sm:p-8 h-full overflow-y-auto space-y-5 sm:space-y-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#060b13] to-black font-sans">
 
             {/* Toast */}
             {toast && (
@@ -549,26 +551,29 @@ export default function VanguardControlRoom() {
             </div>
 
             {/* Tabs — full wording, glass style, web-first adaptive */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                 {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
                     const isActive = activeTab === tab;
-                    const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-2.5 rounded-xl text-xs tracking-widest font-bold transition-all flex items-center justify-center gap-2 border backdrop-blur-sm";
+                    const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm tracking-widest font-black transition-all duration-300 flex items-center justify-center gap-2.5 border backdrop-blur-xl group relative overflow-hidden";
 
-                    let colorCls = "bg-slate-800/30 text-slate-500 border-slate-700/30 hover:bg-slate-800/60 hover:text-slate-300";
+                    let colorCls = "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white shadow-lg";
                     if (isActive) {
-                        if (tab === 'HEALTH') colorCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.2)]";
-                        else if (tab === 'INCIDENTS') colorCls = "bg-amber-500/15 text-amber-400 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]";
-                        else if (tab === 'ARCHIVES') colorCls = "bg-blue-500/15 text-blue-400 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]";
-                        else if (tab === 'LEARNING') colorCls = "bg-cyan-500/15 text-cyan-400 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.15)]";
+                        if (tab === 'HEALTH') colorCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.25)]";
+                        else if (tab === 'INCIDENTS') colorCls = "bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)]";
+                        else if (tab === 'ARCHIVES') colorCls = "bg-blue-500/15 text-blue-400 border-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.2)]";
+                        else if (tab === 'LEARNING') colorCls = "bg-cyan-500/15 text-cyan-400 border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.25)]";
                     }
                     return (
                         <button key={tab} onClick={() => setActiveTab(tab)}
                             className={`${baseCls} ${colorCls}`}>
-                            {tab === 'HEALTH' && <Activity className="w-3.5 h-3.5" />}
-                            {tab === 'INCIDENTS' && <AlertTriangle className="w-3.5 h-3.5" />}
-                            {tab === 'ARCHIVES' && <FileKey className="w-3.5 h-3.5" />}
-                            {tab === 'LEARNING' && <Cpu className="w-3.5 h-3.5" />}
-                            {tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}
+                            {/* Inner glow effect for active tab */}
+                            {isActive && <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent pointer-events-none" />}
+
+                            {tab === 'HEALTH' && <Activity className="w-4 h-4" />}
+                            {tab === 'INCIDENTS' && <AlertTriangle className="w-4 h-4" />}
+                            {tab === 'ARCHIVES' && <FileKey className="w-4 h-4" />}
+                            {tab === 'LEARNING' && <Cpu className="w-4 h-4" />}
+                            <span className="relative z-10 drop-shadow-md">{tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}</span>
                         </button>
                     );
                 })}
@@ -578,7 +583,9 @@ export default function VanguardControlRoom() {
             {activeTab === 'HEALTH' && (
                 <div className="space-y-5 sm:space-y-6">
                     {/* Main card */}
-                    <div className="bg-[#111827]/80 backdrop-blur-md border border-slate-700/40 rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 shadow-lg">
+                    <div className="bg-[#0b1120]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 shadow-[0_15px_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                        {/* Dramatic glow hidden behind the card */}
+                        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
                         <div className="space-y-2 flex-1">
                             <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Overall System Health</h2>
                             {loading ? <Loader2 className="w-10 h-10 animate-spin text-slate-500" /> : (
@@ -606,9 +613,9 @@ export default function VanguardControlRoom() {
 
                     {/* Score Breakdown Bars */}
                     {stats?.health_breakdown && (
-                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-5 sm:p-6">
-                            <h3 className="text-sm font-bold text-white mb-4 tracking-wider uppercase">Score Breakdown</h3>
-                            <div className="space-y-4">
+                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                            <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase opacity-80">Score Breakdown</h3>
+                            <div className="space-y-5">
                                 {[
                                     { label: 'Incidents', score: stats.health_breakdown.incident_score, weight: '40%', color: 'bg-amber-500' },
                                     { label: 'Subsystems', score: stats.health_breakdown.subsystem_score, weight: '35%', color: 'bg-emerald-500' },
@@ -634,16 +641,17 @@ export default function VanguardControlRoom() {
                     )}
 
                     {/* Metric Strip — real data */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                         {[
-                            { label: 'Active Incidents', value: loading ? '—' : String(stats?.active_incidents ?? '—'), color: 'text-amber-500' },
-                            { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-emerald-500' },
-                            { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400' },
-                            { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-emerald-500' : 'text-red-500' },
+                            { label: 'Active Incidents', value: loading ? '—' : String(stats?.active_incidents ?? '—'), color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
+                            { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
+                            { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
+                            { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
                         ].map(m => (
-                            <div key={m.label} className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/40 rounded-xl p-4 sm:p-5">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">{m.label}</div>
-                                <div className={`text-2xl sm:text-3xl font-bold font-mono ${m.color}`}>{m.value}</div>
+                            <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
+                                <div className={`text-3xl sm:text-4xl font-black font-mono ${m.color}`}>{m.value}</div>
                             </div>
                         ))}
                     </div>
@@ -677,9 +685,9 @@ export default function VanguardControlRoom() {
 
                     {/* Hot Endpoints */}
                     {stats?.hot_endpoints && stats.hot_endpoints.length > 0 && (
-                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-5 sm:p-6">
-                            <h3 className="text-sm font-bold text-white mb-4 tracking-wider uppercase flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                            <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase flex items-center gap-3 opacity-80">
+                                <AlertTriangle className="w-4 h-4 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
                                 Hot Endpoints
                             </h3>
                             <div className="space-y-3">
@@ -776,22 +784,25 @@ export default function VanguardControlRoom() {
                         <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-slate-500" /></div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                                 {[
                                     { label: 'Total Resolutions', value: learning?.total_resolutions ?? '—', color: 'text-white' },
-                                    { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-emerald-500' },
-                                    { label: 'Pending', value: learning?.pending_verification ?? '—', color: 'text-amber-500' },
-                                    { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-400' },
+                                    { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
+                                    { label: 'Pending', value: learning?.pending_verification ?? '—', color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
+                                    { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
                                 ].map(m => (
-                                    <div key={m.label} className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4 sm:p-5">
-                                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">{m.label}</div>
-                                        <div className={`text-2xl sm:text-3xl font-bold ${m.color}`}>{String(m.value)}</div>
+                                    <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl text-center">
+                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
+                                        <div className={`text-3xl sm:text-4xl font-black ${m.color}`}>{String(m.value)}</div>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-5 sm:p-6 min-h-[300px]">
-                                <h3 className="text-white font-bold text-lg mb-4">Top Success Patterns</h3>
+                            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 min-h-[300px] shadow-2xl">
+                                <h3 className="text-white font-black text-lg mb-6 flex items-center gap-3 opacity-90">
+                                    <Brain className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                                    Top Success Patterns
+                                </h3>
                                 {learning?.patterns && learning.patterns.length > 0 ? (
                                     learning.patterns.map((p: any, i) => (
                                         <div key={i} className="border-b border-slate-700/40 py-3 text-sm text-slate-300">{JSON.stringify(p)}</div>
