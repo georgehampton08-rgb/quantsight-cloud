@@ -4,6 +4,9 @@ import { useOrbital } from '../context/OrbitalContext'
 import MatchupRadar from '../components/matchup/MatchupRadar'
 import VertexMatchupCard from '../components/aegis/VertexMatchupCard'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
+import { ApiContract } from '../api/client'
+import { PlayerApi } from '../services/playerApi'
+import { AegisApi } from '../services/aegisApi'
 
 interface RadarDimensions {
     scoring: number;
@@ -36,13 +39,8 @@ export default function MatchupEnginePage() {
     React.useEffect(() => {
         const loadTeams = async () => {
             try {
-                let data;
-                if (window.electronAPI?.getTeams) {
-                    data = await window.electronAPI.getTeams();
-                } else {
-                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams');
-                    data = await res.json();
-                }
+                const res = await ApiContract.execute<any>('getTeams', { path: 'teams' });
+                const data = res.data;
                 if (data?.teams) {
                     setTeams(data.teams);
                 }
@@ -59,20 +57,12 @@ export default function MatchupEnginePage() {
         const loadAnalysis = async () => {
             setLoading(true);
             try {
-                // Determine API source
-                let data;
-                if (window.electronAPI?.analyzeMatchup) {
-                    data = await window.electronAPI.analyzeMatchup(selectedPlayer.id, opponentId);
-                } else {
-                    const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/matchup/analyze?player_id=${selectedPlayer.id}&opponent=${opponentId}`);
-                    data = await res.json();
-                }
+                const data = await PlayerApi.analyzeMatchup(selectedPlayer.id, opponentId);
                 setAnalysis(data);
 
                 // Fetch REAL radar dimensions from the API (not hardcoded!)
                 try {
-                    const radarRes = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/radar/${selectedPlayer.id}?opponent_id=${opponentId}`);
-                    const radarResult = await radarRes.json();
+                    const radarResult = await AegisApi.getRadarDimensions(selectedPlayer.id, opponentId);
                     if (radarResult.player_stats && radarResult.opponent_defense) {
                         setRadarData({
                             player: radarResult.player_stats,
@@ -232,8 +222,7 @@ export default function MatchupEnginePage() {
                                         setOpponentSearch(e.target.value);
                                         // Search for players - use correct endpoint
                                         if (e.target.value.length > 2) {
-                                            fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=${encodeURIComponent(e.target.value)}`)
-                                                .then(res => res.json())
+                                            PlayerApi.search(e.target.value)
                                                 .then(data => setSearchResults(Array.isArray(data) ? data : []))
                                                 .catch(() => setSearchResults([]));
                                         } else {

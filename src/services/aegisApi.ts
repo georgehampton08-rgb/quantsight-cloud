@@ -95,14 +95,16 @@ export interface AegisPlayerData {
 }
 
 // API Functions
+import { ApiContract, Normalizers } from '../api/client';
+
 export const AegisApi = {
     /**
      * Get Aegis system health and statistics
      */
     getHealth: async (): Promise<AegisHealthStatus> => {
         try {
-            const res = await fetch(`${API_BASE}/health`);
-            return await res.json();
+            const res = await ApiContract.execute<AegisHealthStatus>(null, { path: 'health' });
+            return res.data;
         } catch (error) {
             console.error('Aegis health check failed:', error);
             return {
@@ -123,9 +125,8 @@ export const AegisApi = {
      */
     getPlayer: async (playerId: string, season: string = '2024-25'): Promise<AegisPlayerData> => {
         try {
-            const res = await fetch(`${API_BASE}/aegis/player/${playerId}?season=${season}`);
-            if (!res.ok) throw new Error(`Aegis player fetch failed: ${res.status}`);
-            return await res.json();
+            const res = await ApiContract.execute<AegisPlayerData>(null, { path: `aegis/player/${playerId}?season=${season}` });
+            return res.data;
         } catch (error) {
             console.error(`[AegisApi] getPlayer failed for ${playerId}:`, error);
             throw error;
@@ -137,9 +138,8 @@ export const AegisApi = {
      */
     getPlayerStats: async (playerId: string, season: string = '2024-25'): Promise<any> => {
         try {
-            const res = await fetch(`${API_BASE}/aegis/player/${playerId}/stats?season=${season}`);
-            if (!res.ok) throw new Error(`Aegis stats fetch failed: ${res.status}`);
-            return await res.json();
+            const res = await ApiContract.execute<any>(null, { path: `aegis/player/${playerId}/stats?season=${season}` });
+            return res.data;
         } catch (error) {
             console.error(`[AegisApi] getPlayerStats failed for ${playerId}:`, error);
             throw error;
@@ -151,9 +151,8 @@ export const AegisApi = {
      */
     getPlayerMatchup: async (playerAId: string, playerBId: string, season: string = '2024-25'): Promise<PlayerMatchup> => {
         try {
-            const res = await fetch(`${API_BASE}/aegis/matchup/player/${playerAId}/vs/${playerBId}?season=${season}`);
-            if (!res.ok) throw new Error(`Player matchup failed: ${res.status}`);
-            return await res.json();
+            const res = await ApiContract.execute<PlayerMatchup>(null, { path: `aegis/matchup/player/${playerAId}/vs/${playerBId}?season=${season}` });
+            return res.data;
         } catch (error) {
             console.error(`[AegisApi] getPlayerMatchup failed for ${playerAId} vs ${playerBId}:`, error);
             throw error;
@@ -165,9 +164,8 @@ export const AegisApi = {
      */
     getTeamMatchup: async (teamAId: string, teamBId: string, season: string = '2024-25'): Promise<TeamMatchup> => {
         try {
-            const res = await fetch(`${API_BASE}/aegis/matchup/team/${teamAId}/vs/${teamBId}?season=${season}`);
-            if (!res.ok) throw new Error(`Team matchup failed: ${res.status}`);
-            return await res.json();
+            const res = await ApiContract.execute<TeamMatchup>(null, { path: `aegis/matchup/team/${teamAId}/vs/${teamBId}?season=${season}` });
+            return res.data;
         } catch (error) {
             console.error(`[AegisApi] getTeamMatchup failed for ${teamAId} vs ${teamBId}:`, error);
             throw error;
@@ -179,9 +177,8 @@ export const AegisApi = {
      */
     getStats: async (): Promise<any> => {
         try {
-            const res = await fetch(`${API_BASE}/aegis/stats`);
-            if (!res.ok) throw new Error(`Aegis stats failed: ${res.status}`);
-            return await res.json();
+            const res = await ApiContract.execute<any>(null, { path: 'aegis/stats' });
+            return res.data;
         } catch (error) {
             console.error('[AegisApi] getStats failed:', error);
             throw error;
@@ -202,11 +199,11 @@ export const AegisApi = {
         execution_time_ms: number;
     }> => {
         try {
-            const res = await fetch(`${API_BASE}/player-data/refresh/${playerId}?season=${season}&invalidate_cache=true`, {
-                method: 'POST'
+            const res = await ApiContract.execute<any>(null, {
+                path: `player-data/refresh/${playerId}?season=${season}&invalidate_cache=true`,
+                options: { method: 'POST' }
             });
-            if (!res.ok) throw new Error(`Data refresh failed: ${res.status}`);
-            return await res.json();
+            return res.data;
         } catch (error) {
             console.error(`[AegisApi] refreshPlayerData failed for ${playerId}:`, error);
             throw error;
@@ -238,9 +235,8 @@ export const AegisApi = {
         if (options?.astLine) params.append('ast_line', String(options.astLine));
         if (options?.forceFresh) params.append('force_fresh', 'true');
 
-        const res = await fetch(`${API_BASE}/aegis/simulate/${playerId}?${params}`);
-        if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
-        return await res.json();
+        const res = await ApiContract.execute<SimulationResult>(null, { path: `aegis/simulate/${playerId}?${params}` });
+        return Normalizers.simulation(res.data) as SimulationResult;
     },
 
     /**
@@ -267,9 +263,6 @@ export const AegisApi = {
         },
         patienceMs: number = 800
     ): Promise<PatientSimulationResult> => {
-        const startTime = Date.now();
-        const requestId = `sim_${playerId}_${startTime}`;
-
         const params = new URLSearchParams({
             opponent_id: opponentId
         });
@@ -280,103 +273,24 @@ export const AegisApi = {
         if (options?.astLine) params.append('ast_line', String(options.astLine));
         if (options?.forceFresh) params.append('force_fresh', 'true');
 
-        // Live request promise
-        const liveRequest = fetch(`${API_BASE}/aegis/simulate/${playerId}?${params}`)
-            .then(res => {
-                if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
-                return res.json();
-            });
+        const result = await ApiContract.executeShadowRace<SimulationResult>(
+            `aegis/simulate/${playerId}?${params}`,
+            `cache/simulation/${playerId}`,
+            patienceMs
+        );
 
-        // Patience timeout
-        const patienceTimeout = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('PATIENCE_EXCEEDED')), patienceMs);
-        });
-
-        try {
-            // Race live vs patience
-            const data = await Promise.race([liveRequest, patienceTimeout]);
-            return {
-                data,
-                source: 'live',
-                lateArrivalPending: false,
-                executionTimeMs: Date.now() - startTime,
-                requestId
-            };
-        } catch (error: any) {
-            if (error.message === 'PATIENCE_EXCEEDED') {
-                console.log(`[ShadowRace] Patience ${patienceMs}ms exceeded for player ${playerId}`);
-
-                // Don't cancel live - let it complete in background
-                liveRequest
-                    .then(data => {
-                        console.log(`[ShadowRace] Late arrival for ${requestId}`);
-                        // Store for later retrieval or emit event
-                        window.dispatchEvent(new CustomEvent('nexus:late-arrival', {
-                            detail: { requestId, playerId, data, delayMs: Date.now() - startTime }
-                        }));
-                    })
-                    .catch(() => { }); // Ignore background errors
-
-                // Try to get cached data
-                try {
-                    const cacheRes = await fetch(`${API_BASE}/cache/simulation/${playerId}`);
-                    if (cacheRes.ok) {
-                        const cacheData = await cacheRes.json();
-                        return {
-                            data: cacheData,
-                            source: 'cache',
-                            lateArrivalPending: true,
-                            executionTimeMs: Date.now() - startTime,
-                            requestId
-                        };
-                    }
-                } catch { }
-
-                // No cache available - wait a bit longer for live
-                try {
-                    const data = await Promise.race([
-                        liveRequest,
-                        new Promise<never>((_, reject) =>
-                            setTimeout(() => reject(new Error('FINAL_TIMEOUT')), 2000)
-                        )
-                    ]);
-                    return {
-                        data,
-                        source: 'live',
-                        lateArrivalPending: false,
-                        executionTimeMs: Date.now() - startTime,
-                        requestId
-                    };
-                } catch {
-                    return {
-                        data: null,
-                        source: 'timeout',
-                        lateArrivalPending: true,
-                        executionTimeMs: Date.now() - startTime,
-                        requestId,
-                        error: 'Simulation timed out - no cache available'
-                    };
-                }
-            }
-
-            // Other error
-            return {
-                data: null,
-                source: 'error',
-                lateArrivalPending: false,
-                executionTimeMs: Date.now() - startTime,
-                requestId,
-                error: error.message
-            };
+        if (result.data) {
+            result.data = Normalizers.simulation(result.data);
         }
+
+        return result as PatientSimulationResult;
     },
 
     // Get radar chart dimensions (real math, not hardcoded!)
-    async getRadarDimensions(playerId: string, opponentId?: string): Promise<RadarResult> {
+    getRadarDimensions: async (playerId: string, opponentId?: string): Promise<RadarResult> => {
         const params = opponentId ? `?opponent_id=${opponentId}` : '';
-        const res = await fetch(`${API_BASE}/radar/${playerId}${params}`);
-        if (!res.ok) throw new Error(`Radar failed: ${res.status}`);
-        return await res.json();
+        const res = await ApiContract.execute<RadarResult>(null, { path: `radar/${playerId}${params}` });
+        return res.data;
     }
 };
 

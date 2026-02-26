@@ -171,17 +171,21 @@ export interface NexusError {
 // Helper Functions
 // =============================================================================
 
-const nexusFetch = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
-    const headers = {
-        'X-Admin-Key': NEXUS_ADMIN_KEY,
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
+import { ApiContract } from '../api/client';
 
-    return fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers
+const nexusExecute = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+    const res = await ApiContract.execute<T>(null, {
+        path: path.startsWith('/') ? path.substring(1) : path,
+        options: {
+            ...options,
+            headers: {
+                'X-Admin-Key': NEXUS_ADMIN_KEY,
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        }
     });
+    return res.data;
 };
 
 // =============================================================================
@@ -194,11 +198,7 @@ export const NexusApi = {
      */
     getOverview: async (): Promise<NexusOverview> => {
         try {
-            const res = await nexusFetch('/nexus/overview');
-            if (!res.ok) {
-                throw new Error(`Overview fetch failed: ${res.status}`);
-            }
-            return await res.json();
+            return await nexusExecute<NexusOverview>('nexus/overview');
         } catch (error) {
             console.error('[Nexus] Overview failed:', error);
             throw error;
@@ -210,11 +210,7 @@ export const NexusApi = {
      */
     getHealth: async (): Promise<SystemHealth> => {
         try {
-            const res = await nexusFetch('/nexus/health');
-            if (!res.ok) {
-                throw new Error(`Health check failed: ${res.status}`);
-            }
-            return await res.json();
+            return await nexusExecute<SystemHealth>('nexus/health');
         } catch (error) {
             console.error('[Nexus] Health check failed:', error);
             throw error;
@@ -226,11 +222,7 @@ export const NexusApi = {
      */
     getCooldowns: async (): Promise<ActiveCooldowns> => {
         try {
-            const res = await nexusFetch('/nexus/cooldowns');
-            if (!res.ok) {
-                throw new Error(`Cooldowns fetch failed: ${res.status}`);
-            }
-            return await res.json();
+            return await nexusExecute<ActiveCooldowns>('nexus/cooldowns');
         } catch (error) {
             console.error('[Nexus] Cooldowns fetch failed:', error);
             throw error;
@@ -242,11 +234,7 @@ export const NexusApi = {
      */
     getRouteMatrix: async (): Promise<RouteMatrix> => {
         try {
-            const res = await nexusFetch('/nexus/route-matrix');
-            if (!res.ok) {
-                throw new Error(`Route matrix fetch failed: ${res.status}`);
-            }
-            return await res.json();
+            return await nexusExecute<RouteMatrix>('nexus/route-matrix');
         } catch (error) {
             console.error('[Nexus] Route matrix failed:', error);
             throw error;
@@ -258,13 +246,8 @@ export const NexusApi = {
      */
     getRouteRecommendation: async (path: string): Promise<RouteDecision> => {
         try {
-            // Remove leading slash if present for URL construction
             const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-            const res = await nexusFetch(`/nexus/recommend/${cleanPath}`);
-            if (!res.ok) {
-                throw new Error(`Route recommendation failed: ${res.status}`);
-            }
-            return await res.json();
+            return await nexusExecute<RouteDecision>(`nexus/recommend/${cleanPath}`);
         } catch (error) {
             console.error('[Nexus] Route recommendation failed:', error);
             throw error;
@@ -276,13 +259,9 @@ export const NexusApi = {
      */
     enterCooldown: async (service: string, duration: number = 60): Promise<{ status: string; message: string }> => {
         try {
-            const res = await nexusFetch(`/nexus/cooldown/${encodeURIComponent(service)}?duration=${duration}`, {
+            return await nexusExecute<{ status: string; message: string }>(`nexus/cooldown/${encodeURIComponent(service)}?duration=${duration}`, {
                 method: 'POST'
             });
-            if (!res.ok) {
-                throw new Error(`Enter cooldown failed: ${res.status}`);
-            }
-            return await res.json();
         } catch (error) {
             console.error('[Nexus] Enter cooldown failed:', error);
             throw error;
@@ -294,13 +273,9 @@ export const NexusApi = {
      */
     exitCooldown: async (service: string): Promise<{ status: string; message: string }> => {
         try {
-            const res = await nexusFetch(`/nexus/cooldown/${encodeURIComponent(service)}`, {
+            return await nexusExecute<{ status: string; message: string }>(`nexus/cooldown/${encodeURIComponent(service)}`, {
                 method: 'DELETE'
             });
-            if (!res.ok) {
-                throw new Error(`Exit cooldown failed: ${res.status}`);
-            }
-            return await res.json();
         } catch (error) {
             console.error('[Nexus] Exit cooldown failed:', error);
             throw error;

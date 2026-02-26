@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import './UsageVacuumToggle.css';
+import { ApiContract } from '../../api/client';
 
 interface Player {
     player_id: string;
@@ -50,28 +51,26 @@ const UsageVacuumToggle: React.FC<UsageVacuumToggleProps> = ({
         setIsCalculating(true);
 
         try {
-            // Call Usage Vacuum endpoint
-            const response = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/usage-vacuum/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    team_id: teamId,
-                    injured_player_ids: Array.from(newInjured),
-                    remaining_roster: players
-                        .filter(p => !newInjured.has(p.player_id))
-                        .map(p => ({
-                            player_id: p.player_id,
-                            name: p.name,
-                            usage: p.usage
-                        }))
-                })
-            });
+            const payload = {
+                team_id: teamId,
+                injured_player_ids: Array.from(newInjured),
+                remaining_roster: players
+                    .filter(p => !newInjured.has(p.player_id))
+                    .map(p => ({
+                        player_id: p.player_id,
+                        name: p.name,
+                        usage: p.usage
+                    }))
+            };
 
-            if (response.ok) {
-                const data = await response.json();
-                setRedistribution(data.redistribution || []);
-                onInjuryChange?.(Array.from(newInjured), data.redistribution || []);
-            }
+            const res = await ApiContract.execute<any>('analyzeUsageVacuum', {
+                path: 'usage-vacuum/analyze',
+                options: { method: 'POST', body: JSON.stringify(payload) }
+            }, [payload]);
+
+            const data = res.data;
+            setRedistribution(data.redistribution || []);
+            onInjuryChange?.(Array.from(newInjured), data.redistribution || []);
         } catch (error) {
             console.error('[UsageVacuum] Analysis failed:', error);
             // Generate mock redistribution for demonstration

@@ -12,6 +12,8 @@ import DataProvenanceBadge from '../components/common/DataProvenanceBadge';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 import { useToast } from '../context/ToastContext';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ApiContract } from '../api/client';
+import { AegisApi } from '../services/aegisApi';
 import { useOrbital } from '../context/OrbitalContext';
 import ProjectionMatrix from '../components/aegis/ProjectionMatrix';
 import PlayTypeEfficiency from '../components/aegis/PlayTypeEfficiency';
@@ -44,10 +46,10 @@ export default function PlayerProfilePage() {
     useEffect(() => {
         const fetchTeams = async () => {
             try {
-                const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams');
-                if (res.ok) {
-                    const data = await res.json();
-                    setTeams(data.teams || []);
+                const res = await ApiContract.execute<any>('getTeams', { path: 'teams' });
+                const data = res.data;
+                if (data.teams) {
+                    setTeams(data.teams);
                 }
             } catch (e) {
                 console.error('Failed to fetch teams:', e);
@@ -84,8 +86,7 @@ export default function PlayerProfilePage() {
 
         const fetchRadar = async () => {
             try {
-                const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/radar/${targetId}?opponent_id=${currentOpponent}`);
-                const data = await res.json();
+                const data = await AegisApi.getRadarDimensions(targetId, currentOpponent);
                 if (data.player_stats && data.opponent_defense) {
                     setRadarData({
                         player: data.player_stats,
@@ -131,8 +132,8 @@ export default function PlayerProfilePage() {
                 let opponent = 'NBA'; // Default fallback
 
                 try {
-                    const scheduleRes = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/schedule');
-                    const schedule = await scheduleRes.json();
+                    const res = await ApiContract.execute<any>('getSchedule', { path: 'schedule' });
+                    const schedule = res.data;
 
                     if (schedule?.games?.length > 0) {
                         // Try to find a game involving the player's team

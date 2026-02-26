@@ -1,5 +1,6 @@
 import React from 'react'
 import { Activity, ShieldCheck, Zap } from 'lucide-react'
+import { ApiContract } from '../api/client'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
@@ -21,26 +22,8 @@ const ScheduleWidget = () => {
     React.useEffect(() => {
         const load = async () => {
             try {
-                let data;
-                const isDev = window.location.hostname === 'localhost' && window.location.port === '5173';
-
-                if (!isDev && window.electronAPI?.getSchedule) {
-                    console.log('[Schedule] Loading via Electron IPC');
-                    data = await window.electronAPI.getSchedule();
-
-                    // Fallback to HTTP if IPC returns nothing
-                    if (!data || !data.games) {
-                        console.warn('[Schedule] IPC returned no data, falling back to direct HTTP');
-                        const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/schedule');
-                        if (res.ok) {
-                            data = await res.json();
-                        }
-                    }
-                } else {
-                    console.log('[Schedule] Loading via direct HTTP');
-                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/schedule');
-                    data = await res.json();
-                }
+                const res = await ApiContract.execute<any>('getSchedule', { path: 'schedule' });
+                const data = res.data;
 
                 if (data && data.games) {
                     console.log(`[Schedule] Loaded ${data.games.length} games`);

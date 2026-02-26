@@ -74,107 +74,68 @@ declare global {
     }
 }
 
+import { ApiContract, Normalizers } from '../api/client';
+
 export const PlayerApi = {
     search: async (query: string) => {
-        if (window.electronAPI) {
-            return window.electronAPI.searchPlayers(query);
-        }
-        // Browser fallback
-        try {
-            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=${encodeURIComponent(query)}`);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            return res.json();
-        } catch (error) {
-            console.error(`[PlayerApi] search failed for query "${query}":`, error);
-            throw error;
-        }
+        const res = await ApiContract.execute<any[]>('searchPlayers', {
+            path: `players/search?q=${encodeURIComponent(query)}`
+        }, [query]);
+        return res.data;
     },
     getProfile: async (id: string) => {
-        if (window.electronAPI) {
-            return window.electronAPI.getPlayerProfile(id);
-        }
-        // Browser fallback
-        try {
-            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/${id}`);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            return res.json();
-        } catch (error) {
-            console.error(`[PlayerApi] getProfile failed for ID "${id}":`, error);
-            throw error;
-        }
+        const res = await ApiContract.execute<PlayerProfile>('getPlayerProfile', {
+            path: `players/${id}`
+        }, [id]);
+        return Normalizers.profile(res.data) as PlayerProfile;
     },
     analyzeMatchup: async (playerId: string, opponent: string) => {
         // Defensive: extract ID if opponent is accidentally passed as an object
         const opponentId = typeof opponent === 'object' ? (opponent as any).id || String(opponent) : opponent;
-        if (window.electronAPI) {
-            return window.electronAPI.analyzeMatchup(playerId, opponentId);
-        }
-        // Browser fallback
-        try {
-            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/matchup/${playerId}/${opponentId}`);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            return res.json();
-        } catch (error) {
-            console.error(`[PlayerApi] analyzeMatchup failed for player "${playerId}" vs "${opponent}":`, error);
-            throw error;
-        }
+        const res = await ApiContract.execute<MatchupResult>('analyzeMatchup', {
+            path: `matchup/${playerId}/${opponentId}`
+        }, [playerId, opponentId]);
+        return res.data;
     },
     saveKeys: async (apiKey: string) => {
-        if (window.electronAPI) {
-            return window.electronAPI.saveKeys(apiKey);
-        }
-        // Browser fallback
-        try {
-            const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/settings/keys', {
+        const res = await ApiContract.execute<{ status: string, message: string }>('saveKeys', {
+            path: 'settings/keys',
+            options: {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gemini_api_key: apiKey })
-            });
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            return res.json();
-        } catch (error) {
-            console.error('[PlayerApi] saveKeys failed:', error);
-            throw error;
-        }
+            }
+        }, [apiKey]);
+        return res.data;
     },
     saveKaggleKeys: async (username: string, key: string) => {
         if (window.electronAPI) {
             return window.electronAPI.saveKaggleKeys(username, key);
         }
-        // Browser fallback - would need backend endpoint
         throw new Error('Kaggle keys not supported in browser mode');
     },
     syncKaggle: async () => {
         if (window.electronAPI) {
             return window.electronAPI.syncKaggle();
         }
-        // Browser fallback - would need backend endpoint
         throw new Error('Kaggle sync not supported in browser mode');
     },
     purgeDb: async () => {
         if (window.electronAPI) {
             return window.electronAPI.purgeDb();
         }
-        // Browser fallback - would need backend endpoint
         throw new Error('DB purge not supported in browser mode');
     },
     forceRefresh: async (playerId: string, playerName: string, cachedLastGame: string) => {
-        if (window.electronAPI) {
-            return window.electronAPI.forceRefresh(playerId, playerName, cachedLastGame);
-        }
-        // Browser fallback - call backend directly
-        try {
-            const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/players/${playerId}/refresh`, {
+        const res = await ApiContract.execute<any>('forceRefresh', {
+            path: `players/${playerId}/refresh`,
+            options: {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ playerName, cachedLastGame })
-            });
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            return res.json();
-        } catch (error) {
-            console.error(`[PlayerApi] forceRefresh failed for ${playerId}:`, error);
-            throw error;
-        }
+            }
+        }, [playerId, playerName, cachedLastGame]);
+        return res.data;
     }
 };
 

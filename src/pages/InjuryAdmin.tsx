@@ -8,8 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Trash2, RefreshCw, Plus, User } from 'lucide-react';
 import { useOrbital } from '@/context/OrbitalContext';
 import { PlayerApi, PlayerProfile } from '@/services/playerApi';
-
-const API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
+import { ApiContract } from '@/api/client';
 
 const NBA_TEAMS = [
     'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW',
@@ -94,8 +93,8 @@ export default function InjuryAdmin() {
     const loadInjuries = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/injuries`);
-            const data = await res.json();
+            const res = await ApiContract.execute<any>('getInjuries', { path: 'injuries' });
+            const data = res.data;
             setInjuries(data.injuries || []);
         } catch (err) {
             showMessage('error', 'Failed to load injuries');
@@ -119,13 +118,16 @@ export default function InjuryAdmin() {
         e.preventDefault();
 
         try {
-            const res = await fetch(`${API_BASE}/admin/injuries/add`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+            const res = await ApiContract.execute<any>('addInjury', {
+                path: 'admin/injuries/add',
+                options: {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                }
             });
 
-            if (res.ok) {
+            if (res.data) {
                 showMessage('success', 'Injury added successfully!');
                 setFormData({
                     player_id: '',
@@ -148,11 +150,14 @@ export default function InjuryAdmin() {
         if (!confirm('Remove this injury?')) return;
 
         try {
-            const res = await fetch(`${API_BASE}/admin/injuries/remove/${playerId}`, {
-                method: 'DELETE'
+            const res = await ApiContract.execute<any>('removeInjury', {
+                path: `admin/injuries/remove/${playerId}`,
+                options: {
+                    method: 'DELETE'
+                }
             });
 
-            if (res.ok) {
+            if (res.data) {
                 showMessage('success', 'Injury removed!');
                 loadInjuries();
             } else {

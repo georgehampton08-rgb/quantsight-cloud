@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Map, Users, Loader2 } from 'lucide-react';
+import { ApiContract } from '../../api/client';
 
 // Types for real data structure
 interface NBATeam {
@@ -41,17 +42,8 @@ export default function CascadingSelector() {
     useEffect(() => {
         const loadTeams = async () => {
             try {
-                let data;
-                const isDev = window.location.hostname === 'localhost' && window.location.port === '5173';
-
-                if (!isDev && window.electronAPI) {
-                    console.log('[CascadingSelector] Loading teams via Electron IPC');
-                    data = await window.electronAPI.getTeams();
-                } else {
-                    console.log('[CascadingSelector] Loading teams via direct HTTP');
-                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams');
-                    data = await res.json();
-                }
+                const res = await ApiContract.execute<any>('getTeams', { path: 'teams' });
+                const data = res.data;
 
                 if (data && data.conferences) {
                     console.log(`[CascadingSelector] Loaded ${data.conferences.length} conferences`);
@@ -69,15 +61,8 @@ export default function CascadingSelector() {
         setActiveTeam(team);
         setLoading(true);
         try {
-            let data;
-            const isDev = window.location.hostname === 'localhost' && window.location.port === '5173';
-
-            if (!isDev && window.electronAPI) {
-                data = await window.electronAPI.getRoster(team.id);
-            } else {
-                const res = await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/roster/${team.id}`);
-                data = await res.json();
-            }
+            const res = await ApiContract.execute<any>('getRoster', { path: `roster/${team.id}` }, [team.id]);
+            const data = res.data;
 
             if (data && data.roster) {
                 setTeamPlayers(data.roster);

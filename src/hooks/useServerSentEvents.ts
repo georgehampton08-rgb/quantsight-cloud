@@ -15,6 +15,7 @@ interface SSEState {
     isConnecting: boolean;
     error: Error | null;
     retryCount: number;
+    circuitOpen: boolean;
 }
 
 export function useServerSentEvents(options: SSEOptions) {
@@ -32,7 +33,8 @@ export function useServerSentEvents(options: SSEOptions) {
         isConnected: false,
         isConnecting: false,
         error: null,
-        retryCount: 0
+        retryCount: 0,
+        circuitOpen: false
     });
 
     const eventSourceRef = useRef<EventSource | null>(null);
@@ -77,12 +79,17 @@ export function useServerSentEvents(options: SSEOptions) {
                 }));
                 onError?.(error);
 
+                eventSource.onopen = null;
+                eventSource.onmessage = null;
+                eventSource.onerror = null;
                 eventSource.close();
                 eventSourceRef.current = null;
 
                 // Auto-reconnect with exponential backoff
                 if (autoReconnect) {
                     setState(prev => {
+                        if (prev.circuitOpen) return prev; // Do not retry if circuit is open
+
                         if (prev.retryCount < maxRetries) {
                             const delay = reconnectInterval * Math.pow(2, prev.retryCount);
                             console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${prev.retryCount + 1})`);
@@ -90,8 +97,10 @@ export function useServerSentEvents(options: SSEOptions) {
                             reconnectTimeoutRef.current = setTimeout(connect, delay);
                             return { ...prev, retryCount: prev.retryCount + 1 };
                         }
-                        console.error('[SSE] Max retries reached');
-                        return prev;
+
+                        // Circuit Breaker triggers
+                        console.error('[SSE] Max retries reached, circuit breaker opened');
+                        return { ...prev, circuitOpen: true };
                     });
                 }
             };
@@ -108,23 +117,53 @@ export function useServerSentEvents(options: SSEOptions) {
     const disconnect = useCallback(() => {
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
         }
         if (eventSourceRef.current) {
+            // Sever all event handlers before closing to prevent ghost emissions during teardown
+            eventSourceRef.current.onopen = null;
+            eventSourceRef.current.onmessage = null;
+            eventSourceRef.current.onerror = null;
             eventSourceRef.current.close();
             eventSourceRef.current = null;
         }
-        setState({
+        setState(prev => ({
             isConnected: false,
             isConnecting: false,
             error: null,
-            retryCount: 0
-        });
+            retryCount: 0,
+            circuitOpen: prev.circuitOpen
+        }));
     }, []);
 
     useEffect(() => {
-        connect();
-        return () => disconnect();
-    }, [connect, disconnect]);
+        // Only auto-connect if document is visible
+        if (!document.hidden && !state.circuitOpen) {
+            connect();
+        }
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                console.log('[SSE Visibility Constraint] Document hidden, pausing stream resource');
+                disconnect();
+            } else {
+                console.log('[SSE Visibility Constraint] Document visible, resuming stream resource');
+                // Using connect directly here is fine; the effect unmount will disconnect it
+                // Make sure we only connect if circuit isn't blown
+                setState(prev => {
+                    if (!prev.circuitOpen) connect();
+                    return prev;
+                });
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            disconnect();
+        };
+    }, [connect, disconnect, state.circuitOpen]);
 
     return {
         ...state,

@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom';
 import Fuse, { FuseResult } from 'fuse.js'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
+import { PlayerApi } from '../services/playerApi'
 
 // Player search will be populated from backend API
 interface Player {
@@ -10,9 +12,6 @@ interface Player {
     position: string
     avatar?: string
 }
-
-
-import { useNavigate } from 'react-router-dom';
 
 export default function OmniSearchBar() {
     const [query, setQuery] = useState('')
@@ -26,33 +25,7 @@ export default function OmniSearchBar() {
     useEffect(() => {
         const loadPlayers = async () => {
             try {
-                let response;
-
-                // Always use direct HTTP in dev mode for reliability
-                const isDev = window.location.hostname === 'localhost' && window.location.port === '5173';
-
-                if (!isDev && window.electronAPI) {
-                    // Electron mode (production)
-                    console.log('[OmniSearch] Loading players via Electron IPC');
-                    response = await window.electronAPI.searchPlayers('');
-
-                    // Fallback to HTTP if IPC returns nothing
-                    if (!response || (Array.isArray(response) && response.length === 0)) {
-                        console.warn('[OmniSearch] IPC returned no data, falling back to direct HTTP');
-                        const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=');
-                        if (res.ok) {
-                            response = await res.json();
-                        }
-                    }
-                } else {
-                    // Browser/Dev mode - direct API call
-                    console.log('[OmniSearch] Loading players via direct HTTP');
-                    const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/players/search?q=');
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                    }
-                    response = await res.json();
-                }
+                const response = await PlayerApi.search('');
 
                 if (response && Array.isArray(response)) {
                     console.log(`[OmniSearch] Successfully loaded ${response.length} players`);

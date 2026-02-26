@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './MatchupLabPage.css';
+import { ApiContract } from '../api/client';
 
 // Types
 interface Game {
@@ -114,8 +115,8 @@ const MatchupLabPage: React.FC = () => {
     const fetchGames = async () => {
         try {
             setLoadingGames(true);
-            const res = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/matchup-lab/games');
-            const data = await res.json();
+            const res = await ApiContract.execute<any>('getMatchupLabGames', { path: 'matchup-lab/games' });
+            const data = res.data;
             setGames(data.games || []);
             if (data.games?.length > 0) {
                 setSelectedGame(data.games[0]);
@@ -150,13 +151,13 @@ const MatchupLabPage: React.FC = () => {
                 away_team: selectedGame.away_team
             });
 
-            const res = await fetch(
-                `https://quantsight-cloud-458498663186.us-central1.run.app/matchup/analyze?${params.toString()}`
-            );
-            const data = await res.json();
+            const res = await ApiContract.execute<any>('analyzeMatchupLab', {
+                path: `matchup/analyze?${params.toString()}`
+            });
+            const data = res.data;
 
             if (data.success) {
-                setAnalysis(data);
+                setAnalysis(data as AnalysisResult);
             } else {
                 // Handle error - convert objects to strings
                 const errorMsg = typeof data.detail === 'object'

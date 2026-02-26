@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { ApiContract } from '../api/client';
 
 interface RedistributionResult {
     player_id: string;
@@ -47,24 +48,29 @@ export function useUsageVacuum(
         setError(null);
 
         try {
-            const response = await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/usage-vacuum/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    team_id: teamId,
-                    injured_player_ids: Array.from(newInjured),
-                    remaining_roster: roster
-                        .filter(p => !newInjured.has(p.player_id))
-                        .map(p => ({
-                            player_id: p.player_id,
-                            name: p.name,
-                            usage: p.usage
-                        }))
-                })
+            const payload = {
+                team_id: teamId,
+                injured_player_ids: Array.from(newInjured),
+                remaining_roster: roster
+                    .filter(p => !newInjured.has(p.player_id))
+                    .map(p => ({
+                        player_id: p.player_id,
+                        name: p.name,
+                        usage: p.usage
+                    }))
+            };
+
+            const response = await ApiContract.execute<any>('analyzeUsageVacuum', {
+                path: 'usage-vacuum/analyze',
+                options: {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            const data = response.data;
+            if (data) {
                 setRedistribution(data.redistribution || []);
             } else {
                 throw new Error('Failed to calculate redistribution');

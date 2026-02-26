@@ -1,6 +1,7 @@
 import { Users, Shield, AlertTriangle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
+import { ApiContract } from '../api/client'
 
 interface Injury {
     player_name: string;
@@ -24,16 +25,14 @@ export default function TeamCentralPage() {
         const loadInitialData = async () => {
             try {
                 // Load Injuries
-                const injuryData = window.electronAPI?.getInjuries
-                    ? await window.electronAPI.getInjuries()
-                    : await (await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/injuries')).json();
+                const resInjuries = await ApiContract.execute<any>('getInjuries', { path: 'injuries' });
+                const injuryData = resInjuries.data;
 
                 if (injuryData?.injuries) setInjuries(injuryData.injuries);
 
                 // Load Teams
-                const teamData = window.electronAPI?.getTeams
-                    ? await window.electronAPI.getTeams()
-                    : await (await fetch('https://quantsight-cloud-458498663186.us-central1.run.app/teams')).json();
+                const resTeams = await ApiContract.execute<any>('getTeams', { path: 'teams' });
+                const teamData = resTeams.data;
 
                 if (teamData?.teams) setTeams(teamData.teams);
 
@@ -55,9 +54,8 @@ export default function TeamCentralPage() {
             if (retryCount === 0) setLoadingRoster(true);
             console.log(`[TeamCentral] Loading roster for team: ${selectedTeam}, attempt ${retryCount + 1}`);
             try {
-                const data = window.electronAPI?.getRoster
-                    ? await window.electronAPI.getRoster(selectedTeam)
-                    : await (await fetch(`https://quantsight-cloud-458498663186.us-central1.run.app/roster/${selectedTeam}`)).json();
+                const res = await ApiContract.execute<any>('getRoster', { path: `roster/${selectedTeam}` }, [selectedTeam]);
+                const data = res.data;
 
                 console.log(`[TeamCentral] Roster API response:`, data);
                 console.log(`[TeamCentral] data.roster exists:`, !!data?.roster);
