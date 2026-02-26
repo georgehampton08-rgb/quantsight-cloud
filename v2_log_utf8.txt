@@ -1,0 +1,1 @@
+﻿523bb18 2026-02-24 fix: NBA CDN throttling - semaphore(3) + 30s boxscore cache + 15s scoreboard cache; fix: vanguard_redis_failed as WARNING not ERROR; feat: restore VanguardControlRoom source with working Regenerate button + sidebar link

@@ -20,16 +20,16 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 bg-slate-900 text-white font-sans">
-            <div className="max-w-4xl mx-auto space-y-8">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 bg-slate-900 text-white font-sans">
+            <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
 
                 {/* Header row with badge */}
-                <div className="flex items-start justify-between mb-8 mt-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6 sm:mb-8 mt-2">
                     <div>
-                        <h2 className="text-2xl font-semibold mb-2 tracking-wide">Control Room</h2>
+                        <h2 className="text-2xl font-semibold mb-1 tracking-wide">Control Room</h2>
                         <p className="text-sm text-slate-400">System configuration and cloud parameters.</p>
                     </div>
-                    <div className="px-3 py-1.5 border border-emerald-500/50 rounded-md bg-transparent">
+                    <div className="self-start px-3 py-1.5 border border-emerald-500/50 rounded-md bg-transparent">
                         <span className="text-emerald-400 text-xs font-bold tracking-widest uppercase">
                             CLOUD TWIN V4.1.2
                         </span>

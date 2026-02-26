@@ -1,0 +1,2 @@
+﻿6402fd6 2026-02-03 \Complete fix: Add Nexus API routes, hide Gemini/Kaggle config, comprehensive testing"
+6901566 2026-01-31 QuantSight Cloud Migration Bundle - hybrid SQLite/CloudSQL, Dockerfile, React Native deps
