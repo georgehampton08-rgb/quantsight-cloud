@@ -1,10 +1,8 @@
 import { HashRouter } from 'react-router-dom'
 import { Component, ErrorInfo, ReactNode } from 'react'
 import { HealthProvider } from './context/HealthContext'
-import { ProgressProvider } from './context/ProgressContext'
 import { ToastProvider } from './context/ToastContext'
 import { OrbitalProvider } from './context/OrbitalContext'
-import ProgressBar from './components/common/ProgressBar'
 import ToastContainer from './components/common/ToastContainer'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -54,26 +52,23 @@ function App() {
             <HashRouter>
                 <OrbitalProvider>
                     <HealthProvider>
-                        <ProgressProvider>
-                            <ToastProvider>
-                                <div className="flex h-screen w-screen bg-financial-bg text-financial-text overflow-hidden relative">
-                                    <ProgressBar />
-                                    <ToastContainer />
+                        <ToastProvider>
+                            <div className="flex h-screen w-screen bg-financial-bg text-financial-text overflow-hidden relative">
+                                <ToastContainer />
 
-                                    {/* IPC Verification / Dev Mode Tag */}
-                                    <div className="fixed bottom-1 right-1 text-xs text-opacity-20 text-white pointer-events-none z-50">
-                                        QS-DASH-V1
-                                    </div>
-
-                                    <Sidebar />
-
-                                    <div className="flex flex-col flex-1 h-full relative">
-                                        <TopBar />
-                                        <MainCanvas />
-                                    </div>
+                                {/* IPC Verification / Dev Mode Tag */}
+                                <div className="fixed bottom-1 right-1 text-xs text-opacity-20 text-white pointer-events-none z-50">
+                                    QS-DASH-V1
                                 </div>
-                            </ToastProvider>
-                        </ProgressProvider>
+
+                                <Sidebar />
+
+                                <div className="flex flex-col flex-1 h-full relative">
+                                    <TopBar />
+                                    <MainCanvas />
+                                </div>
+                            </div>
+                        </ToastProvider>
                     </HealthProvider>
                 </OrbitalProvider>
             </HashRouter>
