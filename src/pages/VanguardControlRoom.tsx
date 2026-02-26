@@ -16,7 +16,8 @@ interface Incident {
     first_seen: string;
     last_seen: string;
     status: string;
-    ai_analysis?: string;
+    labels?: Record<string, string | number | boolean>;
+    ai_analysis?: Record<string, unknown>;
 }
 
 interface VanguardStats {
@@ -49,8 +50,16 @@ interface AnalysisResult {
     summary?: string;
     root_cause?: string;
     recommendation?: string;
+    recommended_fix?: string | string[];
+    impact?: string;
     confidence?: number;
     status?: string;
+    timeline_analysis?: string;
+    ready_reasoning?: string;
+    ready_to_resolve?: boolean;
+    cached?: boolean;
+    generated_at?: string;
+    code_references?: string[];
 }
 
 // ─── Doughnut ─────────────────────────────────────────────────────────────────
@@ -77,16 +86,17 @@ function DoughnutScore({ score = 0 }: { score: number }) {
 
 // ─── AI Analysis Modal ────────────────────────────────────────────────────────
 function AnalysisModal({
-    fingerprint,
+    incident,
     onClose,
     onResolve,
     resolving
 }: {
-    fingerprint: string;
+    incident: Incident;
     onClose: () => void;
     onResolve: () => void;
     resolving: boolean;
 }) {
+    const fingerprint = incident.fingerprint;
     const [data, setData] = useState<AnalysisResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [regenerating, setRegenerating] = useState(false);
@@ -144,11 +154,24 @@ function AnalysisModal({
     };
 
     // Parse structured fields from analysis string if backend returns flat text
-    const summary = data?.summary || data?.analysis || '';
+    const summary = data?.summary || data?.impact || data?.analysis || '';
     const rootCause = data?.root_cause || '';
-    const recommendation = data?.recommendation || '';
+    const timelineAnalysis = data?.timeline_analysis || '';
+    const readyReasoning = data?.ready_reasoning || '';
+
+    // Check for "recommended_fix" array, or fallback
+    let recommendationList: string[] = [];
+    if (Array.isArray(data?.recommended_fix)) {
+        recommendationList = data.recommended_fix;
+    } else if (typeof data?.recommended_fix === 'string') {
+        recommendationList = (data.recommended_fix as string).split('\n');
+    } else if (data?.recommendation) {
+        recommendationList = data.recommendation.split('\n');
+    }
+
     const confidence = data?.confidence;
-    const codeRefs = (data as any)?.code_references || (data as any)?.references || [];
+    // Use typed code_references from the response model directly
+    const codeRefs: string[] = data?.code_references || [];
 
     // Close on backdrop click
     const handleBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -157,11 +180,11 @@ function AnalysisModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+            className="fixed inset-0 z-[2000] flex items-center justify-center p-4 transition-all duration-300"
+            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
             onClick={handleBackdrop}
         >
-            <div className="relative w-full max-w-2xl bg-[#0f172a] border border-slate-700/60 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="relative w-full max-w-4xl bg-slate-900/90 border border-purple-500/30 rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] shadow-purple-900/20 flex flex-col max-h-[90vh] overflow-hidden backdrop-blur-xl">
 
                 {/* ── Header ── */}
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/50 flex-shrink-0">
@@ -195,7 +218,36 @@ function AnalysisModal({
                         </div>
                     ) : data ? (
                         <>
-                            {/* Summary / Impact */}
+                            {/* Incident Meta/Context Metrics Strip */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 shadow-inner">
+                                <div>
+                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Occurrences</div>
+                                    <div className="text-xl font-mono font-black text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                        {incident.occurrence_count}
+                                    </div>
+                                </div>
+                                <div className="col-span-1 sm:col-span-2">
+                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Timeline</div>
+                                    <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">First</span> {incident.first_seen ? new Date(incident.first_seen).toLocaleString() : '—'}</div>
+                                    <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">Last</span> {incident.last_seen ? new Date(incident.last_seen).toLocaleString() : '—'}</div>
+                                </div>
+                                {/* Middleware tags — now fully typed via incident.labels */}
+                                <div className="col-span-2 sm:col-span-1 border-t border-slate-700/50 sm:border-0 pt-2 sm:pt-0">
+                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 shadow-sm">Middleware Tags</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {Object.entries(incident.labels || {}).slice(0, 3).map(([k, v]) => (
+                                            <span key={k} className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/30 whitespace-nowrap font-bold tracking-wider">
+                                                {String(v)}
+                                            </span>
+                                        ))}
+                                        {(!incident.labels || Object.keys(incident.labels).length === 0) && (
+                                            <span className="text-xs text-slate-600 font-mono">None</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Impact */}
                             {summary && (
                                 <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
                                     <div className="flex items-center gap-2 mb-2.5">
@@ -203,6 +255,25 @@ function AnalysisModal({
                                         <span className="text-emerald-400 font-bold text-sm">Impact</span>
                                     </div>
                                     <p className="text-slate-300 text-sm leading-relaxed">{summary}</p>
+                                </div>
+                            )}
+
+                            {/* Timeline Analysis from AI */}
+                            {timelineAnalysis && (
+                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                    <div className="flex items-center gap-2 mb-2.5">
+                                        <Clock className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                        <span className="text-blue-400 font-bold text-sm">Timeline Analysis</span>
+                                    </div>
+                                    <p className="text-slate-300 text-sm leading-relaxed">{timelineAnalysis}</p>
+                                    {readyReasoning && (
+                                        <div className="mt-2 pt-2 border-t border-slate-700/30">
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full mr-2 ${data?.ready_to_resolve ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                {data?.ready_to_resolve ? '✓ Ready to Resolve' : '⌛ Not Yet Ready'}
+                                            </span>
+                                            <span className="text-slate-500 text-xs">{readyReasoning}</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -218,13 +289,21 @@ function AnalysisModal({
                             )}
 
                             {/* Recommended Fix */}
-                            {recommendation && (
-                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span className="text-emerald-400 font-bold text-sm">Recommended Fix</span>
+                            {recommendationList.length > 0 && (
+                                <div className="rounded-2xl bg-white/5 backdrop-blur-md border border-emerald-500/20 p-5 shadow-lg relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                                    <div className="flex items-center gap-3 mb-3 relative z-10">
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0" />
+                                        <span className="text-white font-black text-sm tracking-wide">Recommended Fixes</span>
                                     </div>
-                                    <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{recommendation}</p>
+                                    <ul className="space-y-2 relative z-10">
+                                        {recommendationList.map((rec, i) => (
+                                            <li key={i} className="text-slate-300 text-sm leading-relaxed flex items-start gap-2">
+                                                <span className="text-emerald-500/50 text-xs mt-0.5 font-mono select-none">›</span>
+                                                <span className={rec.startsWith('IMMEDIATE:') ? 'text-amber-100 font-medium' : ''}>{rec}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
                             )}
 
@@ -270,7 +349,7 @@ function AnalysisModal({
                             </div>
 
                             {/* No structured data fallback */}
-                            {!summary && !rootCause && !recommendation && (
+                            {!summary && !rootCause && recommendationList.length === 0 && (
                                 <div className="text-center py-10">
                                     <Brain className="w-10 h-10 text-slate-600 mx-auto mb-3" />
                                     <p className="text-slate-500 text-sm italic">Analysis is pending — Gemini AI is processing. Click Regenerate to check.</p>
@@ -335,14 +414,17 @@ function IncidentCard({
 
     return (
         <>
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl transition-all hover:bg-white/10 group relative overflow-hidden">
+            <div
+                onClick={onToggle}
+                className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl transition-all hover:bg-white/10 group relative overflow-hidden cursor-pointer"
+            >
                 <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 relative z-10">
                     {/* Checkbox */}
                     <input
                         type="checkbox"
                         checked={selected}
-                        onChange={onToggle}
+                        onChange={(e) => { e.stopPropagation(); onToggle(); }}
                         className="w-5 h-5 bg-black/50 border-white/20 rounded text-amber-500 flex-shrink-0 cursor-pointer focus:ring-amber-500/50"
                     />
 
@@ -365,7 +447,7 @@ function IncidentCard({
                     {/* Actions */}
                     <div className="flex gap-3 ml-8 sm:ml-0 flex-shrink-0 mt-2 sm:mt-0">
                         <button
-                            onClick={() => setShowAnalysisModal(true)}
+                            onClick={(e) => { e.stopPropagation(); setShowAnalysisModal(true); }}
                             className="px-4 py-2.5 rounded-xl border border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/60 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
                         >
                             <Brain className="w-4 h-4" />
@@ -373,7 +455,7 @@ function IncidentCard({
                             <span className="sm:hidden">AI</span>
                         </button>
                         <button
-                            onClick={onResolve}
+                            onClick={(e) => { e.stopPropagation(); onResolve(); }}
                             disabled={resolving}
                             className="px-4 py-2.5 rounded-xl border border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/60 disabled:opacity-50 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
                         >
@@ -387,7 +469,7 @@ function IncidentCard({
             {/* AI Analysis Modal — Portal-like fixed overlay */}
             {showAnalysisModal && (
                 <AnalysisModal
-                    fingerprint={inc.fingerprint}
+                    incident={inc}
                     onClose={() => setShowAnalysisModal(false)}
                     onResolve={onResolve}
                     resolving={resolving}
