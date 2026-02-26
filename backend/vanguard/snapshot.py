@@ -9,6 +9,10 @@ SYSTEM_SNAPSHOT = {
     "gemini_ok": True,
     "vanguard_ok": True,
     "redis_ok": False,
+    # Phase 9: ML health indicators
+    "ml_classifier_ok": False,
+    "ml_classifier_version": None,
+    "ml_fallback_rate_1h": 0.0,
     "updated_at": datetime.now(timezone.utc).isoformat()
 }
 

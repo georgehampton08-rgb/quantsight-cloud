@@ -76,4 +76,12 @@ opentelemetry-sdk>=1.24.0
 opentelemetry-exporter-gcp-trace>=1.6.0
 opentelemetry-instrumentation-fastapi
 
-
+# ========================================
+# PHASE 9: Machine Learning Integration
+# ========================================
+scikit-learn>=1.4.0
+joblib>=1.3.0
+imbalanced-learn>=0.12.0
+google-cloud-bigquery>=3.17.0
+google-cloud-storage>=2.14.0
+pyarrow>=15.0.0  # Required for BQ load_table_from_dataframe

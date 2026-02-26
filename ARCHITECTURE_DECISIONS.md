@@ -76,3 +76,96 @@
 - Reads from any US region are served with low latency
 - No data export/import migration required
 - Firestore location exposed in `/health/deps` as `firestore_region: "nam5"`
+
+---
+
+## ADR-005: ML Incident Classifier Architecture
+
+**Date:** 2026-02-26  
+**Status:** Accepted  
+**Context:** Heuristic triage (Phase 5) achieves ~25-35% accuracy on the incident corpus. Most incidents (73.6% HTTPError404) fall through to a low-confidence fallback. An ML classifier can improve classification accuracy and provide confidence-calibrated predictions.
+
+**Decision:** RandomForestClassifier with lazy-loaded GCS wrapper, inserted into the Gemini → ML → Heuristic → Stub fallback chain. Model is feature-flagged (`FEATURE_ML_CLASSIFIER_ENABLED`).
+
+**Technical Details:**
+
+- Model: RandomForestClassifier (100 estimators, max_depth=15)
+- Imbalance handling: class_weight='balanced' + SMOTE-ENN (imblearn pipeline)
+- Quality gate: F1-macro ≥ 0.70 on stratified holdout
+- Lazy loading: functools.lru_cache pattern, GCS → /tmp cache
+- Serialization: joblib, estimated <5MB
+- Feature vector: 40+ features (HTTP codes, endpoint topology, temporal, severity, text signals)
+- Confidence threshold: ≥0.75 to use ML prediction, otherwise falls through to heuristic
+
+**Consequences:**
+
+- ML classification available within 0.1ms (post-load)
+- Cold start adds ~2-3s for GCS model download
+- Graceful degradation: model unavailability falls through to heuristic/stub
+- Requires `scikit-learn`, `joblib`, `imbalanced-learn` in requirements.txt
+- Model artifacts stored in gs://quantsight-ml-artifacts/models/incident_classifier/
+
+---
+
+## ADR-006: Predictive Circuit Breaker
+
+**Date:** 2026-02-26  
+**Status:** Accepted  
+**Context:** Current circuit breaker (Phase 4) is reactive — it opens after 50% failure rate over 60s with ≥10 requests. By the time OPEN triggers, significant damage has occurred to users. Leading indicators (latency spikes, error rate velocity, consecutive error bursts) can predict failures before they reach threshold.
+
+**Decision:** Add PREDICTIVE_OPEN state to CircuitBreakerV2. Returns 429 (Too Many Requests) instead of 503 (Service Unavailable) — a softer signal that allows clients to retry.
+
+**State Machine Extension:**
+
+```
+CLOSED ──[ML predicts failure]──→ PREDICTIVE_OPEN (429)
+PREDICTIVE_OPEN ──[actual failure > 50%]──→ OPEN (503)
+PREDICTIVE_OPEN ──[error rate drops < 20%]──→ CLOSED
+```
+
+**Leading Indicators (heuristic-based, not ML model):**
+
+1. Error rate velocity > 10% per 30s
+2. Latency p95 > 2000ms
+3. Consecutive errors ≥ 5
+4. Error rate 30-50% (approaching threshold)
+
+**Consequences:**
+
+- Feature-flagged: `FEATURE_PREDICTIVE_CB_ENABLED`
+- No additional model required (heuristic signal combination)
+- Blast-radius rules enforced (healthz, readyz, vanguard/* never predicted)
+- Prediction failure silently falls through to normal CB evaluation
+
+---
+
+## ADR-007: BigQuery Data Pipeline
+
+**Date:** 2026-02-26  
+**Status:** Accepted  
+**Context:** ML model training requires structured, queryable training data. Firestore is not suitable for analytical workloads. BigQuery provides standard SQL access, automatic schema enforcement, and integrates with GCP ML tooling.
+
+**Decision:** Nightly batch export from Firestore to BigQuery via `load_table_from_dataframe()` (Apache Arrow). Dataset: `quantsight_ml` with 3 tables.
+
+**Tables:**
+
+| Table | Partition | Clustering | Purpose |
+|---|---|---|---|
+| `incidents` | exported_at | error_type, severity | Classifier training |
+| `circuit_events` | occurred_at | endpoint, event_type | Predictive CB training |
+| `player_stats` | snapshot_date | player_id, team_id | Aegis predictor training |
+
+**Data Pipeline:**
+
+1. GitHub Actions cron (3:00 AM UTC daily)
+2. Firestore → Python SDK → pandas DataFrame → BigQuery
+3. Incremental export via `last_seen` timestamp
+4. Dataset TTL: 90 days (auto-expiration)
+
+**Consequences:**
+
+- Requires `google-cloud-bigquery`, `google-cloud-storage`, `pyarrow`
+- GCS bucket `gs://quantsight-ml-artifacts/` must be created
+- BigQuery API must be enabled in GCP project
+- Service account needs `bigquery.dataEditor` role
+- Load jobs are atomic (all-or-nothing), safe for idempotent reruns

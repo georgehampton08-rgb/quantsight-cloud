@@ -45,10 +45,11 @@ PROBE_INTERVAL_S = 30            # seconds between probe requests in HALF_OPEN
 
 
 class CircuitState(str, Enum):
-    """Circuit breaker states (industry standard semantics)."""
-    CLOSED = "CLOSED"        # Normal operation, traffic passes
-    OPEN = "OPEN"            # Quarantined, traffic blocked (503)
-    HALF_OPEN = "HALF_OPEN"  # Probe state, one request per interval
+    """Circuit breaker states (industry standard semantics + Phase 9 predictive)."""
+    CLOSED = "CLOSED"                    # Normal operation, traffic passes
+    PREDICTIVE_OPEN = "PREDICTIVE_OPEN"  # Phase 9: Pre-emptive throttle (429)
+    OPEN = "OPEN"                        # Quarantined, traffic blocked (503)
+    HALF_OPEN = "HALF_OPEN"              # Probe state, one request per interval
 
 
 class _CircuitEntry:
@@ -56,7 +57,7 @@ class _CircuitEntry:
 
     __slots__ = (
         "state", "opened_at", "last_probe_at",
-        "failure_rate_at_open", "lock",
+        "failure_rate_at_open", "prediction_confidence", "lock",
     )
 
     def __init__(self):
@@ -64,6 +65,7 @@ class _CircuitEntry:
         self.opened_at: Optional[float] = None       # monotonic timestamp when circuit opened
         self.last_probe_at: Optional[float] = None    # monotonic timestamp of last probe
         self.failure_rate_at_open: float = 0.0        # recorded for incident metadata
+        self.prediction_confidence: float = 0.0       # Phase 9: ML prediction confidence
         self.lock: asyncio.Lock = asyncio.Lock()
 
 
@@ -145,6 +147,17 @@ class CircuitBreakerV2:
                 if (request_count >= MIN_REQUESTS_IN_WINDOW
                         and failure_rate > FAILURE_RATE_THRESHOLD):
                     await self._transition_to_open(endpoint, entry, failure_rate)
+                else:
+                    # Phase 9: Check leading indicators for predictive opening
+                    await self._evaluate_predictive(endpoint, entry, failure_rate, request_count)
+            
+            elif entry.state == CircuitState.PREDICTIVE_OPEN:
+                # Promote to full OPEN if actual failure rate now exceeds threshold
+                if (request_count >= MIN_REQUESTS_IN_WINDOW
+                        and failure_rate > FAILURE_RATE_THRESHOLD):
+                    await self._transition_to_open(endpoint, entry, failure_rate)
+                elif failure_rate < 0.2:  # Error rate dropped significantly
+                    await self._transition_to_closed_from_predictive(endpoint, entry)
 
     async def record_probe_result(self, endpoint: str, success: bool) -> None:
         """
@@ -276,6 +289,77 @@ class CircuitBreakerV2:
             metadata={"recovery_time_s": round(recovery_time_s, 2)},
         )
 
+    async def _transition_to_predictive_open(
+        self, endpoint: str, entry: _CircuitEntry,
+        confidence: float, reason: str,
+    ) -> None:
+        """CLOSED → PREDICTIVE_OPEN (Phase 9: pre-emptive throttle)."""
+        entry.state = CircuitState.PREDICTIVE_OPEN
+        entry.opened_at = time.monotonic()
+        entry.prediction_confidence = confidence
+
+        logger.warning(
+            "circuit_breaker_PREDICTIVE_OPEN",
+            endpoint=endpoint,
+            confidence=round(confidence, 4),
+            reason=reason,
+            message="Leading indicators predict failure — returning 429",
+        )
+
+        await self._post_incident(
+            incident_type="CIRCUIT_PREDICTIVE_OPEN",
+            severity="YELLOW",
+            endpoint=endpoint,
+            metadata={
+                "prediction_confidence": round(confidence, 4),
+                "reason": reason,
+            },
+        )
+
+    async def _transition_to_closed_from_predictive(
+        self, endpoint: str, entry: _CircuitEntry,
+    ) -> None:
+        """PREDICTIVE_OPEN → CLOSED (prediction didn't materialize)."""
+        entry.state = CircuitState.CLOSED
+        entry.opened_at = None
+        entry.prediction_confidence = 0.0
+
+        logger.info(
+            "circuit_breaker_prediction_cleared",
+            endpoint=endpoint,
+            message="Error rate dropped, prediction cleared",
+        )
+
+    async def _evaluate_predictive(
+        self, endpoint: str, entry: _CircuitEntry,
+        failure_rate: float, request_count: int,
+    ) -> None:
+        """Evaluate leading indicators for predictive circuit opening.
+        
+        Only active when FEATURE_PREDICTIVE_CB_ENABLED is True.
+        """
+        try:
+            from ..core.feature_flags import flag
+            
+            if not flag("FEATURE_PREDICTIVE_CB_ENABLED"):
+                return
+            
+            if request_count < 5:  # Need some data first
+                return
+            
+            from .leading_indicator_tracker import get_leading_indicator_tracker
+            tracker = get_leading_indicator_tracker()
+            
+            should_open, confidence, reason = tracker.should_predict_failure(endpoint)
+            
+            if should_open:
+                await self._transition_to_predictive_open(
+                    endpoint, entry, confidence, reason
+                )
+        except Exception as e:
+            # Prediction failure must NEVER block normal circuit evaluation
+            logger.debug(f"predictive_evaluation_failed: {e}")
+
     async def _post_incident(self, incident_type: str, severity: str,
                              endpoint: str, metadata: dict) -> None:
         """Post a Vanguard incident for circuit state transitions."""
@@ -336,6 +420,8 @@ class CircuitBreakerV2:
                 "state": entry.state.value,
                 "failure_rate_at_open": round(entry.failure_rate_at_open, 4),
             }
+            if entry.state == CircuitState.PREDICTIVE_OPEN:
+                data["prediction_confidence"] = round(entry.prediction_confidence, 4)
             if entry.opened_at is not None:
                 data["quarantine_elapsed_s"] = round(now - entry.opened_at, 1)
             snapshot[endpoint] = data

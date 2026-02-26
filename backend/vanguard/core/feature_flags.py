@@ -43,6 +43,10 @@ _FLAG_DEFAULTS: dict = {
     "FEATURE_GRPC_SERVER":              False,   # Embedded Vanguard gRPC server (port 50051)
     "FEATURE_BIGTABLE_WRITES":          False,   # Bigtable write path for pulse data
     "FEATURE_WEBSOCKET_ENABLED":        True,    # WebSocket full-duplex (Phase 8 ACTIVE)
+    # ── Phase 9: Machine Learning Integration ────────────────────────────
+    "FEATURE_ML_CLASSIFIER_ENABLED":     False,   # ML incident classification in fallback chain
+    "FEATURE_PREDICTIVE_CB_ENABLED":     False,   # Predictive circuit breaker (PREDICTIVE_OPEN)
+    "FEATURE_AEGIS_ML_ENHANCED":         False,   # ML-enhanced Aegis simulation
 }
 
 _TRUTHY = {"1", "true", "yes", "on"}

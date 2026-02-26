@@ -1,0 +1,94 @@
+name: ML Model Retraining
+
+on:
+  schedule:
+    # Weekly retrain — Sundays at 5:00 AM UTC
+    - cron: '0 5 * * 0'
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Model to retrain'
+        required: true
+        default: 'incident_classifier'
+        type: choice
+        options:
+          - incident_classifier
+          - aegis_predictor
+          - all
+      upload:
+        description: 'Upload to GCS on quality gate pass'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  GOOGLE_CLOUD_PROJECT: quantsight-prod
+  FIREBASE_PROJECT_ID: quantsight-prod
+  ML_ARTIFACTS_BUCKET: quantsight-ml-artifacts
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install --quiet \
+            scikit-learn \
+            joblib \
+            imbalanced-learn \
+            google-cloud-bigquery \
+            google-cloud-storage \
+            firebase-admin \
+            pandas \
+            numpy \
+            pyarrow
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Retrain Incident Classifier
+        if: github.event.inputs.model != 'aegis_predictor'
+        working-directory: backend
+        run: |
+          UPLOAD_FLAG=""
+          if [ "${{ github.event.inputs.upload }}" = "true" ]; then
+            UPLOAD_FLAG="--upload"
+          fi
+          
+          python -m ml.incident_classifier.train $UPLOAD_FLAG
+
+      - name: Upload Training Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-report-${{ github.run_id }}
+          path: backend/ml_artifacts/training_report.json
+          retention-days: 30
+
+      - name: Retrain Summary
+        run: |
+          echo "✅ ML retrain pipeline complete"
+          echo "Project: $GOOGLE_CLOUD_PROJECT"
+          echo "Bucket: $ML_ARTIFACTS_BUCKET"
+          echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          
+          if [ -f backend/ml_artifacts/training_report.json ]; then
+            echo "─── Training Report ───"
+            cat backend/ml_artifacts/training_report.json | python -m json.tool
+          fi

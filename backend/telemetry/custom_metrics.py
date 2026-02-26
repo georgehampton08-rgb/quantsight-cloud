@@ -63,3 +63,84 @@ def get_ws_connections_gauge():
     """Get the WebSocket connections gauge (lazy init)."""
     _init_metrics()
     return _ws_connections_gauge
+
+
+# ────────────────────────────────────────────────────────────────────
+# Phase 9 — ML Metrics
+# ────────────────────────────────────────────────────────────────────
+_ml_confidence_histogram = None
+_ml_fallback_counter = None
+_ml_aegis_mae_histogram = None
+_ml_drift_gauge = None
+_ml_initialized = False
+
+
+def _init_ml_metrics():
+    """Initialize ML-specific OTel metrics. Idempotent."""
+    global _ml_confidence_histogram, _ml_fallback_counter
+    global _ml_aegis_mae_histogram, _ml_drift_gauge, _ml_initialized
+
+    if _ml_initialized:
+        return
+
+    _ml_initialized = True
+
+    try:
+        from opentelemetry import metrics
+
+        meter = metrics.get_meter("quantsight.ml", "1.0.0")
+
+        _ml_confidence_histogram = meter.create_histogram(
+            name="quantsight.ml.classifier_confidence",
+            description="ML incident classifier confidence score per prediction",
+            unit="1",
+        )
+
+        _ml_fallback_counter = meter.create_counter(
+            name="quantsight.ml.fallback_total",
+            description="Number of times the system fell back from ML to heuristic or stub",
+            unit="1",
+        )
+
+        _ml_aegis_mae_histogram = meter.create_histogram(
+            name="quantsight.ml.aegis_prediction_mae",
+            description="Mean Absolute Error for Aegis ML performance predictions",
+            unit="1",
+        )
+
+        _ml_drift_gauge = meter.create_up_down_counter(
+            name="quantsight.ml.drift_score",
+            description="Feature/prediction drift score (0=no drift, 1=severe drift)",
+            unit="1",
+        )
+
+        logger.info("ML custom metrics initialized")
+
+    except ImportError:
+        logger.debug("OTel metrics not available — ML metrics disabled")
+    except Exception as e:
+        logger.debug(f"ML metrics init failed: {e}")
+
+
+def get_ml_confidence_histogram():
+    """Get the ML classifier confidence histogram (lazy init)."""
+    _init_ml_metrics()
+    return _ml_confidence_histogram
+
+
+def get_ml_fallback_counter():
+    """Get the ML fallback counter (lazy init)."""
+    _init_ml_metrics()
+    return _ml_fallback_counter
+
+
+def get_ml_aegis_mae_histogram():
+    """Get the Aegis ML prediction MAE histogram (lazy init)."""
+    _init_ml_metrics()
+    return _ml_aegis_mae_histogram
+
+
+def get_ml_drift_gauge():
+    """Get the ML drift score gauge (lazy init)."""
+    _init_ml_metrics()
+    return _ml_drift_gauge

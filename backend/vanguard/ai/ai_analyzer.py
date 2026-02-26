@@ -408,10 +408,103 @@ Return ONLY valid JSON. No markdown fences, no extra prose.
         )
 
     def _create_fallback_analysis(self, incident: Dict) -> IncidentAnalysis:
-        """Create basic analysis when AI is unavailable"""
+        """Create analysis when Gemini AI is unavailable.
+        
+        Phase 9 Fallback Chain:
+            1. ML Classifier (feature-flagged) → confidence ≥ 0.75
+            2. Heuristic Triage (feature-flagged) → pattern matching
+            3. Static Stub → zero confidence
+        """
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
-
+        
+        # ── Phase 9: Try ML Classifier ──────────────────────────────────
+        try:
+            from ..core.feature_flags import flag
+            
+            if flag("FEATURE_ML_CLASSIFIER_ENABLED"):
+                from ..ml.incident_model import get_incident_model
+                
+                model = get_incident_model()
+                ml_result = model.classify(incident)
+                
+                if ml_result and ml_result.get("confidence", 0) >= 0.75:
+                    logger.info(
+                        f"ML classifier used for {incident['fingerprint']}: "
+                        f"label={ml_result['label']}, "
+                        f"confidence={ml_result['confidence']}"
+                    )
+                    return IncidentAnalysis(
+                        fingerprint=incident["fingerprint"],
+                        root_cause=(
+                            f"[ML Classifier] {ml_result['label']}: "
+                            f"{incident['error_type']} on {incident['endpoint']}"
+                        ),
+                        impact="Impact assessed by ML classifier — manual review recommended",
+                        recommended_fix=[
+                            f"Classification: {ml_result['label']} "
+                            f"(confidence: {ml_result['confidence']:.0%})",
+                            "Review error logs for details",
+                            "Verify classification matches actual root cause",
+                        ],
+                        ready_to_resolve=False,
+                        ready_reasoning=(
+                            f"ML classifier assigned label '{ml_result['label']}' "
+                            f"with {ml_result['confidence']:.0%} confidence. "
+                            f"Manual verification required."
+                        ),
+                        confidence=int(ml_result["confidence"] * 100),
+                        generated_at=now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+                        expires_at=expires.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+                        cached=False,
+                        prompt_version=self.PROMPT_VERSION,
+                        model_id=f"ml_classifier_{ml_result.get('model_version', 'unknown')}",
+                    )
+                elif ml_result:
+                    logger.debug(
+                        f"ML confidence {ml_result['confidence']:.3f} below threshold "
+                        f"for {incident['fingerprint']}"
+                    )
+        except Exception as e:
+            logger.warning(f"ML classifier fallback failed: {e}")
+        
+        # ── Phase 5: Try Heuristic Triage ───────────────────────────────
+        try:
+            from ..core.feature_flags import flag
+            
+            if flag("FEATURE_HEURISTIC_TRIAGE"):
+                from ..ai.heuristic_triage import triage_incident
+                
+                triage_result = triage_incident(incident)
+                if triage_result and triage_result.get("confidence", 0) > 30:
+                    logger.info(
+                        f"Heuristic triage used for {incident['fingerprint']}: "
+                        f"confidence={triage_result.get('confidence', 0)}"
+                    )
+                    return IncidentAnalysis(
+                        fingerprint=incident["fingerprint"],
+                        root_cause=triage_result.get(
+                            "root_cause",
+                            f"{incident['error_type']} on {incident['endpoint']}"
+                        ),
+                        impact="Impact estimated by heuristic triage — manual review recommended",
+                        recommended_fix=triage_result.get("recommended_fix", [
+                            "Check error logs for details",
+                            "Review recent code changes",
+                        ]),
+                        ready_to_resolve=False,
+                        ready_reasoning="Heuristic triage analysis — manual review required",
+                        confidence=triage_result.get("confidence", 30),
+                        generated_at=now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+                        expires_at=expires.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+                        cached=False,
+                        prompt_version=self.PROMPT_VERSION,
+                        model_id="heuristic_triage_v1",
+                    )
+        except Exception as e:
+            logger.warning(f"Heuristic triage fallback failed: {e}")
+        
+        # ── Static Stub (final fallback) ────────────────────────────────
         return IncidentAnalysis(
             fingerprint=incident["fingerprint"],
             root_cause=f"{incident['error_type']} on {incident['endpoint']} - AI analysis unavailable",

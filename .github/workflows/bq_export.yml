@@ -1,0 +1,91 @@
+name: BigQuery Data Export
+
+on:
+  schedule:
+    # Run nightly at 3:00 AM UTC (9:00 PM CST previous day)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      export_type:
+        description: 'Export type'
+        required: true
+        default: 'incidents'
+        type: choice
+        options:
+          - incidents
+          - player_stats
+          - all
+      since:
+        description: 'Incremental export since (ISO timestamp, blank for full)'
+        required: false
+        type: string
+
+env:
+  GOOGLE_CLOUD_PROJECT: quantsight-prod
+  FIREBASE_PROJECT_ID: quantsight-prod
+
+jobs:
+  export-data:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install --quiet \
+            google-cloud-bigquery \
+            google-cloud-storage \
+            firebase-admin \
+            pandas \
+            pyarrow
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Export Incidents to BigQuery
+        if: github.event.inputs.export_type != 'player_stats'
+        working-directory: backend
+        run: |
+          python -c "
+          import asyncio
+          from vanguard.export.incident_exporter import IncidentExporter
+          
+          exporter = IncidentExporter()
+          since = '${{ github.event.inputs.since }}' or None
+          rows = asyncio.run(exporter.export_to_bigquery(since=since))
+          print(f'Exported {rows} incidents')
+          "
+
+      - name: Export Player Stats to BigQuery
+        if: github.event.inputs.export_type != 'incidents'
+        working-directory: backend
+        run: |
+          python -c "
+          import asyncio
+          from services.player_bq_exporter import PlayerBQExporter
+          
+          exporter = PlayerBQExporter()
+          rows = asyncio.run(exporter.run_export())
+          print(f'Exported {rows} player stats')
+          "
+
+      - name: Export Summary
+        run: |
+          echo "✅ BigQuery export complete"
+          echo "Project: $GOOGLE_CLOUD_PROJECT"
+          echo "Dataset: quantsight_ml"
+          echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
