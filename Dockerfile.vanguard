@@ -1,0 +1,33 @@
+# ===========================================================================
+# Dockerfile.vanguard — Standalone Vanguard gRPC Service
+# ===========================================================================
+# Phase 6 extraction target. NOT deployed yet — Vanguard still runs embedded
+# in the main API (Dockerfile). This file is prepared for future extraction.
+#
+# Build:  docker build -f Dockerfile.vanguard -t vanguard-service .
+# Run:    docker run -p 50051:50051 -e VANGUARD_GRPC_PORT=50051 vanguard-service
+# ===========================================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies (minimal — no git needed for Vanguard)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only Vanguard requirements (subset of main requirements.txt)
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy only Vanguard package + shared dependencies
+COPY backend/vanguard/ /app/vanguard/
+COPY backend/firestore_db.py /app/firestore_db.py
+
+# Entry point
+ENV VANGUARD_GRPC_PORT=50051
+ENV VANGUARD_ENABLED=true
+ENV VANGUARD_STORAGE_MODE=FIRESTORE
+
+CMD ["python", "-m", "vanguard.standalone"]

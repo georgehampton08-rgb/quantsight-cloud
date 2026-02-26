@@ -109,6 +109,20 @@ async def vanguard_lifespan(app: FastAPI) -> AsyncIterator[None]:
             logger.error("subsystem_initialization_failed", error=str(e))
             # Continue - subsystems will lazy-load on first use
         
+        # Step 6: Start embedded gRPC server (Phase 6, feature-flagged)
+        try:
+            from ..core.feature_flags import flag
+            if flag("FEATURE_GRPC_SERVER"):
+                from ..grpc_server import start_grpc_server
+                grpc_port = int(__import__('os').getenv("VANGUARD_GRPC_PORT", "50051"))
+                await start_grpc_server(port=grpc_port)
+                logger.info("grpc_server_started", port=grpc_port)
+            else:
+                logger.debug("grpc_server_skipped", reason="FEATURE_GRPC_SERVER=false")
+        except Exception as e:
+            logger.warning("grpc_server_start_failed", error=str(e))
+            # Non-fatal: continue without gRPC
+        
         logger.info("vanguard_operational", message="Digital Immune System ACTIVE")
     
     except Exception as e:
@@ -122,6 +136,15 @@ async def vanguard_lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("vanguard_shutting_down")
     
     try:
+        # Stop gRPC server first
+        try:
+            from ..grpc_server import stop_grpc_server, get_grpc_server
+            if get_grpc_server() is not None:
+                await stop_grpc_server()
+                logger.info("grpc_server_stopped")
+        except Exception as e:
+            logger.warning("grpc_server_stop_failed", error=str(e))
+
         from ..surgeon.escalation import get_escalation_engine
         await get_escalation_engine().stop()
         await close_redis()

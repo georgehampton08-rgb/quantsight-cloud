@@ -1,0 +1,85 @@
+syntax = "proto3";
+package vanguard;
+
+// ── Incident service ──────────────────────────────
+
+message Incident {
+  string fingerprint       = 1;
+  string endpoint          = 2;
+  string error_type        = 3;
+  string severity          = 4;
+  int32  occurrence_count  = 5;
+  string status            = 6;
+  string created_at        = 7;
+  string last_seen         = 8;
+  string schema_version    = 9;
+}
+
+message StoreIncidentRequest  { Incident incident  = 1; }
+message StoreIncidentResponse { bool success        = 1;
+                                string fingerprint  = 2; }
+
+message GetIncidentRequest    { string fingerprint  = 1; }
+message GetIncidentResponse   { Incident incident   = 1;
+                                bool found          = 2; }
+
+message ListIncidentsRequest  { int32 limit         = 1;
+                                string status_filter = 2; }
+message ListIncidentsResponse { repeated Incident incidents = 1; }
+
+message ResolveIncidentRequest  { string fingerprint     = 1;
+                                  string resolution_notes = 2; }
+message ResolveIncidentResponse { bool success = 1; }
+
+// ── Circuit breaker service ───────────────────────
+
+message CircuitStateRequest  { string endpoint = 1; }
+message CircuitStateResponse {
+  string endpoint = 1;
+  string state    = 2;  // CLOSED | OPEN | HALF_OPEN
+  float  failure_rate = 3;
+  string opened_at    = 4;
+}
+
+message RecordOutcomeRequest {
+  string endpoint    = 1;
+  int32  status_code = 2;
+}
+message RecordOutcomeResponse { bool accepted = 1; }
+
+// ── Health service ────────────────────────────────
+
+message HealthRequest  {}
+message HealthResponse {
+  string mode          = 1;
+  bool   firestore_ok  = 2;
+  bool   redis_ok      = 3;
+  bool   gemini_ok     = 4;
+  string version       = 5;
+  repeated string active_fallbacks = 6;
+}
+
+// ── Service definitions ───────────────────────────
+
+service IncidentService {
+  rpc StoreIncident  (StoreIncidentRequest)
+      returns (StoreIncidentResponse);
+  rpc GetIncident    (GetIncidentRequest)
+      returns (GetIncidentResponse);
+  rpc ListIncidents  (ListIncidentsRequest)
+      returns (ListIncidentsResponse);
+  rpc ResolveIncident(ResolveIncidentRequest)
+      returns (ResolveIncidentResponse);
+}
+
+service CircuitService {
+  rpc GetCircuitState  (CircuitStateRequest)
+      returns (CircuitStateResponse);
+  rpc RecordOutcome    (RecordOutcomeRequest)
+      returns (RecordOutcomeResponse);
+}
+
+service VanguardHealthService {
+  rpc GetHealth (HealthRequest)
+      returns (HealthResponse);
+}

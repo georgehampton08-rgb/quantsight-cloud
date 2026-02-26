@@ -283,6 +283,15 @@ class CloudAsyncPulseProducer:
                 
                 # Write to Firebase (non-blocking)
                 asyncio.create_task(self._firebase.upsert_game_state(game_data))
+
+                # Phase 6: Dual-write to Bigtable (feature-flagged, non-blocking)
+                try:
+                    from services.bigtable_writer import get_bigtable_writer
+                    bt = get_bigtable_writer()
+                    if bt.is_available:
+                        asyncio.create_task(bt.write_game_state(game_data))
+                except Exception:
+                    pass  # Bigtable is optional, never block on it
                 
                 # Archive quarter-end stats (non-blocking)
                 if self._pulse_archiver:
@@ -306,6 +315,15 @@ class CloudAsyncPulseProducer:
 
                 self._latest_leaders = top_10_leaders
                 asyncio.create_task(self._firebase.upsert_live_leaders(top_10_leaders))
+
+                # Phase 6: Dual-write leaders to Bigtable (feature-flagged)
+                try:
+                    from services.bigtable_writer import get_bigtable_writer
+                    bt = get_bigtable_writer()
+                    if bt.is_available:
+                        asyncio.create_task(bt.write_leaders(top_10_leaders))
+                except Exception:
+                    pass  # Bigtable is optional
 
             # Step 6: Store in-memory SSE snapshot (games + leaders + meta)
             live_games_list = [

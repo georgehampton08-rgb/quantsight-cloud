@@ -39,6 +39,10 @@ _FLAG_DEFAULTS: dict = {
     # ── Phase 5: FULL_SOVEREIGN + Scale ──────────────────────────────────
     "PULSE_SERVICE_ENABLED":            True,    # Live pulse producer + SSE stream
     "FEATURE_HEURISTIC_TRIAGE":         True,    # Deterministic fallback triage engine
+    # ── Phase 6: gRPC Extraction + Bigtable ──────────────────────────────
+    "FEATURE_GRPC_SERVER":              False,   # Embedded Vanguard gRPC server (port 50051)
+    "FEATURE_BIGTABLE_WRITES":          False,   # Bigtable write path for pulse data
+    "FEATURE_WEBSOCKET_ENABLED":        False,   # WebSocket upgrade path (stub only)
 }
 
 _TRUTHY = {"1", "true", "yes", "on"}

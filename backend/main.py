@@ -239,6 +239,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Live Pulse router not available: {e}")
 
+# Include WebSocket upgrade path (Phase 6 — stub, disabled by default)
+try:
+    from api.websocket_routes import router as ws_router
+    app.include_router(ws_router)
+    logger.info("✅ WebSocket routes registered at /ws/* (FEATURE_WEBSOCKET_ENABLED controls activation)")
+except ImportError as e:
+    logger.warning(f"⚠️ WebSocket routes not available: {e}")
+
 
 # Include Vanguard health endpoint (MUST BE BEFORE MIDDLEWARE)
 if VANGUARD_AVAILABLE:

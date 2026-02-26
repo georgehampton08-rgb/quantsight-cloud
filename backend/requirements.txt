@@ -61,4 +61,11 @@ google-genai==1.61.0
 GitPython==3.1.40
 PyGithub==2.4.0  # GitHub API for code fetching\nredis[hiredis]==5.0.1  # Redis client for Vanguard caching
 
+# ========================================
+# PHASE 6: gRPC + Vanguard Extraction
+# ========================================
+grpcio>=1.62.0
+grpcio-tools>=1.62.0
+protobuf>=4.25.0
+
 
