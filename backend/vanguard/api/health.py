@@ -66,12 +66,11 @@ async def list_vanguard_incidents() -> Dict[str, Any]:
     """List all recent incidents tracked by Vanguard."""
     storage = get_incident_storage()
     fingerprints = await storage.list_incidents()
-    
+
     incidents = []
     for fp in fingerprints:
         incident = await storage.load(fp)
         if incident:
-            # Strip large fields for list view
             summary = {
                 "fingerprint": fp,
                 "service": incident.get("labels", {}).get("service", "unknown"),
@@ -82,13 +81,35 @@ async def list_vanguard_incidents() -> Dict[str, Any]:
                 "severity": "high" if "500" in incident.get("error_type", "") else "medium"
             }
             incidents.append(summary)
-    
-    # Sort by last seen
+
     incidents.sort(key=lambda x: x.get("last_seen", ""), reverse=True)
-    
+
+    return {"count": len(incidents), "incidents": incidents}
+
+
+# ── Admin Stats alias ─────────────────────────────────────────────────────────
+# NOTE: This MUST be defined BEFORE the /{fingerprint} wildcard below,
+# otherwise FastAPI routes /vanguard/admin/stats as fingerprint="admin".
+@router.get("/admin/stats")
+async def vanguard_admin_stats_alias() -> Dict[str, Any]:
+    """
+    Stats summary for the Control Room — sourced directly from health data.
+    This alias exists in health.py specifically to avoid the /{fingerprint}
+    wildcard route capturing /admin/* paths.
+    """
+    from datetime import datetime
+    config = get_vanguard_config()
+    metadata = await MetadataTracker().load()
+    active = metadata.get("active_count", 0)
+    resolved = metadata.get("resolved_count", 0)
+    health_score = max(0.0, 100.0 - (active * 10.0))
+
     return {
-        "count": len(incidents),
-        "incidents": incidents
+        "active_incidents": active,
+        "resolved_incidents": resolved,
+        "health_score": round(health_score, 1),
+        "vanguard_mode": config.mode.value,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
 
@@ -97,8 +118,8 @@ async def get_incident_detail(fingerprint: str) -> Dict[str, Any]:
     """Get full details for a specific incident."""
     storage = get_incident_storage()
     incident = await storage.load(fingerprint)
-    
+
     if not incident:
         return {"error": "Incident not found", "fingerprint": fingerprint}
-        
+
     return incident
