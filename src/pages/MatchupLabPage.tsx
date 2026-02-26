@@ -244,10 +244,10 @@ const MatchupLabPage: React.FC = () => {
     };
 
     return (
-        <div className="matchup-lab-page h-full overflow-y-auto">
+        <div className="matchup-lab-page h-full flex flex-col w-full">
             {/* Header */}
-            <header className="lab-header">
-                <div className="header-content">
+            <header className="lab-header flex-shrink-0">
+                <div className="header-content max-w-7xl mx-auto">
                     <div className="header-title">
                         <span className="lab-icon">🔬</span>
                         <h1>Matchup Lab</h1>
@@ -298,188 +298,192 @@ const MatchupLabPage: React.FC = () => {
                 </div>
             </header>
 
-            {/* Error display */}
-            {error && (
-                <div className="error-banner">
-                    <span>⚠️</span> {error}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="max-w-7xl mx-auto w-full pb-8">
+                    {/* Error display */}
+                    {error && (
+                        <div className="error-banner">
+                            <span>⚠️</span> {error}
+                        </div>
+                    )}
+
+                    {/* Loading state */}
+                    {loading && (
+                        <div className="loading-overlay">
+                            <div className="loading-content">
+                                <div className="pulse-ring" />
+                                <span>Calculating Confluence...</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Analysis Results */}
+                    {analysis && !loading && (
+                        <div className="analysis-results">
+                            {/* AI Insights Card */}
+                            <section className="insights-card glass-card">
+                                <div className="card-header">
+                                    <span className="card-icon">🤖</span>
+                                    <h2>Gemini AI Insights</h2>
+                                    {analysis.ai_powered && <span className="ai-live-badge">LIVE</span>}
+                                </div>
+                                <div className="insights-content">
+                                    <p className="ai-summary">{analysis.insights?.summary || 'Analyzing matchup data...'}</p>
+                                </div>
+                            </section>
+
+                            {/* Top & Fade Plays */}
+                            <div className="plays-grid">
+                                <section className="top-plays glass-card">
+                                    <div className="card-header">
+                                        <span className="card-icon">🔥</span>
+                                        <h2>Top Plays</h2>
+                                    </div>
+                                    <ul className="plays-list">
+                                        {(analysis.insights?.top_plays || []).slice(0, 5).map((play: any, i: number) => (
+                                            <li key={i} className="play-item top">
+                                                <span className="play-player">{play.player}</span>
+                                                <span className="play-stat">{play.stat}</span>
+                                                <span className="play-proj">{play.projected?.toFixed(1)}</span>
+                                                {renderGradeChip(play.grade)}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </section>
+
+                                <section className="fade-plays glass-card">
+                                    <div className="card-header">
+                                        <span className="card-icon">❄️</span>
+                                        <h2>Fade Plays</h2>
+                                    </div>
+                                    <ul className="plays-list">
+                                        {(analysis.insights?.fade_plays || []).slice(0, 5).map((play: any, i: number) => (
+                                            <li key={i} className="play-item fade">
+                                                <span className="play-player">{play.player}</span>
+                                                <span className="play-stat">{play.stat}</span>
+                                                <span className="play-proj">{play.projected?.toFixed(1)}</span>
+                                                <span className="play-reason">{play.reason}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </section>
+                            </div>
+
+                            {/* Projections Table */}
+                            <section className="projections-section glass-card">
+                                <div className="card-header">
+                                    <span className="card-icon">📊</span>
+                                    <h2>Player Projections</h2>
+
+                                    <div className="stat-tabs">
+                                        {(['pts', 'reb', 'ast', '3pm'] as const).map(stat => (
+                                            <button
+                                                key={stat}
+                                                className={`stat-tab ${activeStat === stat ? 'active' : ''}`}
+                                                onClick={() => setActiveStat(stat)}
+                                            >
+                                                {stat?.toUpperCase() || ''}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Team Tabs */}
+                                    <div className="team-tabs">
+                                        <button
+                                            className={`team-tab ${activeTeam === 'all' ? 'active' : ''}`}
+                                            onClick={() => setActiveTeam('all')}
+                                        >
+                                            All Players
+                                        </button>
+                                        <button
+                                            className={`team-tab ${activeTeam === 'home' ? 'active' : ''}`}
+                                            onClick={() => setActiveTeam('home')}
+                                        >
+                                            🏠 {selectedGame?.home_team || 'Home'}
+                                        </button>
+                                        <button
+                                            className={`team-tab ${activeTeam === 'away' ? 'active' : ''}`}
+                                            onClick={() => setActiveTeam('away')}
+                                        >
+                                            ✈️ {selectedGame?.away_team || 'Away'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="table-container">
+                                    <table className="projections-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Player</th>
+                                                <th>Class</th>
+                                                <th>Base</th>
+                                                <th>Proj</th>
+                                                <th>Δ</th>
+                                                <th>Grade</th>
+                                                <th>H2H</th>
+                                                <th>Form</th>
+                                                <th>Conf</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {analysis.projections
+                                                .filter(p => {
+                                                    if (activeTeam === 'all') return true;
+                                                    if (activeTeam === 'home') return p.team === selectedGame?.home_team;
+                                                    if (activeTeam === 'away') return p.team === selectedGame?.away_team;
+                                                    return true;
+                                                })
+                                                .sort((a, b) => {
+                                                    const projA = a.projections[activeStat];
+                                                    const projB = b.projections[activeStat];
+                                                    return (projB?.projected || 0) - (projA?.projected || 0);
+                                                })
+                                                .map(player => renderProjectionRow(player))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            {/* Matchup Context */}
+                            <section className="context-card glass-card">
+                                <div className="card-header">
+                                    <span className="card-icon">⚡</span>
+                                    <h2>Matchup Context</h2>
+                                </div>
+                                <div className="context-grid">
+                                    <div className="context-item">
+                                        <span className="context-label">Pace</span>
+                                        <span className="context-value">
+                                            {analysis.matchup_context?.projected_pace?.toFixed(1) || 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="context-item">
+                                        <span className="context-label">{selectedGame?.home_team} DEF</span>
+                                        <span className="context-value">
+                                            {analysis.matchup_context?.home_defense?.opp_pts?.toFixed(1) || 'N/A'} PPG
+                                        </span>
+                                    </div>
+                                    <div className="context-item">
+                                        <span className="context-label">{selectedGame?.away_team} DEF</span>
+                                        <span className="context-value">
+                                            {analysis.matchup_context?.away_defense?.opp_pts?.toFixed(1) || 'N/A'} PPG
+                                        </span>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    )}
+
+                    {/* Empty State */}
+                    {!analysis && !loading && !error && (
+                        <div className="empty-state">
+                            <div className="empty-icon">🔬</div>
+                            <h2>Select a Game to Analyze</h2>
+                            <p>Choose a matchup and click "Analyze Matchup" to generate AI-powered projections.</p>
+                        </div>
+                    )}
                 </div>
-            )}
-
-            {/* Loading state */}
-            {loading && (
-                <div className="loading-overlay">
-                    <div className="loading-content">
-                        <div className="pulse-ring" />
-                        <span>Calculating Confluence...</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Analysis Results */}
-            {analysis && !loading && (
-                <div className="analysis-results">
-                    {/* AI Insights Card */}
-                    <section className="insights-card glass-card">
-                        <div className="card-header">
-                            <span className="card-icon">🤖</span>
-                            <h2>Gemini AI Insights</h2>
-                            {analysis.ai_powered && <span className="ai-live-badge">LIVE</span>}
-                        </div>
-                        <div className="insights-content">
-                            <p className="ai-summary">{analysis.insights?.summary || 'Analyzing matchup data...'}</p>
-                        </div>
-                    </section>
-
-                    {/* Top & Fade Plays */}
-                    <div className="plays-grid">
-                        <section className="top-plays glass-card">
-                            <div className="card-header">
-                                <span className="card-icon">🔥</span>
-                                <h2>Top Plays</h2>
-                            </div>
-                            <ul className="plays-list">
-                                {(analysis.insights?.top_plays || []).slice(0, 5).map((play: any, i: number) => (
-                                    <li key={i} className="play-item top">
-                                        <span className="play-player">{play.player}</span>
-                                        <span className="play-stat">{play.stat}</span>
-                                        <span className="play-proj">{play.projected?.toFixed(1)}</span>
-                                        {renderGradeChip(play.grade)}
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-
-                        <section className="fade-plays glass-card">
-                            <div className="card-header">
-                                <span className="card-icon">❄️</span>
-                                <h2>Fade Plays</h2>
-                            </div>
-                            <ul className="plays-list">
-                                {(analysis.insights?.fade_plays || []).slice(0, 5).map((play: any, i: number) => (
-                                    <li key={i} className="play-item fade">
-                                        <span className="play-player">{play.player}</span>
-                                        <span className="play-stat">{play.stat}</span>
-                                        <span className="play-proj">{play.projected?.toFixed(1)}</span>
-                                        <span className="play-reason">{play.reason}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                    </div>
-
-                    {/* Projections Table */}
-                    <section className="projections-section glass-card">
-                        <div className="card-header">
-                            <span className="card-icon">📊</span>
-                            <h2>Player Projections</h2>
-
-                            <div className="stat-tabs">
-                                {(['pts', 'reb', 'ast', '3pm'] as const).map(stat => (
-                                    <button
-                                        key={stat}
-                                        className={`stat-tab ${activeStat === stat ? 'active' : ''}`}
-                                        onClick={() => setActiveStat(stat)}
-                                    >
-                                        {stat?.toUpperCase() || ''}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Team Tabs */}
-                            <div className="team-tabs">
-                                <button
-                                    className={`team-tab ${activeTeam === 'all' ? 'active' : ''}`}
-                                    onClick={() => setActiveTeam('all')}
-                                >
-                                    All Players
-                                </button>
-                                <button
-                                    className={`team-tab ${activeTeam === 'home' ? 'active' : ''}`}
-                                    onClick={() => setActiveTeam('home')}
-                                >
-                                    🏠 {selectedGame?.home_team || 'Home'}
-                                </button>
-                                <button
-                                    className={`team-tab ${activeTeam === 'away' ? 'active' : ''}`}
-                                    onClick={() => setActiveTeam('away')}
-                                >
-                                    ✈️ {selectedGame?.away_team || 'Away'}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="table-container">
-                            <table className="projections-table">
-                                <thead>
-                                    <tr>
-                                        <th>Player</th>
-                                        <th>Class</th>
-                                        <th>Base</th>
-                                        <th>Proj</th>
-                                        <th>Δ</th>
-                                        <th>Grade</th>
-                                        <th>H2H</th>
-                                        <th>Form</th>
-                                        <th>Conf</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analysis.projections
-                                        .filter(p => {
-                                            if (activeTeam === 'all') return true;
-                                            if (activeTeam === 'home') return p.team === selectedGame?.home_team;
-                                            if (activeTeam === 'away') return p.team === selectedGame?.away_team;
-                                            return true;
-                                        })
-                                        .sort((a, b) => {
-                                            const projA = a.projections[activeStat];
-                                            const projB = b.projections[activeStat];
-                                            return (projB?.projected || 0) - (projA?.projected || 0);
-                                        })
-                                        .map(player => renderProjectionRow(player))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-
-                    {/* Matchup Context */}
-                    <section className="context-card glass-card">
-                        <div className="card-header">
-                            <span className="card-icon">⚡</span>
-                            <h2>Matchup Context</h2>
-                        </div>
-                        <div className="context-grid">
-                            <div className="context-item">
-                                <span className="context-label">Pace</span>
-                                <span className="context-value">
-                                    {analysis.matchup_context?.projected_pace?.toFixed(1) || 'N/A'}
-                                </span>
-                            </div>
-                            <div className="context-item">
-                                <span className="context-label">{selectedGame?.home_team} DEF</span>
-                                <span className="context-value">
-                                    {analysis.matchup_context?.home_defense?.opp_pts?.toFixed(1) || 'N/A'} PPG
-                                </span>
-                            </div>
-                            <div className="context-item">
-                                <span className="context-label">{selectedGame?.away_team} DEF</span>
-                                <span className="context-value">
-                                    {analysis.matchup_context?.away_defense?.opp_pts?.toFixed(1) || 'N/A'} PPG
-                                </span>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-            )}
-
-            {/* Empty State */}
-            {!analysis && !loading && !error && (
-                <div className="empty-state">
-                    <div className="empty-icon">🔬</div>
-                    <h2>Select a Game to Analyze</h2>
-                    <p>Choose a matchup and click "Analyze Matchup" to generate AI-powered projections.</p>
-                </div>
-            )}
+            </div>
         </div>
     );
 };
