@@ -6,14 +6,17 @@
 // Inlined from removed aegisApi.ts
 interface StatProjection { points: number; rebounds: number; assists: number; threes: number;[key: string]: number; }
 interface SimulationResult {
-    projections: { floor: StatProjection; expected_value: StatProjection; ceiling: StatProjection; };
-    confidence: { grade: string; score: number; };
-    modifiers: { archetype: string; usage_boost: number; };
-    execution_time_ms: number;
-    schedule_context: { is_b2b: boolean; days_rest: number; modifier: number; };
-    game_mode: { blowout_pct: number; clutch_pct: number; };
-    momentum: { hot_streak: boolean; };
+    projections: { floor: StatProjection; expected_value: StatProjection; ceiling: StatProjection; } | null;
+    confidence: { grade: string; score: number; } | null;
+    modifiers?: { archetype: string; usage_boost: number; fatigue?: number; };
+    execution_time_ms?: number;
+    schedule_context?: { is_b2b: boolean; days_rest: number; modifier: number; };
+    game_mode?: { blowout_pct: number; clutch_pct: number; };
+    momentum?: { hot_streak: boolean; };
     defender_profile?: { primary_defender: string; dfg_pct: number; pct_plusminus: number; };
+    available?: boolean;
+    reason?: string;
+    feature_flag?: string;
 }
 
 import FatigueBreakdownChip from '../common/FatigueBreakdownChip';
@@ -62,6 +65,19 @@ export default function ProjectionMatrix({ simulation, loading, onRefresh }: Pro
         );
     }
 
+    if (simulation.available === false) {
+        return (
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-dashed border-slate-700/50 rounded-xl p-8 text-center">
+                <div className="text-3xl mb-4">🛑</div>
+                <div className="text-slate-400 font-bold mb-2">Simulations Disabled</div>
+                <div className="text-sm text-slate-500 mb-4">The Aegis simulation engine is currently offline.</div>
+                <div className="text-xs font-mono text-slate-600 bg-slate-900/50 inline-block px-3 py-1 rounded">
+                    {simulation.feature_flag || 'FEATURE_AEGIS_SIM_ENABLED'} = false
+                </div>
+            </div>
+        );
+    }
+
     const {
         projections,
         confidence,
@@ -74,6 +90,8 @@ export default function ProjectionMatrix({ simulation, loading, onRefresh }: Pro
     } = simulation;
 
     const renderStatBar = (stat: keyof StatProjection, label: string) => {
+        if (!projections) return null;
+
         const floor = projections.floor[stat] || 0;
         const ev = projections.expected_value[stat] || 0;
         const ceiling = projections.ceiling[stat] || 0;
@@ -166,31 +184,37 @@ export default function ProjectionMatrix({ simulation, loading, onRefresh }: Pro
                 </div>
 
                 {/* Confluence Grade Badge */}
-                <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border font-bold ${gradeColors[confidence.grade] || gradeColors.C}`}>
-                    <span className="text-base sm:text-lg">{confidence.grade}</span>
-                    <span className="text-xs ml-1 opacity-75">{confidence.score.toFixed(0)}</span>
-                </div>
+                {confidence && (
+                    <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border font-bold ${gradeColors[confidence.grade] || gradeColors.C}`}>
+                        <span className="text-base sm:text-lg">{confidence.grade}</span>
+                        <span className="text-xs ml-1 opacity-75">{confidence.score.toFixed(0)}</span>
+                    </div>
+                )}
             </div>
 
             {/* Modifiers Bar */}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-4 sm:mb-6">
-                <span className="px-2 py-1 bg-slate-900/50 rounded text-xs text-slate-400 border border-slate-700/50 truncate max-w-[120px] sm:max-w-none">
-                    🏀 {modifiers.archetype}
-                </span>
+                {modifiers && (
+                    <span className="px-2 py-1 bg-slate-900/50 rounded text-xs text-slate-400 border border-slate-700/50 truncate max-w-[120px] sm:max-w-none">
+                        🏀 {modifiers.archetype}
+                    </span>
+                )}
 
-                <FatigueBreakdownChip
-                    isB2B={schedule_context.is_b2b}
-                    daysRest={schedule_context.days_rest}
-                    modifier={schedule_context.modifier}
-                />
+                {schedule_context && (
+                    <FatigueBreakdownChip
+                        isB2B={schedule_context.is_b2b}
+                        daysRest={schedule_context.days_rest}
+                        modifier={schedule_context.modifier}
+                    />
+                )}
 
-                {modifiers.usage_boost > 0 && (
+                {modifiers?.usage_boost && modifiers.usage_boost > 0 && (
                     <span className="px-2 py-1 bg-purple-900/30 border border-purple-500/20 rounded text-xs text-purple-400">
                         📈 +{(modifiers.usage_boost * 100).toFixed(0)}% USG
                     </span>
                 )}
 
-                {momentum.hot_streak && (
+                {momentum?.hot_streak && (
                     <span className="px-2 py-1 bg-orange-500/10 border border-orange-500/30 rounded text-xs text-orange-400 animate-pulse">
                         🔥 Hot Streak
                     </span>
