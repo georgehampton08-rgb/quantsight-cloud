@@ -118,15 +118,47 @@ async def _execute_ai_triage(incident: dict, fingerprint: str, storage):
         from ..ai.ai_analyzer import get_ai_analyzer
         from ..surgeon.remediation import get_surgeon
         from ..core.config import get_vanguard_config
+
+        # ── Phase 5: Check routing table for heuristic fallback ──────────
+        triage_source = "gemini"
+
+        # OTel span (no-op if SDK not installed)
+        try:
+            from ..observability.telemetry import get_tracer, get_triage_counter
+            _tracer = get_tracer("vanguard.inquisitor")
+            _triage_counter = get_triage_counter()
+        except ImportError:
+            _tracer = None
+            _triage_counter = None
+        try:
+            from ..surgeon.routing_table import get_routing_table
+            rt = get_routing_table()
+            if rt.is_fallback_active("gemini_triage_path"):
+                # Gemini is down — use heuristic triage instead
+                from ..ai.heuristic_triage import generate_heuristic_triage
+                analysis = generate_heuristic_triage(incident)
+                triage_source = "heuristic"
+                logger.info(
+                    "triage_routed_to_heuristic",
+                    fingerprint=fingerprint,
+                    reason="gemini_triage_path fallback active",
+                )
+        except ImportError:
+            pass  # routing_table not available — proceed with Gemini
+
+        # ── Primary path: Gemini AI triage ───────────────────────────────
+        if triage_source == "gemini":
+            ai_analyzer = get_ai_analyzer()
+            analysis = await ai_analyzer.analyze_incident(
+                incident=incident,
+                storage=storage,
+                force_regenerate=False  # Use cache if available
+            )
         
-        # Get smart analysis with GitHub context
-        ai_analyzer = get_ai_analyzer()
-        analysis = await ai_analyzer.analyze_incident(
-            incident=incident,
-            storage=storage,
-            force_regenerate=False  # Use cache if available
-        )
-        
+        # Record triage source in OTel
+        if _triage_counter:
+            _triage_counter.add(1, {"triage.source": triage_source, "fingerprint": fingerprint})
+
         # Surgeon makes decision based on AI analysis
         surgeon = get_surgeon()
         config = get_vanguard_config()
@@ -143,7 +175,10 @@ async def _execute_ai_triage(incident: dict, fingerprint: str, storage):
         # Reload latest state to merge cleanly
         latest_incident = await storage.load(fingerprint)
         if latest_incident:
-            latest_incident["ai_analysis"] = analysis.dict() if hasattr(analysis, 'dict') else analysis
+            analysis_data = analysis.dict() if hasattr(analysis, 'dict') else analysis
+            if triage_source == "heuristic":
+                analysis_data["triage_source"] = "heuristic"
+            latest_incident["ai_analysis"] = analysis_data
             latest_incident["surgeon_decision"] = decision
             latest_incident["surgeon_result"] = result
             await storage.store(latest_incident)
@@ -151,6 +186,7 @@ async def _execute_ai_triage(incident: dict, fingerprint: str, storage):
         logger.info(
             "surgeon_remediation_complete",
             fingerprint=fingerprint,
+            triage_source=triage_source,
             confidence=analysis.get("confidence") if isinstance(analysis, dict) else getattr(analysis, 'confidence', 0),
             action=decision.get("action"),
             executed=result.get("executed")

@@ -36,6 +36,9 @@ _FLAG_DEFAULTS: dict = {
     "FEATURE_SURGEON_MIDDLEWARE":      False,   # SurgeonMiddleware in-memory circuit checks
     "FEATURE_LOAD_SHEDDER":            False,   # LoadSheddingMiddleware (psutil memory guard)
     "FEATURE_INDEX_DOCTOR":            False,   # Auto-PR for missing Firestore indexes
+    # ── Phase 5: FULL_SOVEREIGN + Scale ──────────────────────────────────
+    "PULSE_SERVICE_ENABLED":            True,    # Live pulse producer + SSE stream
+    "FEATURE_HEURISTIC_TRIAGE":         True,    # Deterministic fallback triage engine
 }
 
 _TRUTHY = {"1", "true", "yes", "on"}

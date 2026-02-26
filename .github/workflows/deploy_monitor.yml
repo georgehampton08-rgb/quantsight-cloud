@@ -1,0 +1,217 @@
+# ============================================================================
+# Vanguard Scale Monitor — Phase 5 Step 5.7
+# ============================================================================
+# Automated deploy pipeline with timing measurement.
+# Serves as the baseline for Strangler Fig detection (>180s = trigger).
+#
+# Triggers:
+#   - Push to main branch (backend changes only)
+#   - Manual dispatch (for testing)
+#
+# Outputs:
+#   - Deploy timing (build + deploy + traffic shift)
+#   - Strangler Fig alert if timing exceeds threshold
+#   - Artifact: deploy timing report
+# ============================================================================
+
+name: "Vanguard Deploy & Scale Monitor"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'cloudbuild.yaml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip actual deploy)'
+        type: boolean
+        default: false
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: quantsight-cloud
+  REGION: us-central1
+  STRANGLER_FIG_THRESHOLD_S: 180
+
+jobs:
+  deploy-and-monitor:
+    name: "Deploy + Scale Monitor"
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      # ── Checkout ───────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Authenticate to GCP ────────────────────────────────────────────
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      # ── Pre-deploy health check ────────────────────────────────────────
+      - name: Pre-deploy health snapshot
+        id: pre_health
+        run: |
+          echo "::group::Pre-deploy health"
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://${SERVICE_NAME}-${PROJECT_ID}.${REGION}.run.app/readyz" \
+            --max-time 5 || echo "000")
+          echo "pre_deploy_health=$HEALTH" >> $GITHUB_OUTPUT
+          echo "Pre-deploy /readyz status: $HEALTH"
+          echo "::endgroup::"
+
+      # ── Deploy with timing ─────────────────────────────────────────────
+      - name: Deploy to Cloud Run (with timing)
+        id: deploy
+        if: ${{ !inputs.dry_run }}
+        run: |
+          echo "::group::Cloud Run Deploy"
+          DEPLOY_START=$(date +%s)
+
+          gcloud run deploy $SERVICE_NAME \
+            --source . \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --timeout 300 \
+            --set-env-vars "VANGUARD_ENABLED=true" \
+            --quiet
+
+          DEPLOY_END=$(date +%s)
+          DEPLOY_DURATION=$((DEPLOY_END - DEPLOY_START))
+
+          echo "deploy_duration_s=$DEPLOY_DURATION" >> $GITHUB_OUTPUT
+          echo "deploy_start=$DEPLOY_START" >> $GITHUB_OUTPUT
+          echo "deploy_end=$DEPLOY_END" >> $GITHUB_OUTPUT
+          echo ""
+          echo "═══════════════════════════════════════════════════"
+          echo "  Deploy Duration: ${DEPLOY_DURATION}s"
+          echo "═══════════════════════════════════════════════════"
+          echo "::endgroup::"
+
+      # ── Dry run timing (measures build only, no deploy) ────────────────
+      - name: Dry run build timing
+        id: dry_run
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "::group::Dry Run Build"
+          BUILD_START=$(date +%s)
+
+          gcloud builds submit \
+            --project $PROJECT_ID \
+            --tag "gcr.io/$PROJECT_ID/$SERVICE_NAME:dry-run-$(date +%s)" \
+            --quiet
+
+          BUILD_END=$(date +%s)
+          BUILD_DURATION=$((BUILD_END - BUILD_START))
+
+          echo "deploy_duration_s=$BUILD_DURATION" >> $GITHUB_OUTPUT
+          echo "Note: Dry run — build only, no traffic shift"
+          echo "Build Duration: ${BUILD_DURATION}s"
+          echo "::endgroup::"
+
+      # ── Post-deploy verification ───────────────────────────────────────
+      - name: Post-deploy health check
+        id: post_health
+        if: ${{ !inputs.dry_run }}
+        run: |
+          echo "::group::Post-deploy verification"
+          # Wait for new revision to become ready
+          sleep 10
+
+          # Check /readyz
+          for i in 1 2 3 4 5; do
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://${SERVICE_NAME}-${PROJECT_ID}.${REGION}.run.app/readyz" \
+              --max-time 10 || echo "000")
+            echo "Attempt $i: /readyz = $HEALTH"
+
+            if [ "$HEALTH" = "200" ]; then
+              echo "post_deploy_health=200" >> $GITHUB_OUTPUT
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$HEALTH" != "200" ]; then
+            echo "post_deploy_health=$HEALTH" >> $GITHUB_OUTPUT
+            echo "⚠️ Post-deploy health check not 200 after 5 attempts"
+          fi
+          echo "::endgroup::"
+
+      # ── Strangler Fig detection ────────────────────────────────────────
+      - name: Strangler Fig threshold check
+        id: strangler
+        run: |
+          DURATION=${{ steps.deploy.outputs.deploy_duration_s || steps.dry_run.outputs.deploy_duration_s || '0' }}
+          THRESHOLD=${{ env.STRANGLER_FIG_THRESHOLD_S }}
+
+          echo "Deploy duration: ${DURATION}s"
+          echo "Strangler Fig threshold: ${THRESHOLD}s"
+
+          if [ "$DURATION" -gt "$THRESHOLD" ] 2>/dev/null; then
+            echo "strangler_triggered=true" >> $GITHUB_OUTPUT
+            echo "::warning::⚠️ STRANGLER FIG TRIGGER: Deploy took ${DURATION}s (threshold: ${THRESHOLD}s)"
+            echo "Consider extracting pulse service or optimizing Dockerfile layers."
+          else
+            echo "strangler_triggered=false" >> $GITHUB_OUTPUT
+            echo "✅ Deploy within threshold: ${DURATION}s < ${THRESHOLD}s"
+          fi
+
+      # ── Generate timing report ─────────────────────────────────────────
+      - name: Generate deploy timing report
+        run: |
+          DURATION=${{ steps.deploy.outputs.deploy_duration_s || steps.dry_run.outputs.deploy_duration_s || '0' }}
+          PRE_HEALTH=${{ steps.pre_health.outputs.pre_deploy_health || 'N/A' }}
+          POST_HEALTH=${{ steps.post_health.outputs.post_deploy_health || 'N/A' }}
+          STRANGLER=${{ steps.strangler.outputs.strangler_triggered || 'false' }}
+
+          cat > deploy_timing_report.md << EOF
+          # Deploy Timing Report
+          **Date:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+
+          ## Timing
+          | Metric | Value |
+          |:--|--:|
+          | Deploy Duration | ${DURATION}s |
+          | Strangler Fig Threshold | ${{ env.STRANGLER_FIG_THRESHOLD_S }}s |
+          | Strangler Triggered | ${STRANGLER} |
+          | Utilization | $(( DURATION * 100 / ${{ env.STRANGLER_FIG_THRESHOLD_S }} ))% |
+
+          ## Health Checks
+          | Check | Status |
+          |:--|:--|
+          | Pre-deploy /readyz | ${PRE_HEALTH} |
+          | Post-deploy /readyz | ${POST_HEALTH} |
+
+          ## Recommendation
+          $(if [ "$STRANGLER" = "true" ]; then echo "⚠️ Deploy exceeds threshold. Consider pulse service extraction (Step 5.4) to reduce build scope."; else echo "✅ Deploy within acceptable limits."; fi)
+          EOF
+
+          cat deploy_timing_report.md
+
+      - name: Upload timing report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-timing-report
+          path: deploy_timing_report.md
+          retention-days: 30

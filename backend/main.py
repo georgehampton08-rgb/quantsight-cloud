@@ -292,6 +292,16 @@ except ImportError as e:
 except Exception as e:
     logger.warning(f"⚠️ Vanguard surgeon router registration failed: {e}")
 
+# Vanguard FULL_SOVEREIGN Promotion Gate (Phase 5)
+try:
+    from vanguard.sovereign.promotion_gate import router as promotion_router
+    app.include_router(promotion_router)
+    logger.info("✅ Vanguard promotion gate registered at /vanguard/admin/promotion-readiness")
+except ImportError as e:
+    logger.warning(f"⚠️ Vanguard promotion gate not available: {e}")
+except Exception as e:
+    logger.warning(f"⚠️ Vanguard promotion gate registration failed: {e}")
+
 if not VANGUARD_AVAILABLE:
     logger.warning("⚠️ Vanguard core unavailable — only admin routes attempted via fallback")
 
