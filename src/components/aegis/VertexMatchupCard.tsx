@@ -1,6 +1,18 @@
 import React from 'react';
 import { Swords, TrendingUp, TrendingDown, Minus, Zap, Target, AlertTriangle } from 'lucide-react';
-import { AegisApi, PlayerMatchup } from '../../services/aegisApi';
+import { ApiContract } from '../../api/client';
+
+// Inlined from removed aegisApi.ts
+interface PlayerMatchupPlayer { name: string; score: number; }
+interface PlayerMatchup {
+    player_a: PlayerMatchupPlayer;
+    player_b: PlayerMatchupPlayer;
+    advantage: 'A' | 'B' | 'EVEN';
+    advantage_degree: number;
+    categories: Record<string, 'A' | 'B' | 'EVEN'>;
+    analysis: string;
+    engine_stats?: { analysis_mode?: string; cache_hit_rate?: number; avg_analysis_time_ms?: number };
+}
 
 interface VertexMatchupCardProps {
     playerAId: string;
@@ -47,8 +59,11 @@ export default function VertexMatchupCard({ playerAId, playerBId, season = '2024
             setLoading(true);
             setError(null);
             try {
-                const data = await AegisApi.getPlayerMatchup(playerAId, playerBId, season);
-                setMatchup(data);
+                const res = await ApiContract.execute<PlayerMatchup>(null, {
+                    path: `aegis/matchup?player_a=${playerAId}&player_b=${playerBId}&season=${season}`
+                });
+                if (res.data) setMatchup(res.data);
+                else throw new Error('No matchup data returned');
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Matchup analysis failed');
             } finally {

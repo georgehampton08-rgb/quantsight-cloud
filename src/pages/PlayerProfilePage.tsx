@@ -13,13 +13,11 @@ import { useDataFreshness } from '../hooks/useDataFreshness';
 import { useToast } from '../context/ToastContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiContract } from '../api/client';
-import { AegisApi } from '../services/aegisApi';
 import { useOrbital } from '../context/OrbitalContext';
 import ProjectionMatrix from '../components/aegis/ProjectionMatrix';
 import PlayTypeEfficiency from '../components/aegis/PlayTypeEfficiency';
 import EnrichedPlayerCard from '../components/profile/EnrichedPlayerCard';
 import { useSimulation } from '../hooks/useSimulation';
-import { CooldownIndicator } from '../components/nexus/CooldownIndicator';
 
 export default function PlayerProfilePage() {
     const { id } = useParams<{ id: string }>();
@@ -69,7 +67,7 @@ export default function PlayerProfilePage() {
     // Sync simulation to context
     useEffect(() => {
         if (simulation) {
-            setSimulationResult(simulation);
+            setSimulationResult(simulation as unknown as Record<string, unknown>);
         }
     }, [simulation, setSimulationResult]);
 
@@ -86,7 +84,10 @@ export default function PlayerProfilePage() {
 
         const fetchRadar = async () => {
             try {
-                const data = await AegisApi.getRadarDimensions(targetId, currentOpponent);
+                const base = import.meta.env.VITE_API_URL || '';
+                const res = await fetch(`${base}/aegis/radar?player_id=${targetId}&opponent_id=${currentOpponent}`);
+                if (!res.ok) throw new Error(`Radar fetch failed: ${res.status}`);
+                const data = await res.json();
                 if (data.player_stats && data.opponent_defense) {
                     setRadarData({
                         player: data.player_stats,
@@ -259,15 +260,6 @@ export default function PlayerProfilePage() {
 
                     {activeTab === 'Projection' && (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Cooldown Alert */}
-                            <div className="lg:col-span-2">
-                                <CooldownIndicator
-                                    service="/aegis/simulate/{player_id}"
-                                    variant="banner"
-                                    message="Simulation endpoint is rate-limited. Using cached projections."
-                                    showTimer={true}
-                                />
-                            </div>
 
                             <ProjectionMatrix
                                 simulation={simulation}

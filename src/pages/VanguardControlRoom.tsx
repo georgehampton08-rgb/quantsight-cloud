@@ -44,6 +44,16 @@ interface LearningStatus {
     patterns: any[];
 }
 
+interface VaccineRecommendation {
+    feasible: boolean;
+    target_file?: string | null;
+    target_function?: string;
+    target_line_hint?: number;
+    change_description?: string;
+    patch_risk?: 'low' | 'medium' | 'high';
+    skip_reason?: string;
+}
+
 interface AnalysisResult {
     fingerprint: string;
     analysis?: string;
@@ -60,6 +70,10 @@ interface AnalysisResult {
     cached?: boolean;
     generated_at?: string;
     code_references?: string[];
+    // New enriched fields from Prompt v2.0
+    error_message_decoded?: string;
+    middleware_insight?: string;
+    vaccine_recommendation?: VaccineRecommendation;
 }
 
 // ─── Doughnut ─────────────────────────────────────────────────────────────────
@@ -158,6 +172,9 @@ function AnalysisModal({
     const rootCause = data?.root_cause || '';
     const timelineAnalysis = data?.timeline_analysis || '';
     const readyReasoning = data?.ready_reasoning || '';
+    const errorDecoded = data?.error_message_decoded || '';
+    const middlewareInsight = data?.middleware_insight || '';
+    const vaccineRec = data?.vaccine_recommendation || null;
 
     // Check for "recommended_fix" array, or fallback
     let recommendationList: string[] = [];
@@ -258,6 +275,28 @@ function AnalysisModal({
                                 </div>
                             )}
 
+                            {/* Error Decoded */}
+                            {errorDecoded && (
+                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                    <div className="flex items-center gap-2 mb-2.5">
+                                        <Cpu className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                                        <span className="text-cyan-400 font-bold text-sm">Error Decoded</span>
+                                    </div>
+                                    <p className="text-slate-300 text-sm leading-relaxed">{errorDecoded}</p>
+                                </div>
+                            )}
+
+                            {/* Middleware Insight */}
+                            {middlewareInsight && (
+                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                    <div className="flex items-center gap-2 mb-2.5">
+                                        <Activity className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                                        <span className="text-violet-400 font-bold text-sm">Middleware Insight</span>
+                                    </div>
+                                    <p className="text-slate-300 text-sm leading-relaxed">{middlewareInsight}</p>
+                                </div>
+                            )}
+
                             {/* Timeline Analysis from AI */}
                             {timelineAnalysis && (
                                 <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
@@ -304,6 +343,67 @@ function AnalysisModal({
                                             </li>
                                         ))}
                                     </ul>
+                                </div>
+                            )}
+
+                            {/* ── Vaccine Recommendation ── */}
+                            {vaccineRec && (
+                                <div className={`rounded-2xl border p-5 relative overflow-hidden ${vaccineRec.feasible
+                                        ? 'bg-emerald-950/30 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                                        : 'bg-slate-800/40 border-slate-700/40'
+                                    }`}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${vaccineRec.feasible ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-700/50 border border-slate-600/30'
+                                            }`}>
+                                            <ShieldCheck className={`w-4 h-4 ${vaccineRec.feasible ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className={`font-black text-sm tracking-wide ${vaccineRec.feasible ? 'text-emerald-300' : 'text-slate-400'}`}>
+                                                💉 Vaccine Recommendation
+                                            </span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.feasible ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'
+                                                    }`}>
+                                                    {vaccineRec.feasible ? '✓ FEASIBLE' : '✗ NOT FEASIBLE'}
+                                                </span>
+                                                {vaccineRec.patch_risk && vaccineRec.feasible && (
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.patch_risk === 'low' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                            vaccineRec.patch_risk === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                                                'bg-red-500/20 text-red-400'
+                                                        }`}>
+                                                        {vaccineRec.patch_risk.toUpperCase()} RISK
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {vaccineRec.feasible ? (
+                                        <div className="space-y-3">
+                                            {vaccineRec.target_file && (
+                                                <div>
+                                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Target File</div>
+                                                    <code className="text-xs text-emerald-300 bg-black/30 px-2 py-1 rounded font-mono block">
+                                                        {vaccineRec.target_file}
+                                                        {vaccineRec.target_function ? ` :: ${vaccineRec.target_function}` : ''}
+                                                        {vaccineRec.target_line_hint ? ` (line ~${vaccineRec.target_line_hint})` : ''}
+                                                    </code>
+                                                </div>
+                                            )}
+                                            {vaccineRec.change_description && (
+                                                <div>
+                                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Proposed Change</div>
+                                                    <p className="text-slate-200 text-sm leading-relaxed bg-black/20 rounded-lg px-3 py-2">
+                                                        {vaccineRec.change_description}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-500 text-sm italic">
+                                            {vaccineRec.skip_reason || 'Automatic patching not possible for this incident type.'}
+                                        </p>
+                                    )}
                                 </div>
                             )}
 

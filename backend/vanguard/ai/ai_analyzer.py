@@ -33,10 +33,15 @@ class IncidentAnalysis(BaseModel):
     expires_at: str
     cached: bool = False
     code_references: List[str] = []
-    prompt_version: str = "1.0"
+    prompt_version: str = "2.0"
     model_id: str = ""
-    input_hash: str = ""        # Hash of normalised analysis input
-    incident_last_seen: str = ""  # last_seen at analysis time -- stale if incident recurred
+    input_hash: str = ""
+    incident_last_seen: str = ""
+    # Extended fields from the enriched prompt
+    error_message_decoded: str = ""
+    middleware_insight: str = ""
+    timeline_analysis: str = ""
+    vaccine_recommendation: Optional[Dict] = None
 
 
 class VanguardAIAnalyzer:
@@ -44,7 +49,7 @@ class VanguardAIAnalyzer:
     Gemini-powered incident analyzer with intelligent caching
     """
 
-    PROMPT_VERSION = "1.0"  # Bump to invalidate cached analyses when prompt changes
+    PROMPT_VERSION = "2.0"  # Bumped: vaccine_recommendation + labels + error_message in prompt
 
     def __init__(self):
         self.kb = CodebaseKnowledgeBase()
@@ -57,52 +62,107 @@ class VanguardAIAnalyzer:
         self.model_name = config.llm_model
 
     ANALYSIS_PROMPT_TEMPLATE = """
-You are Vanguard Sovereign - QuantSight's AI incident analyst. Provide detailed technical analysis in under 600 words.
+You are Vanguard Sovereign — QuantSight's autonomous AI incident analyst and self-healing engine.
+Produce a deep-dive technical post-mortem and Vaccine code-fix recommendation.
 
+═══════════════════════════════════════════════════════════════
+SYSTEM CONTEXT
+═══════════════════════════════════════════════════════════════
 {context}
 
-## INCIDENT TIMELINE
-**Fingerprint:** `{fingerprint}`
-**Error:** `{error_type}` on `{endpoint}`
-**Severity:** {severity} | **Hit Count:** {occurrence_count}
-**First Seen:** {first_seen}
-**Last Seen:** {last_seen}
-**Current Time:** {system_time}
+═══════════════════════════════════════════════════════════════
+INCIDENT RECORD
+═══════════════════════════════════════════════════════════════
+Fingerprint  : {fingerprint}
+Error Type   : {error_type}
+Error Message: {error_message}
+Endpoint     : {endpoint}
+Severity     : {severity}
+Hit Count    : {occurrence_count}
+First Seen   : {first_seen}
+Last Seen    : {last_seen}
+Analyzed At  : {system_time}
 
-## STACK TRACE
+═══════════════════════════════════════════════════════════════
+MIDDLEWARE LABELS (injected by Vanguard Inquisitor)
+═══════════════════════════════════════════════════════════════
+{labels}
+
+═══════════════════════════════════════════════════════════════
+STACK TRACE
+═══════════════════════════════════════════════════════════════
 {traceback}
 
-## CODE CONTEXT
+═══════════════════════════════════════════════════════════════
+LIVE CODE CONTEXT (from GitHub — use for exact file references)
+═══════════════════════════════════════════════════════════════
 {code_contexts}
 
-## SYSTEM STATE
-**Mode:** {vanguard_mode} | **Revision:** {revision}
+═══════════════════════════════════════════════════════════════
+SYSTEM OPERATING STATE
+═══════════════════════════════════════════════════════════════
+Vanguard Mode : {vanguard_mode}
+Revision      : {revision}
+Known Routes  : {available_routes}
 
----
+═══════════════════════════════════════════════════════════════
+VACCINE SUBSYSTEM BRIEF
+═══════════════════════════════════════════════════════════════
+Vanguard Vaccine is an autonomous code-fix generator. It can:
+  - Read live source files from disk and generate minimal surgical patches
+  - Open a GitHub Pull Request for human review before merging
+  - Execute only on files within: vanguard/, backend/vanguard/, scripts/, shared_core/
+  - NEVER auto-patch: config.py, main.py, .env, Dockerfile, migrations/
+  - Requires confidence >= 85 and at least one code_reference with a real file path
 
-Provide detailed technical analysis in JSON format. Be specific about:
-- Exact component/function that failed
-- Technical chain of causation
-- Concrete impact metrics
-- Actionable fixes with file/line references where possible
+Your vaccine_recommendation must identify the SINGLE best file/function to patch and
+explain EXACTLY what line-level change is needed. DO NOT suggest config changes, env
+var additions, or infrastructure changes as the vaccine fix — those cannot be patched.
+
+═══════════════════════════════════════════════════════════════
+ANALYSIS REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+Be technically precise. Name exact files, functions, and line numbers when visible in the
+stack trace or code context. Treat this like a senior SRE writing a production post-mortem.
 
 {{
-  "root_cause": "<2-3 sentences. Name specific files, functions, or config. Explain the technical chain: X called Y which failed because Z.>",
-  "impact": "<1-2 sentences. Quantify: how many users, which features, what degradation. Concrete metrics.>",
+  "root_cause": "<2-4 sentences. Name the exact file, function, and causal chain. E.g. 'vanguard/api/admin_routes.py::resolve_incident (line 189) attempted storage.resolve(fp) but storage was None because get_incident_storage() returned a mock in SILENT_OBSERVER mode. The None propagated into Firestore client.'>",
+
+  "error_message_decoded": "<1-2 sentences. Decode the raw error message: what does it actually mean in plain engineering terms and why does it happen in this service?>",
+
+  "impact": "<1-2 sentences. Quantify: which users/features are degraded, at what rate. E.g. 'All resolve operations on the Vanguard admin panel are failing, affecting 100% of manual incident resolutions. Incidents are accumulating unresolved.'>",
+
+  "middleware_insight": "<1-2 sentences. Based on the labels (service, component, root_cause, category), what does the middleware tell us about which subsystem owns this error and its blast radius?>",
+
   "recommended_fix": [
-    "IMMEDIATE: <tactical action to mitigate impact right now>",
-    "ROOT FIX: <specific code/config change with file paths if known>",
-    "PREVENTION: <monitoring, tests, or architecture change to prevent recurrence>"
+    "IMMEDIATE: <tactical mitigation you can do right now without a code deploy>",
+    "ROOT FIX: <exact code change — file path, function name, what to change>",
+    "PREVENTION: <monitoring alert, test case, or architecture guard to prevent recurrence>"
   ],
-  "timeline_analysis": "<1-2 sentences analyzing the gap between first_seen and last_seen. Is this recurring, intermittent, or one-time? Pattern insights.>",
+
+  "timeline_analysis": "<2-3 sentences. Analyze the first_seen → last_seen gap. Is this a one-shot error, a recurring burst, or a slowly escalating issue? What does the hit_count pattern suggest about underlying stability?>",
+
+  "vaccine_recommendation": {{
+    "feasible": true,
+    "target_file": "<relative path like vanguard/api/admin_routes.py — MUST be within allowed roots, or null if not feasible>",
+    "target_function": "<function name>",
+    "target_line_hint": <line number from stacktrace, or 0 if unknown>,
+    "change_description": "<1-2 sentences. Describe the exact minimal change: e.g. 'Add a null-guard: if storage is None: raise HTTPException(503) before calling storage.resolve()'>",
+    "patch_risk": "<low|medium|high>",
+    "skip_reason": "<only if feasible=false: why Vaccine cannot auto-patch this — e.g. 'Root cause is infrastructure config, not patchable code'>"
+  }},
+
   "ready_to_resolve": false,
-  "ready_reasoning": "<Specific reason based on timeline. Example: 'Last occurrence 8min ago, need 30min cold period' or 'No occurrences for 45min + evidence of fix in rev XYZ'>",
+  "ready_reasoning": "<Specific reason. E.g. 'Last hit 4 min ago. Vanguard requires 30 min cold quiet period before resolution is safe.'>",
   "confidence": 85
 }}
 
-**Resolution Criteria:** Set ready_to_resolve=true ONLY when: (1) 30+ minutes since last_seen with zero new hits, AND (2) evidence suggests root cause addressed (new deployment, config fix, etc).
+RESOLUTION RULE: Set ready_to_resolve=true ONLY when ALL of:
+  (1) >= 30 minutes since last_seen with no new occurrences
+  (2) Evidence that root cause was addressed (new deployment, config fix, or code change)
+  (3) confidence >= 70
 
-Return ONLY valid JSON. No markdown, no extra text.
+Return ONLY valid JSON. No markdown fences, no extra prose.
 """
     
     def _lazy_load_genai(self):
@@ -233,58 +293,74 @@ Return ONLY valid JSON. No markdown, no extra text.
     
     async def _build_analysis_prompt(self, incident: Dict, context: str, code_contexts: List[Dict] = None, **kwargs) -> str:
         """Build comprehensive analysis prompt for Gemini"""
-        
-        # Get metadata
+
+        # Get metadata / traceback
         metadata = incident.get("metadata", {})
-        traceback = metadata.get("traceback", "N/A")
-        if len(traceback) > 1500:
-            traceback = traceback[:1500] + "\n... (truncated)"
-        
+        traceback_text = (
+            incident.get("traceback")
+            or metadata.get("traceback")
+            or "N/A"
+        )
+        if len(traceback_text) > 2000:
+            traceback_text = traceback_text[:2000] + "\n... (truncated — full trace in Firestore)"
+
+        # Format middleware labels as a readable table
+        labels = incident.get("labels", {})
+        if labels:
+            labels_text = "\n".join(f"  {k}: {v}" for k, v in labels.items())
+        else:
+            labels_text = "  (none — labels not captured for this incident)"
+
         prompt = self.ANALYSIS_PROMPT_TEMPLATE.format(
             context=context,
             fingerprint=incident['fingerprint'][:16] + "...",
             error_type=incident['error_type'],
+            error_message=incident.get('error_message', 'N/A'),
             endpoint=incident['endpoint'],
             occurrence_count=incident.get('occurrence_count', 1),
             severity=incident['severity'],
-            labels=json.dumps(incident.get('labels', {})),
+            labels=labels_text,
             first_seen=incident.get('first_seen', incident.get('timestamp', 'unknown')),
             last_seen=incident.get('last_seen', incident.get('timestamp', 'unknown')),
-            traceback=traceback,
+            traceback=traceback_text,
             code_contexts=self._format_code_contexts(code_contexts or []),
             system_time=datetime.now(timezone.utc).isoformat(),
             vanguard_mode=kwargs.get('system_context', {}).get('mode', 'UNKNOWN'),
             revision=kwargs.get('system_context', {}).get('revision', 'local'),
-            available_routes=json.dumps(kwargs.get('system_context', {}).get('routes', []))
+            available_routes=json.dumps(kwargs.get('system_context', {}).get('routes', [])[:30])
         )
         return prompt.strip()
     
     def _parse_ai_response(self, response: str, incident: Dict) -> IncidentAnalysis:
-        """Parse Gemini's JSON response"""
-        
+        """Parse Gemini's JSON response — now captures all enriched fields."""
+
         # Extract JSON from response
         json_match = re.search(r'\{.*\}', response, re.DOTALL)
-        
+
         if not json_match:
             raise ValueError(f"AI response is not valid JSON: {response[:200]}")
-        
+
         try:
             data = json.loads(json_match.group())
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse AI JSON: {e}")
-        
+
         # Validate required fields
         required = ["root_cause", "impact", "recommended_fix", "ready_to_resolve", "ready_reasoning", "confidence"]
         for field in required:
             if field not in data:
                 raise ValueError(f"Missing required field: {field}")
-        
+
         # Create analysis object
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
 
-        # Extract code references from recommended_fix text (file paths)
+        # Extract code references from: (1) vaccine target file, (2) recommended_fix text
         code_refs = []
+        vaccine_rec = data.get("vaccine_recommendation", {})
+        if isinstance(vaccine_rec, dict) and vaccine_rec.get("target_file"):
+            code_refs.append(vaccine_rec["target_file"])
+
         fix_list = data["recommended_fix"] if isinstance(data["recommended_fix"], list) else [data["recommended_fix"]]
         for fix_text in fix_list:
             refs = re.findall(r'[\w/]+\.(?:py|ts|js|tsx|jsx)\b', str(fix_text))
@@ -301,8 +377,13 @@ Return ONLY valid JSON. No markdown, no extra text.
             generated_at=now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
             expires_at=expires.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
             cached=False,
-            code_references=list(set(code_refs)),
-            prompt_version=self.PROMPT_VERSION
+            code_references=list(dict.fromkeys(code_refs)),  # deduplicate preserving order
+            prompt_version=self.PROMPT_VERSION,
+            # New enriched fields
+            error_message_decoded=data.get("error_message_decoded", ""),
+            middleware_insight=data.get("middleware_insight", ""),
+            timeline_analysis=data.get("timeline_analysis", ""),
+            vaccine_recommendation=vaccine_rec if isinstance(vaccine_rec, dict) else None,
         )
 
     def _create_fallback_analysis(self, incident: Dict) -> IncidentAnalysis:

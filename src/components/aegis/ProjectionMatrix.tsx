@@ -2,9 +2,21 @@
  * ProjectionMatrix Component
  * Displays Floor/EV/Ceiling projections from Monte Carlo simulation
  */
-import { SimulationResult, StatProjection } from '../../services/aegisApi';
+
+// Inlined from removed aegisApi.ts
+interface StatProjection { points: number; rebounds: number; assists: number; threes: number;[key: string]: number; }
+interface SimulationResult {
+    projections: { floor: StatProjection; expected_value: StatProjection; ceiling: StatProjection; };
+    confidence: { grade: string; score: number; };
+    modifiers: { archetype: string; usage_boost: number; };
+    execution_time_ms: number;
+    schedule_context: { is_b2b: boolean; days_rest: number; modifier: number; };
+    game_mode: { blowout_pct: number; clutch_pct: number; };
+    momentum: { hot_streak: boolean; };
+    defender_profile?: { primary_defender: string; dfg_pct: number; pct_plusminus: number; };
+}
+
 import FatigueBreakdownChip from '../common/FatigueBreakdownChip';
-import GameModeIndicator from '../common/GameModeIndicator';
 import DefenderImpactTooltip from '../common/DefenderImpactTooltip';
 
 interface ProjectionMatrixProps {
@@ -144,10 +156,12 @@ export default function ProjectionMatrix({ simulation, loading, onRefresh }: Pro
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <span className="text-lg">🎲</span>
                     <h3 className="text-base sm:text-lg font-bold text-slate-200">Projection Matrix</h3>
-                    <GameModeIndicator
-                        blowoutPct={game_mode.blowout_pct}
-                        clutchPct={game_mode.clutch_pct}
-                    />
+                    {game_mode.blowout_pct > 0.15 && (
+                        <span className="text-xs px-2 py-0.5 bg-slate-700/50 rounded text-slate-400">💥 Blowout {(game_mode.blowout_pct * 100).toFixed(0)}%</span>
+                    )}
+                    {game_mode.clutch_pct > 0.15 && (
+                        <span className="text-xs px-2 py-0.5 bg-amber-900/30 border border-amber-500/20 rounded text-amber-400">⚡ Clutch {(game_mode.clutch_pct * 100).toFixed(0)}%</span>
+                    )}
                     <span className="text-xs text-slate-600 font-mono hidden sm:inline">{execution_time_ms}ms</span>
                 </div>
 

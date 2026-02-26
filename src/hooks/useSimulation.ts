@@ -4,8 +4,20 @@
  */
 
 import { useState, useCallback } from 'react';
-import { AegisApi, SimulationResult } from '../services/aegisApi';
-import { getCachedSimulation } from '../services/prefetchService';
+import { ApiContract } from '../api/client';
+
+// Inlined from removed aegisApi.ts
+interface StatProjection { points: number; rebounds: number; assists: number; threes: number;[key: string]: number; }
+interface SimulationResult {
+    projections: { floor: StatProjection; expected_value: StatProjection; ceiling: StatProjection; };
+    confidence: { grade: string; score: number; };
+    modifiers: { archetype: string; usage_boost: number; fatigue?: number; };
+    execution_time_ms: number;
+    schedule_context: { is_b2b: boolean; days_rest: number; modifier: number; };
+    game_mode: { blowout_pct: number; clutch_pct: number; };
+    momentum: { hot_streak: boolean; };
+    defender_profile?: { primary_defender: string; dfg_pct: number; pct_plusminus: number; };
+}
 
 interface UseSimulationOptions {
     playerId: string;
@@ -45,25 +57,23 @@ export function useSimulation({
             return;
         }
 
-        // Check cache first
-        const cached = getCachedSimulation(playerId, targetOpponent);
-        if (cached) {
-            setSimulation(cached);
-            return;
-        }
-
         setLoading(true);
         setError(null);
 
         try {
-            const result = await AegisApi.runSimulation(playerId, targetOpponent, {
-                ptsLine,
-                rebLine,
-                astLine
+            const base = import.meta.env.VITE_API_URL || '';
+            const params = new URLSearchParams({
+                player_id: playerId,
+                opponent_id: targetOpponent,
+                ...(ptsLine !== undefined && { pts_line: String(ptsLine) }),
+                ...(rebLine !== undefined && { reb_line: String(rebLine) }),
+                ...(astLine !== undefined && { ast_line: String(astLine) }),
             });
+            const res = await fetch(`${base}/aegis/simulate?${params}`);
+            if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
+            const result: SimulationResult & { error?: string } = await res.json();
 
             if (result.error) {
-                // Partial result with error
                 setSimulation(result);
                 setError(result.error);
             } else {
@@ -94,24 +104,32 @@ export function useSimulation({
         setRefreshStatus(null);
 
         try {
-            // Step 1: Refresh player data (incremental fetch from NBA API)
+            const base = import.meta.env.VITE_API_URL || '';
+
+            // Step 1: Refresh player data
             console.log(`[useSimulation] Refreshing data for player ${playerId}...`);
-            const refreshResult = await AegisApi.refreshPlayerData(playerId);
+            const refreshRes = await fetch(`${base}/aegis/refresh/${playerId}`, { method: 'POST' });
+            if (refreshRes.ok) {
+                const refreshResult = await refreshRes.json();
+                setRefreshStatus({
+                    message: refreshResult.message || 'Data refreshed',
+                    gamesAdded: refreshResult.games_added || 0
+                });
+                console.log(`[useSimulation] Refresh complete: ${refreshResult.games_added} games added`);
+            }
 
-            setRefreshStatus({
-                message: refreshResult.message,
-                gamesAdded: refreshResult.games_added
+            // Step 2: Run simulation with force_fresh flag
+            const params = new URLSearchParams({
+                player_id: playerId,
+                opponent_id: targetOpponent,
+                force_fresh: 'true',
+                ...(ptsLine !== undefined && { pts_line: String(ptsLine) }),
+                ...(rebLine !== undefined && { reb_line: String(rebLine) }),
+                ...(astLine !== undefined && { ast_line: String(astLine) }),
             });
-
-            console.log(`[useSimulation] Refresh complete: ${refreshResult.games_added} games added, days_rest=${refreshResult.days_rest}`);
-
-            // Step 2: Run simulation with force_fresh=true to bypass cache
-            const result = await AegisApi.runSimulation(playerId, targetOpponent, {
-                ptsLine,
-                rebLine,
-                astLine,
-                forceFresh: true
-            });
+            const res = await fetch(`${base}/aegis/simulate?${params}`);
+            if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
+            const result: SimulationResult & { error?: string } = await res.json();
 
             if (result.error) {
                 setSimulation(result);

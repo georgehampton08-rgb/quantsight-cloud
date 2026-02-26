@@ -6,7 +6,6 @@ import VertexMatchupCard from '../components/aegis/VertexMatchupCard'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
 import { ApiContract } from '../api/client'
 import { PlayerApi } from '../services/playerApi'
-import { AegisApi } from '../services/aegisApi'
 
 interface RadarDimensions {
     scoring: number;
@@ -60,16 +59,20 @@ export default function MatchupEnginePage() {
                 const data = await PlayerApi.analyzeMatchup(selectedPlayer.id, opponentId);
                 setAnalysis(data);
 
-                // Fetch REAL radar dimensions from the API (not hardcoded!)
+                // Fetch REAL radar dimensions from the API
                 try {
-                    const radarResult = await AegisApi.getRadarDimensions(selectedPlayer.id, opponentId);
-                    if (radarResult.player_stats && radarResult.opponent_defense) {
-                        setRadarData({
-                            player: radarResult.player_stats,
-                            opponent: radarResult.opponent_defense,
-                            formulas: radarResult.formulas_used || []
-                        });
-                        console.log('[RADAR] Loaded real dimensions for opponent:', opponentId, radarResult);
+                    const base = import.meta.env.VITE_API_URL || '';
+                    const radarRes = await fetch(`${base}/aegis/radar?player_id=${selectedPlayer.id}&opponent_id=${opponentId}`);
+                    if (radarRes.ok) {
+                        const radarResult = await radarRes.json();
+                        if (radarResult.player_stats && radarResult.opponent_defense) {
+                            setRadarData({
+                                player: radarResult.player_stats,
+                                opponent: radarResult.opponent_defense,
+                                formulas: radarResult.formulas_used || []
+                            });
+                            console.log('[RADAR] Loaded real dimensions for opponent:', opponentId, radarResult);
+                        }
                     }
                 } catch (radarErr) {
                     console.warn('[RADAR] Failed to load real dimensions, using defaults:', radarErr);

@@ -790,3 +790,127 @@ async def get_verification_status(fingerprint: str):
     except Exception as e:
         logger.error(f"Verification check failed for {fingerprint}: {e}")
         raise HTTPException(500, f"Verification failed: {str(e)}")
+
+
+# ============================================================================
+# VACCINE ENDPOINTS — AI-Powered Code Fix Generation
+# ============================================================================
+
+@router.get("/vanguard/admin/incidents/{fingerprint}/vaccine-plan")
+async def get_vaccine_plan(fingerprint: str):
+    """
+    Generate a structured remediation plan for an incident using Vaccine PlanEngine.
+
+    Returns root-cause classification, fix candidates (files/functions),
+    risk score, verification steps, and rollback plan.
+    Does NOT write any code — purely analytical.
+    """
+    try:
+        from vanguard.vaccine.plan_engine import get_plan_engine
+
+        storage = get_incident_storage()
+        incident = await storage.load(fingerprint)
+
+        if not incident:
+            raise HTTPException(404, f"Incident {fingerprint} not found")
+
+        plan_engine = get_plan_engine()
+        plan = plan_engine.generate_plan(incident)
+
+        return {
+            "fingerprint": fingerprint,
+            "plan": plan.to_dict(),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Vaccine plan generation failed for {fingerprint}: {e}")
+        raise HTTPException(500, f"Plan generation failed: {str(e)}")
+
+
+@router.post("/vanguard/admin/incidents/{fingerprint}/vaccine-generate")
+async def generate_vaccine_fix(fingerprint: str):
+    """
+    Use VaccineGenerator to produce a concrete code patch for an incident.
+
+    Requires:
+      - AI analysis cached on the incident (run /analysis first)
+      - confidence >= 85 in the analysis
+      - At least one code_reference pointing to a patchable file
+
+    Returns:
+      - The generated CodePatch (file_path, original_code, fixed_code, explanation)
+      - Or a structured explanation of why it was skipped/not feasible
+    """
+    try:
+        from vanguard.vaccine.generator import get_vaccine
+
+        storage = get_incident_storage()
+        incident = await storage.load(fingerprint)
+
+        if not incident:
+            raise HTTPException(404, f"Incident {fingerprint} not found")
+
+        # Pull cached AI analysis off the incident
+        ai_analysis = incident.get("ai_analysis")
+        if not ai_analysis:
+            raise HTTPException(
+                400,
+                "No AI analysis found for this incident. "
+                "Run GET /vanguard/admin/incidents/{fingerprint}/analysis first.",
+            )
+
+        # Merge incident context into analysis dict for generator
+        analysis_dict = {
+            **ai_analysis,
+            "fingerprint": fingerprint,
+            "error_type": incident.get("error_type", ""),
+            "error_message": incident.get("error_message", ""),
+            "endpoint": incident.get("endpoint", ""),
+        }
+
+        vaccine = get_vaccine()
+        can_gen, reason = await vaccine.can_generate_fix(analysis_dict)
+
+        if not can_gen:
+            return {
+                "fingerprint": fingerprint,
+                "generated": False,
+                "skip_reason": reason,
+                "vaccine_status": vaccine.get_status(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }
+
+        patch = await vaccine.generate_fix(analysis_dict)
+
+        if not patch:
+            return {
+                "fingerprint": fingerprint,
+                "generated": False,
+                "skip_reason": "Vaccine generated no patch (low confidence or no code refs)",
+                "vaccine_status": vaccine.get_status(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }
+
+        return {
+            "fingerprint": fingerprint,
+            "generated": True,
+            "patch": {
+                "file_path": patch.file_path,
+                "line_start": patch.line_start,
+                "line_end": patch.line_end,
+                "explanation": patch.explanation,
+                "confidence": patch.confidence,
+                "original_code": patch.original_code[:2000],   # truncate for transport
+                "fixed_code": patch.fixed_code[:2000],
+            },
+            "vaccine_status": vaccine.get_status(),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Vaccine generate failed for {fingerprint}: {e}")
+        raise HTTPException(500, f"Vaccine generation failed: {str(e)}")
+

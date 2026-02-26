@@ -1,20 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PlayerProfile } from '../services/playerApi';
 
-// Local type definition (no longer using mock data)
+// NBATeam type (local — aegisApi removed)
 interface NBATeam {
     id: string;
     name: string;
     abbreviation: string;
 }
 
-import { SimulationResult } from '../services/aegisApi';
-
-interface NBATeam {
-    id: string;
-    name: string;
-    abbreviation: string;
-}
+// SimulationResult: flexible shape — only stored/retrieved, not validated here
+type SimulationResult = Record<string, unknown>;
 
 interface OrbitalContextType {
     selectedPlayer: PlayerProfile | null;
