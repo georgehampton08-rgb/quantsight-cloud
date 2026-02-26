@@ -1,0 +1,21 @@
+# gcloudignore - prevent uploading unnecessary files to Cloud Build
+.git
+.gitignore
+node_modules/
+src/
+public/
+*.md
+.env
+.env.*
+__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+.idea/
+*.egg-info/
+dist/
+build/
+.agents/
+.gemini/
+.venv/
+venv/
