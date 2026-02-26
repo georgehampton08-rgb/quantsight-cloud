@@ -68,4 +68,13 @@ grpcio>=1.62.0
 grpcio-tools>=1.62.0
 protobuf>=4.25.0
 
+# ========================================
+# PHASE 7: OpenTelemetry Observability
+# ========================================
+opentelemetry-api>=1.24.0
+opentelemetry-sdk>=1.24.0
+opentelemetry-exporter-gcp-trace>=1.6.0
+opentelemetry-instrumentation-fastapi>=0.45b0
+opentelemetry-instrumentation-aiohttp>=0.45b0
+
 

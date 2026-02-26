@@ -138,7 +138,7 @@ def _initialize_otel() -> None:
             )
         elif OTEL_EXPORTER == "gcp":
             try:
-                from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+                from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter
                 from opentelemetry.sdk.trace.export import BatchSpanProcessor
                 _tracer_provider.add_span_processor(
                     BatchSpanProcessor(CloudTraceSpanExporter())

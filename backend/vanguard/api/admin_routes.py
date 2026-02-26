@@ -13,9 +13,11 @@ import os
 from vanguard.archivist.storage import get_incident_storage
 from vanguard.resolution_learner import VanguardResolutionLearner
 from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
+from vanguard.audit.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["vanguard-admin"])
+audit = get_audit_logger()
 
 
 
@@ -47,7 +49,7 @@ class ModeRequest(BaseModel):
 
 
 @router.post("/vanguard/admin/mode")
-async def toggle_vanguard_mode(request: ModeRequest):
+async def toggle_vanguard_mode(http_request: Request, request: ModeRequest):
     """Manually toggle Vanguard operational mode."""
     from vanguard.core.config import get_vanguard_config, VanguardMode
     config = get_vanguard_config()
@@ -58,6 +60,14 @@ async def toggle_vanguard_mode(request: ModeRequest):
         config.mode = new_mode
         
         logger.warning(f"Vanguard mode manually changed: {old_mode} -> {new_mode}")
+        await audit.log(
+            action="TOGGLE_MODE",
+            request_id=http_request.headers.get("X-Request-ID", "unknown"),
+            affected_ids=[str(old_mode), str(new_mode)],
+            metadata={"old_mode": str(old_mode), "new_mode": str(new_mode)},
+            result="SUCCESS",
+            ip_address=http_request.client.host if http_request.client else None,
+        )
         return {
             "success": True, 
             "old_mode": old_mode,
@@ -294,7 +304,7 @@ async def get_vanguard_stats():
 
 
 @router.post("/vanguard/admin/incidents/{fingerprint}/resolve")
-async def resolve_incident(fingerprint: str, request: ResolveRequest):
+async def resolve_incident(http_request: Request, fingerprint: str, request: ResolveRequest):
     """Mark a single incident as resolved."""
     try:
         storage = get_incident_storage()
@@ -323,6 +333,14 @@ async def resolve_incident(fingerprint: str, request: ResolveRequest):
         
         if success:
             logger.info(f"Incident resolved: {fingerprint}")
+            await audit.log(
+                action="RESOLVE_INCIDENT",
+                request_id=http_request.headers.get("X-Request-ID", "unknown"),
+                affected_ids=[fingerprint],
+                metadata={"resolution_notes": request.resolution_notes, "approved": request.approved},
+                result="SUCCESS",
+                ip_address=http_request.client.host if http_request.client else None,
+            )
             return {
                 "success": True,
                 "message": "Incident resolved",
@@ -341,7 +359,7 @@ async def resolve_incident(fingerprint: str, request: ResolveRequest):
 
 
 @router.post("/vanguard/admin/incidents/bulk-resolve")
-async def bulk_resolve_incidents(request: BulkResolveRequest):
+async def bulk_resolve_incidents(request: BulkResolveRequest, http_request: Request = None):
     """Resolve multiple incidents by fingerprint with learning tracking."""
     storage = get_incident_storage()
     learner = VanguardResolutionLearner()
@@ -376,6 +394,15 @@ async def bulk_resolve_incidents(request: BulkResolveRequest):
             failed.append({"fingerprint": fp, "reason": str(e)})
     
     logger.info(f"Bulk resolve: {len(resolved)} resolved, {learned} learned, {len(failed)} failed")
+    req_id = http_request.headers.get("X-Request-ID", "unknown") if http_request else "unknown"
+    await audit.log(
+        action="BULK_RESOLVE",
+        request_id=req_id,
+        affected_ids=resolved,
+        metadata={"resolution_notes": request.resolution_notes, "failed_count": len(failed)},
+        result="SUCCESS" if not failed else "PARTIAL",
+        ip_address=http_request.client.host if http_request and http_request.client else None,
+    )
     
     return {
         "resolved_count": len(resolved),
@@ -468,7 +495,7 @@ async def batch_analyze_incidents(request: Request, force: bool = False):
 
 
 @router.post("/vanguard/admin/incidents/resolve-all")
-async def resolve_all_incidents(request: ResolveAllRequest):
+async def resolve_all_incidents(http_request: Request, request: ResolveAllRequest):
     """
     Resolve ALL active incidents.
     
@@ -503,6 +530,14 @@ async def resolve_all_incidents(request: ResolveAllRequest):
             failed.append({"fingerprint": fp, "reason": str(e)})
     
     logger.info(f"Resolve-all: {len(resolved)} resolved, {len(already_resolved)} already resolved, {len(failed)} failed")
+    await audit.log(
+        action="RESOLVE_ALL",
+        request_id=http_request.headers.get("X-Request-ID", "unknown"),
+        affected_ids=resolved,
+        metadata={"resolution_notes": request.resolution_notes, "already_resolved": len(already_resolved)},
+        result="SUCCESS" if not failed else "PARTIAL",
+        ip_address=http_request.client.host if http_request.client else None,
+    )
     
     return {
         "resolved_count": len(resolved),
@@ -952,4 +987,42 @@ async def generate_vaccine_fix(fingerprint: str):
     except Exception as e:
         logger.error(f"Vaccine generate failed for {fingerprint}: {e}")
         raise HTTPException(500, f"Vaccine generation failed: {str(e)}")
+
+
+# ============================================================================
+# AUDIT LOG ENDPOINT (Phase 7)
+# ============================================================================
+
+@router.get("/vanguard/admin/audit")
+async def get_audit_log(limit: int = 100, action: Optional[str] = None):
+    """
+    Query the audit log. Returns recent admin actions.
+
+    Query params:
+        limit: Maximum entries to return (default 100)
+        action: Filter by action type (e.g., RESOLVE_INCIDENT, TOGGLE_MODE)
+    """
+    try:
+        storage = get_incident_storage()
+
+        filters = []
+        if action:
+            filters.append(("action", "==", action.upper()))
+
+        entries = await storage.query_collection(
+            collection="audit_log",
+            limit=limit,
+            filters=filters if filters else None,
+            order_by=[("timestamp_utc", "desc")],
+        )
+
+        return {
+            "entries": entries,
+            "total": len(entries),
+            "filter": {"action": action} if action else None,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as e:
+        logger.error(f"Audit log query failed: {e}")
+        return {"entries": [], "total": 0, "error": str(e)}
 

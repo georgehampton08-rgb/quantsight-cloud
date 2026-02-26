@@ -64,6 +64,15 @@ except ImportError as e:
     logger.error(f"Full traceback:\n{traceback.format_exc()}")
     VANGUARD_AVAILABLE = False
 
+# Phase 7: OpenTelemetry instrumentation
+try:
+    from telemetry.otel_setup import setup_telemetry, is_otel_ok
+    OTEL_SETUP_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"⚠️ OTel setup not available: {e}")
+    OTEL_SETUP_AVAILABLE = False
+    def is_otel_ok(): return False
+
 
 # Import cloud-native pulse producer (graceful fallback)
 try:
@@ -126,9 +135,15 @@ async def lifespan(app: FastAPI):
     logger.info(f"   └─ FIREBASE_PROJECT_ID: {os.getenv('FIREBASE_PROJECT_ID', 'Not set')}")
     logger.info(f"   └─ Database: Firestore (NoSQL)")
     
+    # Phase 7: Initialize OpenTelemetry (runs BEFORE Vanguard)
+    if OTEL_SETUP_AVAILABLE:
+        setup_telemetry(app, "quantsight-main")
+        logger.info(f"   └─ OTel: {'active' if is_otel_ok() else 'disabled'}")
+    
     # Initialize Vanguard (runs FIRST)
     if VANGUARD_AVAILABLE:
-        from vanguard.snapshot import start_snapshot_loop, stop_snapshot_loop
+        from vanguard.snapshot import start_snapshot_loop, stop_snapshot_loop, SYSTEM_SNAPSHOT
+        SYSTEM_SNAPSHOT["otel_ok"] = is_otel_ok()
         start_snapshot_loop()
         
         async with vanguard_lifespan(app):
@@ -163,6 +178,8 @@ async def lifespan(app: FastAPI):
         if PRODUCER_AVAILABLE:
             await stop_cloud_producer()
             logger.info("✅ Cloud pulse producer stopped")
+
+
 
 
 app = FastAPI(
@@ -449,9 +466,12 @@ async def health_deps():
     """Deep health check that exposes Oracle snapshot without failing traffic routing."""
     try:
         from vanguard.snapshot import SYSTEM_SNAPSHOT
+        # Phase 7: ensure otel_ok is always fresh
+        SYSTEM_SNAPSHOT["otel_ok"] = is_otel_ok()
+        SYSTEM_SNAPSHOT["firestore_region"] = "nam5"
         return SYSTEM_SNAPSHOT
     except ImportError:
-        return {"status": "Vanguard not available"}
+        return {"status": "Vanguard not available", "otel_ok": is_otel_ok()}
 
 
 @app.get("/healthz")

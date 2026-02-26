@@ -4,7 +4,7 @@ Vanguard Surgeon Admin API Endpoints
 API endpoints for managing and monitoring Surgeon actions.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import List, Dict, Any
 from datetime import datetime
 
@@ -14,6 +14,13 @@ from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+# Phase 7: Audit logging
+try:
+    from vanguard.audit.audit_logger import get_audit_logger
+    audit = get_audit_logger()
+except ImportError:
+    audit = None
 
 
 @router.get("/vanguard/surgeon/actions")
@@ -99,7 +106,7 @@ async def get_active_quarantines() -> Dict[str, Any]:
 
 
 @router.post("/vanguard/surgeon/quarantine/{endpoint_id}/release")
-async def release_quarantine(endpoint_id: str) -> Dict[str, str]:
+async def release_quarantine(endpoint_id: str, http_request: Request) -> Dict[str, str]:
     """
     Manually release an endpoint from quarantine.
     
@@ -121,6 +128,15 @@ async def release_quarantine(endpoint_id: str) -> Dict[str, str]:
         )
         
         logger.info("quarantine_released", endpoint_id=endpoint_id)
+        if audit:
+            await audit.log(
+                action="QUARANTINE_RELEASE",
+                request_id=http_request.headers.get("X-Request-ID", "unknown"),
+                affected_ids=[endpoint_id],
+                metadata={"released_by": "manual"},
+                result="SUCCESS",
+                ip_address=http_request.client.host if http_request.client else None,
+            )
         
         return {
             "status": "released",
@@ -133,7 +149,7 @@ async def release_quarantine(endpoint_id: str) -> Dict[str, str]:
 
 
 @router.post("/vanguard/surgeon/rate_limit/{endpoint_id}/remove")
-async def remove_rate_limit(endpoint_id: str) -> Dict[str, str]:
+async def remove_rate_limit(endpoint_id: str, http_request: Request) -> Dict[str, str]:
     """
     Remove rate limit from an endpoint.
     
@@ -155,6 +171,15 @@ async def remove_rate_limit(endpoint_id: str) -> Dict[str, str]:
         )
         
         logger.info("rate_limit_removed", endpoint_id=endpoint_id)
+        if audit:
+            await audit.log(
+                action="RATE_LIMIT_REMOVE",
+                request_id=http_request.headers.get("X-Request-ID", "unknown"),
+                affected_ids=[endpoint_id],
+                metadata={"removed_by": "manual"},
+                result="SUCCESS",
+                ip_address=http_request.client.host if http_request.client else None,
+            )
         
         return {
             "status": "removed",
