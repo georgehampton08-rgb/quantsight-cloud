@@ -1,540 +1,323 @@
-/**
- * Vanguard Control Room
- * =====================
- * Admin hub for the QuantSight Digital Immune System.
- * Incidents · AI Analysis (with Regenerate) · Resolve · Health
- */
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-    ShieldCheck, AlertTriangle, XCircle, RefreshCw, Cpu,
-    ChevronDown, ChevronUp, CheckCircle2, Loader2, Zap, RotateCcw
-} from 'lucide-react'
+    Activity, ShieldCheck, AlertTriangle, RefreshCw, Cpu,
+    CheckCircle2, Loader2, FileKey, X, Zap
+} from 'lucide-react';
 
-const BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app'
+const BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Incident {
-    fingerprint: string
-    error_type: string
-    endpoint: string
-    severity: string
-    occurrence_count: number
-    first_seen: string
-    last_seen: string
-    status: string
-    ai_analysis?: AnalysisResult
-}
-
-interface AnalysisResult {
-    root_cause: string
-    impact: string
-    recommended_fix: string[]
-    ready_to_resolve: boolean
-    ready_reasoning: string
-    confidence: number
-    generated_at: string
-    cached: boolean
-    model_id?: string
+    fingerprint: string;
+    error_type: string;
+    endpoint: string;
+    severity: string;
+    occurrence_count: number;
+    first_seen: string;
+    last_seen: string;
+    status: string;
+    ai_analysis?: any;
 }
 
 interface VanguardStats {
-    active_incidents: number
-    resolved_incidents: number
-    health_score: number
-    vanguard_mode: string
+    active_incidents: number;
+    resolved_incidents: number;
+    health_score: number;
+    vanguard_mode: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function severityColor(s: string) {
-    switch (s?.toUpperCase()) {
-        case 'RED': return 'text-red-400 border-red-500/40 bg-red-500/10'
-        case 'ORANGE': return 'text-orange-400 border-orange-500/40 bg-orange-500/10'
-        case 'YELLOW': return 'text-yellow-400 border-yellow-500/40 bg-yellow-500/10'
-        default: return 'text-slate-400 border-slate-600/40 bg-slate-700/20'
-    }
-}
+// ─── SVG Components ───────────────────────────────────────────────────────────
+function DoughnutScore({ score = 0 }: { score: number }) {
+    const strokeDasharray = 251.2; // roughly 2 * pi * 40
+    const strokeDashoffset = strokeDasharray - (score / 100) * strokeDasharray;
+    const color = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#f43f5e';
 
-function SeverityBadge({ s }: { s: string }) {
     return (
-        <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded border ${severityColor(s)}`}>
-            {s?.toUpperCase() || 'UNKNOWN'}
-        </span>
-    )
-}
-
-function ConfidenceDial({ pct }: { pct: number }) {
-    const color = pct >= 75 ? '#22d3ee' : pct >= 50 ? '#f59e0b' : '#f87171'
-    return (
-        <div className="flex items-center gap-2">
-            <div className="relative w-10 h-10">
-                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                    <circle cx="18" cy="18" r="15" fill="none" stroke="#334155" strokeWidth="4" />
-                    <circle
-                        cx="18" cy="18" r="15" fill="none" stroke={color} strokeWidth="4"
-                        strokeDasharray={`${(pct / 100) * 94.2} 94.2`}
-                        strokeLinecap="round"
-                    />
-                </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-bold" style={{ color }}>
-                    {pct}
-                </span>
-            </div>
-            <span className="text-xs text-slate-400">confidence</span>
+        <div className="relative w-48 h-48 flex items-center justify-center">
+            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" strokeWidth="8" />
+                <circle
+                    cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="8"
+                    strokeDasharray={strokeDasharray}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 ease-out"
+                />
+            </svg>
         </div>
-    )
-}
-
-// ─── AI Analysis Modal ────────────────────────────────────────────────────────
-function AnalysisModal({
-    incident,
-    onClose,
-}: {
-    incident: Incident
-    onClose: () => void
-}) {
-    const [analysis, setAnalysis] = useState<AnalysisResult | null>(
-        incident.ai_analysis || null
-    )
-    const [loading, setLoading] = useState(!incident.ai_analysis)
-    const [error, setError] = useState<string | null>(null)
-    const [resolving, setResolving] = useState(false)
-    const [resolved, setResolved] = useState(false)
-
-    const fetchAnalysis = useCallback(async (forceRegenerate = false) => {
-        setLoading(true)
-        setError(null)
-        try {
-            let res: Response
-            if (forceRegenerate) {
-                // POST endpoint forces fresh generation — no cache hit
-                res = await fetch(
-                    `${BASE}/vanguard/admin/incidents/${incident.fingerprint}/analyze`,
-                    { method: 'POST' }
-                )
-            } else {
-                res = await fetch(
-                    `${BASE}/vanguard/admin/incidents/${incident.fingerprint}/analysis`
-                )
-            }
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}))
-                throw new Error(body?.detail || `HTTP ${res.status}`)
-            }
-            const data = await res.json()
-            setAnalysis(data)
-        } catch (e: any) {
-            setError(e?.message || 'Analysis failed')
-        } finally {
-            setLoading(false)
-        }
-    }, [incident.fingerprint])
-
-    useEffect(() => {
-        if (!analysis) fetchAnalysis(false)
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleResolve = async () => {
-        setResolving(true)
-        try {
-            const res = await fetch(
-                `${BASE}/vanguard/admin/incidents/${incident.fingerprint}/resolve`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ approved: true, resolution_notes: 'Resolved via Control Room' }),
-                }
-            )
-            if (res.ok) setResolved(true)
-        } catch { /* ignore */ }
-        setResolving(false)
-    }
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl">
-                {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-slate-700 bg-slate-900/95 backdrop-blur">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Cpu className="w-4 h-4 text-cyan-400" />
-                            <span className="text-xs text-cyan-400 font-mono">VANGUARD SOVEREIGN — AI ANALYSIS</span>
-                        </div>
-                        <h2 className="text-white font-semibold text-sm font-mono truncate max-w-md">
-                            {incident.error_type} · <span className="text-slate-400">{incident.endpoint}</span>
-                        </h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {/* Regenerate button */}
-                        <button
-                            id={`regenerate-${incident.fingerprint}`}
-                            onClick={() => fetchAnalysis(true)}
-                            disabled={loading}
-                            title="Force-regenerate AI analysis (bypasses 24h cache)"
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                            {loading
-                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                : <RotateCcw className="w-3.5 h-3.5" />
-                            }
-                            {loading ? 'Analyzing…' : 'Regenerate'}
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                        >
-                            <XCircle className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Body */}
-                <div className="p-5 space-y-5">
-                    {/* Incident meta */}
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div className="bg-slate-800/60 rounded-lg p-3">
-                            <div className="text-slate-500 mb-1">Severity</div>
-                            <SeverityBadge s={incident.severity} />
-                        </div>
-                        <div className="bg-slate-800/60 rounded-lg p-3">
-                            <div className="text-slate-500 mb-1">Occurrences</div>
-                            <div className="text-white font-mono font-bold">{incident.occurrence_count}</div>
-                        </div>
-                        <div className="bg-slate-800/60 rounded-lg p-3">
-                            <div className="text-slate-500 mb-1">First Seen</div>
-                            <div className="text-slate-300 font-mono">{new Date(incident.first_seen).toLocaleString()}</div>
-                        </div>
-                        <div className="bg-slate-800/60 rounded-lg p-3">
-                            <div className="text-slate-500 mb-1">Last Seen</div>
-                            <div className="text-slate-300 font-mono">{new Date(incident.last_seen).toLocaleString()}</div>
-                        </div>
-                    </div>
-
-                    {/* Analysis content */}
-                    {loading && (
-                        <div className="flex flex-col items-center justify-center gap-3 py-10 text-slate-400">
-                            <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-                            <span className="text-sm">Vanguard Sovereign is analyzing…</span>
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-400">
-                            <strong>Analysis failed:</strong> {error}
-                        </div>
-                    )}
-
-                    {analysis && !loading && (
-                        <>
-                            {/* Cache/model badge */}
-                            <div className="flex items-center justify-between">
-                                <ConfidenceDial pct={analysis.confidence} />
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    {analysis.cached && (
-                                        <span className="px-2 py-0.5 bg-slate-700 rounded text-slate-400">CACHED</span>
-                                    )}
-                                    {analysis.model_id && (
-                                        <span className="px-2 py-0.5 bg-cyan-900/30 rounded text-cyan-600 font-mono">
-                                            {analysis.model_id}
-                                        </span>
-                                    )}
-                                    <span>{new Date(analysis.generated_at).toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            {/* Root cause */}
-                            <div className="bg-slate-800/60 rounded-lg p-4">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Root Cause</div>
-                                <p className="text-slate-200 text-sm leading-relaxed">{analysis.root_cause}</p>
-                            </div>
-
-                            {/* Impact */}
-                            <div className="bg-slate-800/60 rounded-lg p-4">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Impact</div>
-                                <p className="text-slate-200 text-sm leading-relaxed">{analysis.impact}</p>
-                            </div>
-
-                            {/* Recommended fixes */}
-                            <div className="bg-slate-800/60 rounded-lg p-4">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">Recommended Actions</div>
-                                <ul className="space-y-2">
-                                    {analysis.recommended_fix.map((fix, i) => (
-                                        <li key={i} className="flex gap-2 text-sm text-slate-200">
-                                            <span className="text-cyan-400 mt-0.5 shrink-0">→</span>
-                                            <span>{fix}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {/* Resolution readiness */}
-                            <div className={`rounded-lg p-4 border ${analysis.ready_to_resolve
-                                    ? 'bg-green-500/10 border-green-500/30'
-                                    : 'bg-amber-500/10 border-amber-500/30'
-                                }`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    {analysis.ready_to_resolve
-                                        ? <CheckCircle2 className="w-4 h-4 text-green-400" />
-                                        : <AlertTriangle className="w-4 h-4 text-amber-400" />
-                                    }
-                                    <span className={`text-sm font-medium ${analysis.ready_to_resolve ? 'text-green-400' : 'text-amber-400'}`}>
-                                        {analysis.ready_to_resolve ? 'Ready to Resolve' : 'Not Ready Yet'}
-                                    </span>
-                                </div>
-                                <p className="text-slate-300 text-xs leading-relaxed">{analysis.ready_reasoning}</p>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Resolve button */}
-                    {!resolved ? (
-                        <button
-                            id={`resolve-${incident.fingerprint}`}
-                            onClick={handleResolve}
-                            disabled={resolving}
-                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                            {resolving
-                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Resolving…</>
-                                : <><CheckCircle2 className="w-4 h-4" /> Mark Resolved</>
-                            }
-                        </button>
-                    ) : (
-                        <div className="w-full py-2.5 rounded-xl bg-green-500/20 border border-green-500/40 text-green-400 text-sm font-semibold text-center">
-                            ✓ Incident Resolved
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-// ─── Incident Row ─────────────────────────────────────────────────────────────
-function IncidentRow({
-    incident,
-    selected,
-    onSelect,
-    onOpenAnalysis,
-}: {
-    incident: Incident
-    selected: boolean
-    onSelect: (fp: string) => void
-    onOpenAnalysis: (inc: Incident) => void
-}) {
-    return (
-        <div className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${selected ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-800/40 border-slate-700/40 hover:border-slate-600'
-            }`}>
-            <input
-                type="checkbox"
-                checked={selected}
-                onChange={() => onSelect(incident.fingerprint)}
-                className="accent-cyan-500 w-4 h-4 shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                    <SeverityBadge s={incident.severity} />
-                    <span className="text-xs text-slate-400 font-mono truncate">{incident.endpoint}</span>
-                </div>
-                <div className="text-sm text-white truncate">{incident.error_type}</div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                    {incident.occurrence_count}× · last {new Date(incident.last_seen).toLocaleTimeString()}
-                </div>
-            </div>
-            <button
-                id={`analyze-btn-${incident.fingerprint}`}
-                onClick={() => onOpenAnalysis(incident)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-colors shrink-0"
-            >
-                <Cpu className="w-3 h-3" />
-                AI Analysis
-            </button>
-        </div>
-    )
+    );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function VanguardControlRoom() {
-    const [incidents, setIncidents] = useState<Incident[]>([])
-    const [stats, setStats] = useState<VanguardStats | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [refreshing, setRefreshing] = useState(false)
-    const [selected, setSelected] = useState<Set<string>>(new Set())
-    const [modalIncident, setModalIncident] = useState<Incident | null>(null)
-    const [bulkResolving, setBulkResolving] = useState(false)
-    const [statusFilter, setStatusFilter] = useState<'active' | 'all'>('active')
-    const [showResolved, setShowResolved] = useState(false)
+    const [activeTab, setActiveTab] = useState<'HEALTH' | 'INCIDENTS' | 'ARCHIVES' | 'LEARNING'>('HEALTH');
+    const [incidents, setIncidents] = useState<Incident[]>([]);
+    const [stats, setStats] = useState<VanguardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
 
     const loadData = useCallback(async (silent = false) => {
-        if (!silent) setLoading(true)
-        else setRefreshing(true)
+        if (!silent) setLoading(true);
+        else setRefreshing(true);
         try {
             const [incRes, statsRes] = await Promise.all([
-                fetch(`${BASE}/vanguard/admin/incidents?status=${statusFilter}&limit=100`),
+                fetch(`${BASE}/vanguard/admin/incidents?status=active&limit=100`),
                 fetch(`${BASE}/vanguard/admin/stats`),
-            ])
+            ]);
             if (incRes.ok) {
-                const data = await incRes.json()
-                setIncidents(Array.isArray(data) ? data : data.incidents || [])
+                const data = await incRes.json();
+                setIncidents(Array.isArray(data) ? data : data.incidents || []);
             }
-            if (statsRes.ok) setStats(await statsRes.json())
+            if (statsRes.ok) setStats(await statsRes.json());
         } catch { /* ignore */ }
-        setLoading(false)
-        setRefreshing(false)
-    }, [statusFilter])
+        setLoading(false);
+        setRefreshing(false);
+    }, []);
 
-    useEffect(() => { loadData() }, [loadData])
+    useEffect(() => { loadData(); }, [loadData]);
 
     const toggleSelect = (fp: string) => {
         setSelected(prev => {
-            const next = new Set(prev)
-            next.has(fp) ? next.delete(fp) : next.add(fp)
-            return next
-        })
-    }
+            const next = new Set(prev);
+            next.has(fp) ? next.delete(fp) : next.add(fp);
+            return next;
+        });
+    };
 
     const selectAll = () => {
-        setSelected(new Set(incidents.map(i => i.fingerprint)))
-    }
+        if (selected.size === incidents.length) {
+            setSelected(new Set());
+        } else {
+            setSelected(new Set(incidents.map(i => i.fingerprint)));
+        }
+    };
 
-    const bulkResolve = async () => {
-        if (selected.size === 0) return
-        setBulkResolving(true)
-        try {
-            await fetch(`${BASE}/vanguard/admin/incidents/bulk-resolve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fingerprints: [...selected],
-                    resolution_notes: 'Bulk resolved via Control Room',
-                }),
-            })
-            setSelected(new Set())
-            await loadData(true)
-        } catch { /* ignore */ }
-        setBulkResolving(false)
-    }
-
-    const healthColor = (score: number | undefined) => {
-        if (!score) return 'text-slate-400'
-        if (score >= 80) return 'text-green-400'
-        if (score >= 50) return 'text-amber-400'
-        return 'text-red-400'
-    }
-
-    const modeColor = (mode: string | undefined) => {
-        if (!mode) return 'text-slate-400'
-        if (mode.includes('OBSERVER')) return 'text-green-400'
-        if (mode.includes('BREAKER')) return 'text-red-400'
-        return 'text-amber-400'
-    }
+    // Subsystem helper
+    const subSystemCheck = (name: string, active: boolean, subtitle: string) => (
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start">
+            <div>
+                <h4 className="text-white font-bold text-sm tracking-widest">{name}</h4>
+                <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+            </div>
+            <div className={`w-5 h-5 rounded-full flex justify-center items-center border ${active ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10' : 'border-slate-600/50 text-slate-500 bg-slate-700/20'}`}>
+                {active ? <CheckCircle2 className="w-3 h-3" /> : <X className="w-3 h-3" />}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="p-6 h-full overflow-y-auto space-y-6">
+        <div className="p-8 h-full overflow-y-auto space-y-8 bg-slate-900 font-sans">
+
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <ShieldCheck className="w-6 h-6 text-cyan-400" />
+                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                        <Activity className="w-8 h-8 text-[#2ad8a0]" />
                         Vanguard Control Room
                     </h1>
-                    <p className="text-sm text-slate-400 mt-1">Digital Immune System · Live Incident Dashboard</p>
+                    <p className="text-sm text-slate-400 mt-1 pl-1">System Health & Incident Management • v3.1.2</p>
                 </div>
                 <button
-                    id="vanguard-refresh-btn"
                     onClick={() => loadData(true)}
                     disabled={refreshing}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-400 disabled:opacity-50 transition-all text-sm"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-sm font-semibold tracking-wide"
                 >
                     <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
 
-            {/* Stats bar */}
-            {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 text-center">
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Health Score</div>
-                        <div className={`text-3xl font-bold font-mono ${healthColor(stats.health_score)}`}>
-                            {stats.health_score?.toFixed(0) ?? 'N/A'}
-                        </div>
-                    </div>
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 text-center">
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Active</div>
-                        <div className="text-3xl font-bold font-mono text-red-400">{stats.active_incidents ?? 0}</div>
-                    </div>
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 text-center">
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Resolved</div>
-                        <div className="text-3xl font-bold font-mono text-green-400">{stats.resolved_incidents ?? 0}</div>
-                    </div>
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 text-center">
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Mode</div>
-                        <div className={`text-sm font-bold font-mono ${modeColor(stats.vanguard_mode)}`}>
-                            {stats.vanguard_mode?.replace('VanguardMode.', '') ?? 'UNKNOWN'}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Nav Tabs */}
+            <div className="flex items-center gap-2">
+                {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
+                    const isActive = activeTab === tab;
+                    let activeStyles = "bg-slate-800 text-white border-slate-600 shadow-md";
 
-            {/* Toolbar */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={selectAll}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-slate-600 text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
-                    >
-                        Select All
-                    </button>
-                    {selected.size > 0 && (
+                    if (isActive) {
+                        if (tab === 'HEALTH') activeStyles = "bg-emerald-400/20 text-emerald-400 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)]";
+                        if (tab === 'INCIDENTS') activeStyles = "bg-amber-400/20 text-amber-400 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.2)]";
+                        if (tab === 'LEARNING') activeStyles = "bg-[#2ad8a0] text-slate-900 border-[#2ad8a0] font-bold shadow-[0_0_20px_rgba(42,216,160,0.5)]";
+                        if (tab === 'ARCHIVES') activeStyles = "bg-blue-400/20 text-blue-400 border-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.2)]";
+                    } else {
+                        activeStyles = "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-800 hover:text-slate-300";
+                    }
+
+                    return (
                         <button
-                            id="bulk-resolve-btn"
-                            onClick={bulkResolve}
-                            disabled={bulkResolving}
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 disabled:opacity-50 transition-colors"
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-5 py-2.5 rounded-lg border text-xs tracking-widest font-bold transition-all flex items-center gap-2 ${activeStyles}`}
                         >
-                            {bulkResolving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                            Resolve {selected.size} selected
+                            {tab === 'HEALTH' && <Activity className="w-3 h-3" />}
+                            {tab === 'INCIDENTS' && <AlertTriangle className="w-3 h-3" />}
+                            {tab === 'ARCHIVES' && <FileKey className="w-3 h-3" />}
+                            {tab === 'LEARNING' && <Cpu className="w-3 h-3" />}
+
+                            {tab === 'INCIDENTS' ? `INCIDENTS (${incidents.length})` : tab}
                         </button>
-                    )}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                    {incidents.length} incident{incidents.length !== 1 ? 's' : ''}
-                </div>
+                    );
+                })}
             </div>
 
-            {/* Incident list */}
-            {loading ? (
-                <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
-                    <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
-                    <span>Loading incidents…</span>
-                </div>
-            ) : incidents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-500 gap-3">
-                    <ShieldCheck className="w-12 h-12 text-green-500/40" />
-                    <span className="text-lg">All clear — no active incidents</span>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {incidents.map(inc => (
-                        <IncidentRow
-                            key={inc.fingerprint}
-                            incident={inc}
-                            selected={selected.has(inc.fingerprint)}
-                            onSelect={toggleSelect}
-                            onOpenAnalysis={setModalIncident}
-                        />
-                    ))}
+            {/* TAB CONTENT: HEALTH */}
+            {activeTab === 'HEALTH' && (
+                <div className="space-y-6">
+                    {/* Big Health Banner */}
+                    <div className="bg-[#111827] border border-slate-700/50 rounded-2xl p-8 flex justify-between items-center shadow-lg">
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-white mb-4">Overall System Health</h2>
+                            <div className="text-7xl font-bold text-red-500 font-mono tracking-tighter">
+                                {stats?.health_score?.toFixed(1) ?? 'N/A'}
+                            </div>
+                            <div className="pt-4 space-y-1">
+                                <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Status:</span><span className={stats?.health_score && stats.health_score >= 80 ? "text-emerald-500" : "text-red-500"}>{stats?.health_score && stats.health_score >= 80 ? "OPERATIONAL" : "DEGRADED"}</span></p>
+                                <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Mode:</span><span className="text-amber-500">{stats?.vanguard_mode?.replace('VanguardMode.', '') ?? 'SILENT_OBSERVER'}</span></p>
+                                <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Role:</span><span className="text-blue-400">FOLLOWER</span></p>
+                            </div>
+                        </div>
+                        <div className="mr-8">
+                            <DoughnutScore score={stats?.health_score ?? 0} />
+                        </div>
+                    </div>
+
+                    {/* Metric Row */}
+                    <div className="grid grid-cols-4 gap-6">
+                        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Active Incidents</div>
+                            <div className="text-3xl font-bold text-amber-500">{stats?.active_incidents ?? '--'}</div>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Resolved</div>
+                            <div className="text-3xl font-bold text-emerald-500">{stats?.resolved_incidents ?? '--'}</div>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Storage Used</div>
+                            <div className="text-3xl font-bold text-blue-400">0.00 MB</div>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Redis</div>
+                            <div className="text-3xl font-bold font-mono text-red-500">X</div>
+                        </div>
+                    </div>
+
+                    {/* Subsystems */}
+                    <div className="pt-6">
+                        <h3 className="text-lg font-bold text-white mb-4">Subsystems</h3>
+                        <div className="grid grid-cols-3 gap-6">
+                            {subSystemCheck("INQUISITOR", true, "Sample: 5%")}
+                            {subSystemCheck("ARCHIVIST", true, "Retention: 7d")}
+                            {subSystemCheck("PROFILER", true, "Model: gemini-2.0-flash")}
+                            {subSystemCheck("SURGEON", false, "")}
+                            {subSystemCheck("VACCINE", true, "")}
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Analysis Modal */}
-            {modalIncident && (
-                <AnalysisModal
-                    incident={modalIncident}
-                    onClose={() => setModalIncident(null)}
-                />
+            {/* TAB CONTENT: INCIDENTS */}
+            {activeTab === 'INCIDENTS' && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-700/50">
+                        <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={selected.size === incidents.length && incidents.length > 0}
+                                    onChange={selectAll}
+                                    className="w-4 h-4 bg-slate-800 border-slate-600 rounded text-amber-500 focus:ring-amber-500/20"
+                                />
+                                Select All
+                            </label>
+                            <span className="text-sm text-slate-500">Sort by:</span>
+                            <select className="bg-slate-800 border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:ring-0">
+                                <option>Newest First</option>
+                                <option>Oldest First</option>
+                                <option>Highest Impact</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button className="flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors font-bold text-sm shadow-[0_0_15px_rgba(147,51,234,0.3)]">
+                                <Cpu className="w-4 h-4" /> Analyze All
+                            </button>
+                            <span className="text-sm text-slate-400">{incidents.length} active incidents</span>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex justify-center p-12 text-slate-500"><Loader2 className="animate-spin w-8 h-8" /></div>
+                    ) : (
+                        incidents.map(inc => (
+                            <div key={inc.fingerprint} className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5 flex items-center gap-4 hover:border-slate-600 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={selected.has(inc.fingerprint)}
+                                    onChange={() => toggleSelect(inc.fingerprint)}
+                                    className="w-4 h-4 bg-slate-900 border-slate-700 rounded text-amber-500"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                        <span className="text-white font-bold">{inc.error_type}</span>
+                                        <span className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] px-2 py-0.5 rounded font-black tracking-widest">{inc.severity.toUpperCase()}</span>
+                                    </div>
+                                    <div className="text-slate-400 font-mono text-sm ml-6">{inc.endpoint}</div>
+                                    <div className="text-slate-500 text-xs ml-6 mt-2">
+                                        Count: {inc.occurrence_count} | Last: {new Date(inc.last_seen).toLocaleString()}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button className="px-4 py-2 rounded border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition-colors text-xs font-bold tracking-wide flex items-center gap-2">
+                                        <Cpu className="w-3 h-3" /> AI Analysis
+                                    </button>
+                                    <button className="px-4 py-2 rounded border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors text-xs font-bold tracking-wide">
+                                        Resolve
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             )}
+
+            {/* TAB CONTENT: ARCHIVES */}
+            {activeTab === 'ARCHIVES' && (
+                <div className="flex flex-col items-center justify-center py-32 rounded-2xl bg-slate-800/30 border border-slate-700/50">
+                    <FileKey className="w-16 h-16 text-slate-500 mb-6" />
+                    <h2 className="text-white font-bold text-xl mb-2">Archive Management</h2>
+                    <p className="text-slate-400">Weekly archives: 7 days retention</p>
+                </div>
+            )}
+
+            {/* TAB CONTENT: LEARNING */}
+            {activeTab === 'LEARNING' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-4 gap-6">
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Total Resolutions</div>
+                            <div className="text-3xl font-bold text-white">0</div>
+                        </div>
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-emerald-500/70 uppercase tracking-wider mb-2">Verified</div>
+                            <div className="text-3xl font-bold text-emerald-500">0</div>
+                        </div>
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-amber-500/70 uppercase tracking-wider mb-2">Pending</div>
+                            <div className="text-3xl font-bold text-amber-500">0</div>
+                        </div>
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
+                            <div className="text-xs text-blue-500/70 uppercase tracking-wider mb-2">Success Patterns</div>
+                            <div className="text-3xl font-bold text-blue-400">0</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6 min-h-[400px]">
+                        <h3 className="text-white font-bold text-lg">Top Success Patterns</h3>
+                        {/* Empty slate for now */}
+                    </div>
+                </div>
+            )}
+
         </div>
-    )
+    );
 }

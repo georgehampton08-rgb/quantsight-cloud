@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Settings, Info } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { PlayerApi } from '../services/playerApi';
-import AegisHealthDashboard from '../components/aegis/AegisHealthDashboard';
+import { VanguardHealthWidget } from '../components/vanguard/VanguardHealthWidget';
 
 export default function SettingsPage() {
     const { showToast } = useToast();
@@ -19,54 +20,68 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4">
-            <div className="max-w-2xl mx-auto space-y-8">
-                <div className="mb-6">
-                    <h2 className="text-2xl font-light text-white mb-2">Control Room</h2>
-                    <p className="text-sm text-slate-400">Manage API keys and system parameters.</p>
+        <div className="h-full overflow-y-auto p-4 bg-slate-900 text-white font-sans">
+            <div className="max-w-4xl mx-auto space-y-8">
+
+                {/* Header row with badge */}
+                <div className="flex items-start justify-between mb-8 mt-2">
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-2 tracking-wide">Control Room</h2>
+                        <p className="text-sm text-slate-400">System configuration and cloud parameters.</p>
+                    </div>
+                    <div className="px-3 py-1.5 border border-emerald-500/50 rounded-md bg-transparent">
+                        <span className="text-emerald-400 text-xs font-bold tracking-widest uppercase">
+                            CLOUD TWIN V4.1.2
+                        </span>
+                    </div>
                 </div>
 
-                {/* AI Configuration - Coming Soon */}
-                <section className="p-6 rounded-xl border border-slate-700/50 bg-slate-800/30">
-                    <h3 className="text-xs uppercase tracking-wider text-financial-accent font-bold mb-4">AI Configuration</h3>
-                    <div className="flex items-start gap-4 p-4 rounded-lg bg-slate-900/50 border border-slate-700/30">
-                        <div className="text-4xl">🔧</div>
+                {/* Vanguard Health Dashboard Replacement */}
+                <VanguardHealthWidget />
+
+                {/* AI Configuration - Styled like target image */}
+                <section className="p-6 rounded-xl border border-slate-700/50 bg-[#121b2d]">
+                    <h3 className="text-xs tracking-widest text-[#2ad8a0] font-bold mb-5 uppercase">AI Configuration</h3>
+                    <div className="flex items-center gap-4 p-4 rounded-lg bg-[#1a253a] border border-slate-700/30">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg bg-[#2ad8a0]/10 border border-[#2ad8a0]/30 shadow-inner">
+                            <Settings className="w-6 h-6 text-[#2ad8a0]" />
+                        </div>
                         <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-white mb-1">Coming Soon</h4>
-                            <p className="text-xs text-slate-400 leading-relaxed">
-                                AI configuration is currently managed server-side. Per-user API key configuration will be available in a future update when user authentication is implemented.
+                            <h4 className="text-[15px] font-bold text-white mb-1">Coming Soon</h4>
+                            <p className="text-[13px] text-slate-300">
+                                AI configuration is server-side. Per-user API keys available when auth is implemented.
                             </p>
                         </div>
                     </div>
                 </section>
 
-                {/* Data Integration - Coming Soon */}
-                <section className="p-6 rounded-xl border border-blue-700/30 bg-blue-900/10">
-                    <h3 className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-4">Data Integration</h3>
-                    <div className="flex items-start gap-4 p-4 rounded-lg bg-slate-900/50 border border-blue-700/20">
-                        <div className="text-4xl">📊</div>
+                {/* Data Integration - Styled like target image */}
+                <section className="p-6 rounded-xl border border-[#1e3a8a]/50 bg-[#0d162f]">
+                    <h3 className="text-xs tracking-widest text-[#60a5fa] font-bold mb-5 uppercase">Data Integration</h3>
+                    <div className="flex items-center gap-4 p-4 rounded-lg bg-[#14203b] border border-[#1e40af]/30">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg bg-[#3b82f6]/10 border border-[#3b82f6]/30 shadow-inner">
+                            <Info className="w-6 h-6 text-[#60a5fa]" />
+                        </div>
                         <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-white mb-1">Coming Soon</h4>
-                            <p className="text-xs text-slate-400 leading-relaxed">
-                                Kaggle integration and custom data sources are planned for a future release. All data is currently sourced from official NBA APIs.
+                            <h4 className="text-[15px] font-bold text-white mb-1">Coming Soon</h4>
+                            <p className="text-[13px] text-slate-300">
+                                Kaggle integration planned. Data sourced from NBA APIs via Cloud VPC.
                             </p>
                         </div>
                     </div>
                 </section>
 
-                {/* Aegis System Status */}
-                <AegisHealthDashboard />
-
-                {/* Data Management */}
-                <section className="p-6 rounded-xl border border-red-900/30 bg-red-900/5">
-                    <h3 className="text-xs uppercase tracking-wider text-red-400 font-bold mb-4">Danger Zone</h3>
+                {/* Data Management Bottom Zone (Not in view of user screenshot but nice to keep) */}
+                <section className="p-6 rounded-xl border border-red-900/30 bg-red-900/5 mt-10">
+                    <h3 className="text-xs uppercase tracking-wider text-red-500 font-bold mb-5">Danger Zone</h3>
                     <button
                         onClick={handlePurge}
-                        className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-500 rounded hover:bg-red-500/20 transition-colors text-xs font-bold uppercase tracking-wider"
+                        className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-500 rounded-md hover:bg-red-500/20 transition-colors text-xs font-bold uppercase tracking-wider"
                     >
                         Reset Database Cache
                     </button>
                 </section>
+
             </div>
         </div>
     );
