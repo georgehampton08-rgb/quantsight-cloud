@@ -1,9 +1,8 @@
 # QuantSight Cloud Backend — Optimized Dockerfile
 # =================================================
-# AUTHORITATIVE SOURCE:  backend/
-# Vanguard module lives at backend/vanguard/ (deployed) and vanguard/ (dev mirror).
-# ALWAYS edit backend/vanguard/ for production changes, or run sync script.
-# Both copies are included here as belt-and-suspenders; backend/ wins on conflict.
+# AUTHORITATIVE SOURCE: backend/
+# The Vanguard module lives exclusively at backend/vanguard/
+# Root-level vanguard/ has been deleted. Do NOT recreate it.
 
 FROM python:3.11-slim
 
@@ -24,10 +23,7 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy all application source
-# 1. Root-level vanguard/ (dev mirror) — gives backward compat if edits land here
-COPY vanguard/ ./vanguard/
-# 2. backend/ (authoritative) — overwrites vanguard/ content if backend/vanguard/ differs
+# Copy application code — backend/ is the only source of truth
 COPY backend/ .
 
 # Expose port (Cloud Run sets $PORT at runtime)
