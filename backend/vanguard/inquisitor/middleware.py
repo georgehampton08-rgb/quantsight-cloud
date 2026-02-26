@@ -112,6 +112,51 @@ def _rate_limited(fingerprint: str, severity: str = "YELLOW") -> bool:
             del _last_stored[k]
     return False
 
+async def _execute_ai_triage(incident: dict, fingerprint: str, storage):
+    """Executes AI analysis and Surgeon logic in the background so it doesn't block the request path."""
+    try:
+        from ..ai.ai_analyzer import get_ai_analyzer
+        from ..surgeon.remediation import get_surgeon
+        from ..core.config import get_vanguard_config
+        
+        # Get smart analysis with GitHub context
+        ai_analyzer = get_ai_analyzer()
+        analysis = await ai_analyzer.analyze_incident(
+            incident=incident,
+            storage=storage,
+            force_regenerate=False  # Use cache if available
+        )
+        
+        # Surgeon makes decision based on AI analysis
+        surgeon = get_surgeon()
+        config = get_vanguard_config()
+        
+        decision = await surgeon.decide_remediation(
+            incident=incident,
+            analysis=analysis.dict() if hasattr(analysis, 'dict') else analysis,
+            mode=config.mode
+        )
+        
+        # Execute remediation
+        result = await surgeon.execute_remediation(decision, storage)
+        
+        # Reload latest state to merge cleanly
+        latest_incident = await storage.load(fingerprint)
+        if latest_incident:
+            latest_incident["ai_analysis"] = analysis.dict() if hasattr(analysis, 'dict') else analysis
+            latest_incident["surgeon_decision"] = decision
+            latest_incident["surgeon_result"] = result
+            await storage.store(latest_incident)
+        
+        logger.info(
+            "surgeon_remediation_complete",
+            fingerprint=fingerprint,
+            confidence=analysis.get("confidence") if isinstance(analysis, dict) else getattr(analysis, 'confidence', 0),
+            action=decision.get("action"),
+            executed=result.get("executed")
+        )
+    except Exception as surgeon_error:
+        logger.error("surgeon_remediation_failed", error=str(surgeon_error), traceback=traceback.format_exc())
 
 class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
     """
@@ -242,47 +287,8 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
 
                 # Trigger AI Analyzer + Surgeon for RED severity incidents
                 if incident["severity"] == "RED":
-                    try:
-                        from ..ai.ai_analyzer import get_ai_analyzer
-                        from ..surgeon.remediation import get_surgeon
-                        from ..core.config import get_vanguard_config
-                        
-                        # Get smart analysis with GitHub context
-                        ai_analyzer = get_ai_analyzer()
-                        analysis = await ai_analyzer.analyze_incident(
-                            incident=incident,
-                            storage=storage,
-                            force_regenerate=False  # Use cache if available
-                        )
-                        
-                        # Surgeon makes decision based on AI analysis
-                        surgeon = get_surgeon()
-                        config = get_vanguard_config()
-                        
-                        decision = await surgeon.decide_remediation(
-                            incident=incident,
-                            analysis=analysis.dict() if hasattr(analysis, 'dict') else analysis,
-                            mode=config.mode
-                        )
-                        
-                        # ✅ PHASE 4: Execute remediation
-                        result = await surgeon.execute_remediation(decision, storage)
-                        
-                        # Update incident with AI analysis and surgeon decision
-                        incident["ai_analysis"] = analysis.dict() if hasattr(analysis, 'dict') else analysis
-                        incident["surgeon_decision"] = decision
-                        incident["surgeon_result"] = result
-                        await storage.store(incident)  # Re-save with full data
-                        
-                        logger.info(
-                            "surgeon_remediation_complete",
-                            fingerprint=fingerprint,
-                            confidence=analysis.get("confidence") if isinstance(analysis, dict) else getattr(analysis, 'confidence', 0),
-                            action=decision.get("action"),
-                            executed=result.get("executed")
-                        )
-                    except Exception as surgeon_error:
-                        logger.error("surgeon_remediation_failed", error=str(surgeon_error), traceback=traceback.format_exc())
+                    import asyncio
+                    asyncio.create_task(_execute_ai_triage(incident, fingerprint, storage))
                         
             except Exception as store_error:
                 logger.error("incident_storage_failed", error=str(store_error))
@@ -387,34 +393,8 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
 
                         # Trigger AI Analyzer + Surgeon for 500 errors
                         if response.status_code >= 500:
-                            try:
-                                from ..ai.ai_analyzer import get_ai_analyzer
-                                from ..surgeon.remediation import get_surgeon
-                                from ..core.config import get_vanguard_config
-
-                                ai_analyzer = get_ai_analyzer()
-                                analysis = await ai_analyzer.analyze_incident(
-                                    incident=incident,
-                                    storage=storage,
-                                    force_regenerate=False
-                                )
-
-                                surgeon = get_surgeon()
-                                config = get_vanguard_config()
-                                decision = await surgeon.decide_remediation(
-                                    incident=incident,
-                                    analysis=analysis.dict() if hasattr(analysis, 'dict') else analysis,
-                                    mode=config.mode
-                                )
-
-                                result = await surgeon.execute_remediation(decision, storage)
-
-                                incident["ai_analysis"] = analysis.dict() if hasattr(analysis, 'dict') else analysis
-                                incident["surgeon_decision"] = decision
-                                incident["surgeon_result"] = result
-                                await storage.store(incident)
-                            except Exception as surgeon_error:
-                                logger.error("surgeon_remediation_failed", error=str(surgeon_error))
+                            import asyncio
+                            asyncio.create_task(_execute_ai_triage(incident, fingerprint, storage))
 
                 except Exception as http_error_capture:
                     logger.error("http_error_capture_failed", error=str(http_error_capture))

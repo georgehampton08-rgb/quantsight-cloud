@@ -54,7 +54,7 @@ else:
 
 try:
     from vanguard.bootstrap import vanguard_lifespan
-    from vanguard.middleware import RequestIDMiddleware
+    from vanguard.middleware import RequestIDMiddleware, IdempotencyMiddleware, DegradedInjectorMiddleware
     from vanguard.inquisitor import VanguardTelemetryMiddleware
     VANGUARD_AVAILABLE = True
     logger.info("✅ Vanguard modules loaded successfully")
@@ -128,6 +128,9 @@ async def lifespan(app: FastAPI):
     
     # Initialize Vanguard (runs FIRST)
     if VANGUARD_AVAILABLE:
+        from vanguard.snapshot import start_snapshot_loop, stop_snapshot_loop
+        start_snapshot_loop()
+        
         async with vanguard_lifespan(app):
             # Start the cloud producer (if available)
             if PRODUCER_AVAILABLE:
@@ -144,6 +147,7 @@ async def lifespan(app: FastAPI):
             if PRODUCER_AVAILABLE:
                 await stop_cloud_producer()
                 logger.info("✅ Cloud pulse producer stopped")
+            stop_snapshot_loop()
     else:
         # Run without Vanguard
         if PRODUCER_AVAILABLE:
@@ -305,8 +309,10 @@ app.add_middleware(
 # Vanguard Request ID Middleware (added LAST so it executes FIRST)
 if VANGUARD_AVAILABLE:
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(IdempotencyMiddleware)
+    app.add_middleware(DegradedInjectorMiddleware)
     app.add_middleware(VanguardTelemetryMiddleware)
-    logger.info("✅ Vanguard middleware registered (RequestID + Telemetry)")
+    logger.info("✅ Vanguard middleware registered (RequestID + Idempotency + DegradedInjector + Telemetry)")
 
 
 
@@ -385,6 +391,30 @@ async def health_check():
             "timestamp": datetime.utcnow().isoformat(),
             "producer": "not_loaded"
         }
+
+@app.get("/readyz")
+async def readyz():
+    """Liveness/Readiness probe for Cloud Run. Gates hard dependencies (Firestore)."""
+    try:
+        from vanguard.health_monitor import get_health_monitor
+        monitor = get_health_monitor()
+        check_task = monitor.check_firestore()
+        result = await asyncio.wait_for(check_task, timeout=2.0)
+        
+        if result.get("status") == "critical":
+            return Response(status_code=503, content=f"Service Unavailable: {result.get('error')}")
+        return Response(status_code=200, content="OK")
+    except Exception as e:
+        return Response(status_code=503, content=f"Service Unavailable: {e}")
+
+@app.get("/health/deps")
+async def health_deps():
+    """Deep health check that exposes Oracle snapshot without failing traffic routing."""
+    try:
+        from vanguard.snapshot import SYSTEM_SNAPSHOT
+        return SYSTEM_SNAPSHOT
+    except ImportError:
+        return {"status": "Vanguard not available"}
 
 
 
