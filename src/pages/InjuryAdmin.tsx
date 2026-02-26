@@ -179,15 +179,15 @@ export default function InjuryAdmin() {
         : injuries.filter(i => i.team_abbr === filterTeam);
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
-            <div className="p-6 pb-4">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+        <div className="flex flex-col h-full overflow-hidden items-center">
+            <div className="w-full max-w-4xl p-4 sm:p-6 pb-4 flex-shrink-0">
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                     ⚕️ Injury Management
                 </h1>
-                <p className="text-slate-400 mt-2">Manage player injuries and status updates</p>
+                <p className="text-slate-400 mt-2 text-sm sm:text-base">Manage player injuries and status updates</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto w-full max-w-4xl px-4 sm:px-6 space-y-6 pb-8">
                 {message.text && (
                     <Alert className={message.type === 'success' ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'}>
                         <AlertDescription>{message.text}</AlertDescription>
