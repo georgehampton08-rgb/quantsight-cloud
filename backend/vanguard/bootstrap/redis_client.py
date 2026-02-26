@@ -71,6 +71,18 @@ async def close_redis() -> None:
         _redis_pool = None
 
 
+async def get_redis_or_none() -> Optional[Redis]:
+    """
+    Safe wrapper around get_redis().
+    Returns the Redis client if available, None otherwise.
+    Never raises — suitable for middleware and non-critical paths.
+    """
+    try:
+        return await get_redis()
+    except Exception:
+        return None
+
+
 async def ping_redis() -> bool:
     """
     Health check: Ping Redis.

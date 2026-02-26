@@ -34,6 +34,14 @@ class ResolveAllRequest(BaseModel):
     resolution_notes: Optional[str] = "Batch resolution"
 
 
+class CIIncidentRequest(BaseModel):
+    fingerprint: str
+    severity: str = "AMBER"
+    error_type: str
+    error_message: str
+    metadata: Optional[dict] = None
+
+
 class ModeRequest(BaseModel):
     mode: str  # "SILENT_OBSERVER", "CIRCUIT_BREAKER", "FULL_SOVEREIGN"
 
@@ -58,6 +66,37 @@ async def toggle_vanguard_mode(request: ModeRequest):
         }
     except ValueError:
         raise HTTPException(400, f"Invalid mode: {request.mode}. Use SILENT_OBSERVER, CIRCUIT_BREAKER, or FULL_SOVEREIGN.")
+
+
+@router.post("/vanguard/admin/incidents/ingest")
+async def ingest_ci_incident(request: CIIncidentRequest):
+    """Ingest an incident from CI/CD pipelines (drift oracle, perf monitor, dep audit)."""
+    from vanguard.core.types import Incident
+    storage = get_incident_storage()
+
+    incident: Incident = {
+        "fingerprint": request.fingerprint,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "severity": request.severity.upper(),
+        "status": "ACTIVE",
+        "error_type": request.error_type,
+        "error_message": request.error_message,
+        "endpoint": "CI/CD Pipeline",
+        "request_id": f"ci-{request.error_type.lower()}",
+        "context_vector": {
+            "source": "github_actions",
+            "incident_type": request.error_type,
+            "metadata": request.metadata or {},
+        },
+        "remediation_log": [],
+        "resolved_at": None,
+    }
+
+    stored = await storage.store(incident)
+    if stored:
+        logger.info(f"CI incident ingested: {request.fingerprint} ({request.severity})")
+        return {"success": True, "fingerprint": request.fingerprint}
+    return {"success": False, "message": "Incident already exists or storage failed"}
 
 
 @router.get("/vanguard/admin/incidents")

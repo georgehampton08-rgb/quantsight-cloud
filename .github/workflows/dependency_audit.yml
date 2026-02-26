@@ -1,0 +1,100 @@
+name: Dependency Vulnerability Audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 06:00 UTC
+  pull_request:
+    paths:
+      - 'backend/requirements.txt'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch: {}
+
+jobs:
+  backend-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install pip-audit --quiet
+
+      - name: Run pip-audit
+        id: pip_audit
+        working-directory: backend
+        run: |
+          set +e
+          pip-audit -r requirements.txt --format json --output ../audit_backend.json 2>&1
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          cat ../audit_backend.json | python -m json.tool 2>/dev/null || cat ../audit_backend.json
+          exit 0
+
+      - name: Post Vanguard incident on vulnerabilities
+        if: steps.pip_audit.outputs.exit_code != '0'
+        run: |
+          python scripts/post_vanguard_incident.py \
+            --type DEPENDENCY_VULNERABILITY \
+            --severity RED \
+            --message "Backend dependency vulnerabilities detected by pip-audit" \
+            --metadata "$(cat audit_backend.json | head -c 2000)"
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-audit
+          path: audit_backend.json
+
+  frontend-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts 2>/dev/null || npm install --ignore-scripts
+
+      - name: Run npm audit
+        id: npm_audit
+        run: |
+          set +e
+          npm audit --json > audit_frontend.json 2>&1
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Post Vanguard incident on vulnerabilities
+        if: steps.npm_audit.outputs.exit_code != '0'
+        run: |
+          # Check if there are high/critical vulns
+          CRITICAL=$(python3 -c "import json; d=json.load(open('audit_frontend.json')); print(d.get('metadata',{}).get('vulnerabilities',{}).get('critical',0)+d.get('metadata',{}).get('vulnerabilities',{}).get('high',0))" 2>/dev/null || echo "0")
+          if [ "$CRITICAL" -gt 0 ]; then
+            python scripts/post_vanguard_incident.py \
+              --type DEPENDENCY_VULNERABILITY \
+              --severity AMBER \
+              --message "Frontend dependency vulnerabilities: $CRITICAL high/critical issues" \
+              --metadata "$(cat audit_frontend.json | head -c 2000)"
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-audit
+          path: audit_frontend.json

@@ -5,8 +5,16 @@ Provides endpoints for frontend consumption using Firebase Firestore
 from fastapi import APIRouter, HTTPException, Query, Request
 import os
 import logging
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, date as date_type
+
+from models.public import (
+    TeamsResponse,
+    PlayerProfile,
+    PlayerSearchResult,
+    ScheduleResponse,
+    MatchupAnalyzeResponse,
+)
 
 # Import Firestore helpers
 from firestore_db import (
@@ -65,7 +73,7 @@ async def debug_teams_schema():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/teams")
+@router.get("/teams", response_model=TeamsResponse)
 async def get_teams():
     """
     Get all NBA teams organized by conference and division.
@@ -162,7 +170,7 @@ async def get_all_players_endpoint(is_active: Optional[bool] = Query(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/players/search")
+@router.get("/players/search", response_model=List[PlayerSearchResult])
 async def search_players_endpoint(q: Optional[str] = Query(None, min_length=0, max_length=50)):
     """
     Search for players by name (for OmniSearch)
@@ -216,7 +224,7 @@ async def search_players_endpoint(q: Optional[str] = Query(None, min_length=0, m
         raise HTTPException(status_code=500, detail="Search temporarily unavailable")
 
 
-@router.get("/players/{player_id}")
+@router.get("/players/{player_id}", response_model=PlayerProfile)
 async def get_player_by_id(player_id: str):
     """
     Get player profile by ID
@@ -299,7 +307,7 @@ async def get_injuries():
     return []
 
 
-@router.get("/schedule")
+@router.get("/schedule", response_model=ScheduleResponse)
 async def get_schedule(date: Optional[str] = Query(None), force_refresh: bool = Query(False)):
     """
     Get NBA game schedule from NBA API (VPC-enabled)
@@ -691,7 +699,7 @@ except Exception as e:
     ai_insights_engine = None
 
 
-@router.get("/matchup/analyze")
+@router.get("/matchup/analyze", response_model=MatchupAnalyzeResponse)
 async def analyze_matchup(
     game_id: str = Query(None, description="Game ID (optional)"),
     home_team: str = Query(None, description="Home team abbreviation"),

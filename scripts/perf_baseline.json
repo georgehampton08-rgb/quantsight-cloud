@@ -1,0 +1,8 @@
+{
+  "GET /teams": { "p95_ms": 239, "updated_at": "2026-02-26" },
+  "GET /players/search?q=lebron": { "p95_ms": 565, "updated_at": "2026-02-26" },
+  "GET /health/deps": { "p95_ms": 232, "updated_at": "2026-02-26" },
+  "GET /vanguard/health": { "p95_ms": 202, "updated_at": "2026-02-26" },
+  "GET /status": { "p95_ms": 183, "updated_at": "2026-02-26" },
+  "GET /health": { "p95_ms": 165, "updated_at": "2026-02-26" }
+}

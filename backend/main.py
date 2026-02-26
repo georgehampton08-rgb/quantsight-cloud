@@ -54,7 +54,7 @@ else:
 
 try:
     from vanguard.bootstrap import vanguard_lifespan
-    from vanguard.middleware import RequestIDMiddleware, IdempotencyMiddleware, DegradedInjectorMiddleware
+    from vanguard.middleware import RequestIDMiddleware, IdempotencyMiddleware, DegradedInjectorMiddleware, RateLimiterMiddleware
     from vanguard.inquisitor import VanguardTelemetryMiddleware
     VANGUARD_AVAILABLE = True
     logger.info("✅ Vanguard modules loaded successfully")
@@ -306,13 +306,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Vanguard Request ID Middleware (added LAST so it executes FIRST)
+# Vanguard Middleware Stack
+# Starlette executes middleware in REVERSE registration order (last-added = outermost).
+# Execution order (outermost → innermost):
+#   1. RequestIDMiddleware       — assigns X-Request-ID first
+#   2. DegradedInjectorMiddleware — injects X-System-Status header
+#   3. RateLimiterMiddleware     — rejects over-limit before business logic
+#   4. IdempotencyMiddleware     — deduplicates after rate check passes
+#   5. VanguardTelemetryMiddleware — telemetry + incident capture (innermost)
 if VANGUARD_AVAILABLE:
-    app.add_middleware(RequestIDMiddleware)
-    app.add_middleware(IdempotencyMiddleware)
-    app.add_middleware(DegradedInjectorMiddleware)
-    app.add_middleware(VanguardTelemetryMiddleware)
-    logger.info("✅ Vanguard middleware registered (RequestID + Idempotency + DegradedInjector + Telemetry)")
+    app.add_middleware(VanguardTelemetryMiddleware)   # 5 — innermost
+    app.add_middleware(IdempotencyMiddleware)          # 4
+    app.add_middleware(RateLimiterMiddleware)          # 3
+    app.add_middleware(DegradedInjectorMiddleware)     # 2
+    app.add_middleware(RequestIDMiddleware)            # 1 — outermost
+    logger.info("✅ Vanguard middleware registered (RequestID → DegradedInjector → RateLimiter → Idempotency → Telemetry)")
 
 
 

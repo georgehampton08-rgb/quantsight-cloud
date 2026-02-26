@@ -1,0 +1,64 @@
+name: Performance Drift Monitor
+
+on:
+  workflow_run:
+    workflows: ["Contract Drift Oracle"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to test against'
+        required: false
+        default: 'https://quantsight-cloud-458498663186.us-central1.run.app'
+
+jobs:
+  perf-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run performance smoke test
+        id: perf
+        run: |
+          set +e
+          BASE_URL="${{ github.event.inputs.base_url || 'https://quantsight-cloud-458498663186.us-central1.run.app' }}"
+          python scripts/perf_smoke.py --base-url "$BASE_URL" > perf_report.json 2>&1
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          cat perf_report.json
+          exit 0
+
+      - name: Post Vanguard incident on regression
+        if: steps.perf.outputs.exit_code != '0'
+        run: |
+          SEVERITY="AMBER"
+          if [ "${{ steps.perf.outputs.exit_code }}" = "2" ]; then
+            SEVERITY="RED"
+          fi
+          python scripts/post_vanguard_incident.py \
+            --type PERF_REGRESSION \
+            --severity "$SEVERITY" \
+            --message "Performance regression detected on critical endpoints" \
+            --metadata "$(cat perf_report.json | head -c 2000)"
+
+      - name: Upload perf report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-report
+          path: perf_report.json
+
+      - name: Fail on critical regression
+        if: steps.perf.outputs.exit_code == '2'
+        run: |
+          echo "❌ Critical performance regression (>40% P95 drift)!"
+          exit 1

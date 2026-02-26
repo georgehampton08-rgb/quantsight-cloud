@@ -8,6 +8,7 @@ SYSTEM_SNAPSHOT = {
     "firestore_ok": True,
     "gemini_ok": True,
     "vanguard_ok": True,
+    "redis_ok": False,
     "updated_at": datetime.now(timezone.utc).isoformat()
 }
 
@@ -28,6 +29,13 @@ async def update_snapshot_loop():
             except asyncio.TimeoutError:
                 SYSTEM_SNAPSHOT["firestore_ok"] = False
                 SYSTEM_SNAPSHOT["gemini_ok"] = False
+
+            # Check Redis
+            try:
+                from vanguard.bootstrap.redis_client import ping_redis
+                SYSTEM_SNAPSHOT["redis_ok"] = await ping_redis()
+            except Exception:
+                SYSTEM_SNAPSHOT["redis_ok"] = False
 
             # Check Vanguard subsystems via Oracle
             try:

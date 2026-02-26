@@ -1,0 +1,77 @@
+name: Contract Drift Oracle
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Nightly at 02:00 UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt --quiet
+
+      - name: Start local FastAPI server
+        working-directory: backend
+        run: |
+          uvicorn main:app --host 127.0.0.1 --port 9090 &
+          sleep 5
+        env:
+          VANGUARD_ENABLED: "false"
+          FIREBASE_PROJECT_ID: "quantsight-prod"
+
+      - name: Fetch local OpenAPI spec
+        run: |
+          curl -sf http://127.0.0.1:9090/openapi.json > openapi_local.json
+          echo "Local spec: $(wc -c < openapi_local.json) bytes"
+
+      - name: Fetch production OpenAPI spec
+        run: |
+          curl -sf https://quantsight-cloud-458498663186.us-central1.run.app/openapi.json > openapi_prod.json
+          echo "Prod spec: $(wc -c < openapi_prod.json) bytes"
+
+      - name: Run drift comparison
+        id: drift
+        run: |
+          set +e
+          python scripts/compare_openapi.py openapi_local.json openapi_prod.json > drift_report.json 2>&1
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          cat drift_report.json
+          exit 0
+
+      - name: Post Vanguard incident on breaking drift
+        if: steps.drift.outputs.exit_code == '2'
+        run: |
+          python scripts/post_vanguard_incident.py \
+            --type SCHEMA_DRIFT \
+            --severity RED \
+            --message "Breaking schema drift detected between local and production OpenAPI specs" \
+            --metadata "$(cat drift_report.json | head -c 2000)"
+
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: drift_report.json
+
+      - name: Fail on breaking changes
+        if: steps.drift.outputs.exit_code == '2'
+        run: |
+          echo "❌ Breaking schema drift detected! See drift_report.json artifact."
+          exit 1

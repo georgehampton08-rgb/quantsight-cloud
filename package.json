@@ -7,7 +7,9 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "generate:types": "npx openapi-typescript https://quantsight-cloud-458498663186.us-central1.run.app/openapi.json -o src/api/generated/schema.ts",
+        "generate:types:local": "npx openapi-typescript http://127.0.0.1:9090/openapi.json -o src/api/generated/schema.ts"
     },
     "dependencies": {
         "clsx": "^2.1.1",
@@ -29,6 +31,7 @@
         "@vitejs/plugin-react": "^4.2.1",
         "autoprefixer": "^10.4.16",
         "node-fetch": "^3.3.2",
+        "openapi-typescript": "^7.13.0",
         "postcss": "^8.4.33",
         "tailwindcss": "^3.4.1",
         "typescript": "^5.2.2",

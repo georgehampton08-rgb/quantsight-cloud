@@ -10,35 +10,82 @@ from starlette.responses import JSONResponse, Response as StarletteResponse
 
 logger = logging.getLogger(__name__)
 
-# In-memory mock of the Firestore idempotency cache.
-# In a real production system, this would be a Firestore collection or Redis.
-# We are creating the abstraction to be easily swappable.
+# In-memory fallback cache (used when Redis is unavailable).
 _IDEMPOTENCY_CACHE: Dict[str, Dict[str, Any]] = {}
+
+# Redis key prefix for idempotency records
+_REDIS_PREFIX = "idem:"
 
 
 class IdempotencyCache:
     """
-    Abstrates the storage layer for idempotency records.
-    Currently uses an in-memory dictionary for demonstration/Phase 1.
+    Storage layer for idempotency records.
+
+    Phase 2: Redis-first with native TTL expiration.
+    Fallback: In-memory dictionary (container-local) when Redis is unavailable.
     """
+
+    @classmethod
+    async def _get_redis(cls):
+        """Get Redis client, returning None if unavailable."""
+        try:
+            from vanguard.bootstrap.redis_client import get_redis_or_none
+            return await get_redis_or_none()
+        except Exception:
+            return None
+
     @classmethod
     async def get(cls, key: str) -> Optional[Dict[str, Any]]:
+        # Try Redis first
+        redis_client = await cls._get_redis()
+        if redis_client is not None:
+            try:
+                raw = await redis_client.get(f"{_REDIS_PREFIX}{key}")
+                if raw is None:
+                    return None
+                return json.loads(raw)
+            except Exception as e:
+                logger.debug(f"Redis idempotency GET failed, falling back to memory: {e}")
+
+        # Fallback: in-memory
         record = _IDEMPOTENCY_CACHE.get(key)
         if not record:
             return None
-        
-        # Check TTL
+
+        # Check TTL for in-memory records
         expires_at = record.get("expires_at")
         if expires_at and datetime.now(timezone.utc) > expires_at:
             del _IDEMPOTENCY_CACHE[key]
             return None
-            
+
         return record
 
     @classmethod
     async def set(cls, key: str, value: Dict[str, Any], ttl_seconds: int = 86400) -> None:
+        # Try Redis first (TTL handled natively by Redis)
+        redis_client = await cls._get_redis()
+        if redis_client is not None:
+            try:
+                # Store without expires_at (Redis manages TTL)
+                await redis_client.set(f"{_REDIS_PREFIX}{key}", json.dumps(value, default=str), ex=ttl_seconds)
+                return
+            except Exception as e:
+                logger.debug(f"Redis idempotency SET failed, falling back to memory: {e}")
+
+        # Fallback: in-memory with manual TTL
         value["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
         _IDEMPOTENCY_CACHE[key] = value
+
+    @classmethod
+    async def delete(cls, key: str) -> None:
+        """Remove a key from both Redis and in-memory cache."""
+        redis_client = await cls._get_redis()
+        if redis_client is not None:
+            try:
+                await redis_client.delete(f"{_REDIS_PREFIX}{key}")
+            except Exception:
+                pass
+        _IDEMPOTENCY_CACHE.pop(key, None)
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
@@ -204,7 +251,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 })
             else:
                  # Clean up cache for 400 validations so they can retry smoothly
-                 _IDEMPOTENCY_CACHE.pop(cache_key, None)
+                 await IdempotencyCache.delete(cache_key)
 
             return response
 
