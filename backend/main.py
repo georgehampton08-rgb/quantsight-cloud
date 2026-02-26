@@ -313,14 +313,25 @@ app.add_middleware(
 #   2. DegradedInjectorMiddleware — injects X-System-Status header
 #   3. RateLimiterMiddleware     — rejects over-limit before business logic
 #   4. IdempotencyMiddleware     — deduplicates after rate check passes
-#   5. VanguardTelemetryMiddleware — telemetry + incident capture (innermost)
+#   5. SurgeonMiddleware         — circuit breaker + load shed (Phase 4)
+#   6. VanguardTelemetryMiddleware — telemetry + incident capture (innermost)
 if VANGUARD_AVAILABLE:
-    app.add_middleware(VanguardTelemetryMiddleware)   # 5 — innermost
+    # Import SurgeonMiddleware (graceful fallback if surgeon module not ready)
+    try:
+        from vanguard.surgeon.middleware import SurgeonMiddleware
+        SURGEON_MIDDLEWARE_AVAILABLE = True
+    except ImportError as e:
+        logger.warning(f"⚠️ SurgeonMiddleware not available: {e}")
+        SURGEON_MIDDLEWARE_AVAILABLE = False
+
+    app.add_middleware(VanguardTelemetryMiddleware)   # 6 — innermost
+    if SURGEON_MIDDLEWARE_AVAILABLE:
+        app.add_middleware(SurgeonMiddleware)         # 5 — circuit breaker
     app.add_middleware(IdempotencyMiddleware)          # 4
     app.add_middleware(RateLimiterMiddleware)          # 3
     app.add_middleware(DegradedInjectorMiddleware)     # 2
     app.add_middleware(RequestIDMiddleware)            # 1 — outermost
-    logger.info("✅ Vanguard middleware registered (RequestID → DegradedInjector → RateLimiter → Idempotency → Telemetry)")
+    logger.info("✅ Vanguard middleware registered (RequestID → DegradedInjector → RateLimiter → Idempotency → Surgeon → Telemetry)")
 
 
 
