@@ -582,7 +582,7 @@ async def export_learning_data():
         learner = VanguardResolutionLearner()
         
         # Generate training data
-        training_data = learner.generate_training_data()
+        training_data = learner.export_for_sovereign_ai()
         
         return {
             "success": True,

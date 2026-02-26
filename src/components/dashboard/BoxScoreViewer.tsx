@@ -25,11 +25,14 @@ interface BoxScorePlayer {
 }
 
 interface BoxScoreGame {
-    game_id: string;
-    game_date: string;
-    matchup: string;
-    home_team: string;
-    away_team: string;
+    gameId: string;
+    game_id?: string;
+    game_date?: string;
+    matchup?: string;
+    home: string;
+    away: string;
+    home_team?: string | any;
+    away_team?: string | any;
     home_score: number;
     away_score: number;
     status: string;
@@ -58,9 +61,9 @@ export function BoxScoreViewerContent() {
                 // Auto-select first game with a score if available
                 const firstStarted = res.data.games.find(g => g.status === 'LIVE' || g.status === 'FINAL');
                 if (firstStarted) {
-                    setSelectedGame(firstStarted.game_id);
+                    setSelectedGame(firstStarted.gameId || firstStarted.game_id || null);
                 } else if (res.data.games.length > 0) {
-                    setSelectedGame(res.data.games[0].game_id);
+                    setSelectedGame(res.data.games[0].gameId || res.data.games[0].game_id || null);
                 }
             }
         } catch (e) {
@@ -95,12 +98,32 @@ export function BoxScoreViewerContent() {
                 }
             } catch (e) {
                 console.warn(`Failed to fetch pulse boxscore for ${selectedGame}, trying fallback...`, e);
-                // Try legacy /games/{game_id}/boxscore if it exists, or just clear
+                // Try legacy /boxscore/{game_id} if it exists, or just clear
                 try {
                     const fallback = await ApiContract.execute<any>(null, {
-                        path: `games/${selectedGame}/boxscore`
+                        path: `boxscore/${selectedGame}`
                     });
-                    if (fallback.data) setBoxScores(fallback.data);
+                    if (fallback.data && fallback.data.home_team) {
+                        setBoxScores({
+                            home: fallback.data.home_team.players || [],
+                            away: fallback.data.away_team.players || [],
+                            game_info: {
+                                gameId: fallback.data.game_id || selectedGame,
+                                game_id: fallback.data.game_id || selectedGame,
+                                home_team: fallback.data.home_team.abbreviation,
+                                away_team: fallback.data.away_team.abbreviation,
+                                home: fallback.data.home_team.abbreviation,
+                                away: fallback.data.away_team.abbreviation,
+                                home_score: games.find(g => (g.game_id || g.gameId) === selectedGame)?.home_score || 0,
+                                away_score: games.find(g => (g.game_id || g.gameId) === selectedGame)?.away_score || 0,
+                                status: games.find(g => (g.game_id || g.gameId) === selectedGame)?.status || 'FINAL',
+                                game_date: '',
+                                matchup: ''
+                            }
+                        });
+                    } else {
+                        setBoxScores(fallback.data); // in case already shaped correctly
+                    }
                 } catch (e2) {
                     console.error("Fallback boxscore fetch failed", e2);
                     setBoxScores(null);
@@ -156,22 +179,22 @@ export function BoxScoreViewerContent() {
             <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-600">
                 {games.map(game => (
                     <button
-                        key={game.game_id}
-                        onClick={() => setSelectedGame(game.game_id)}
-                        className={`flex-shrink-0 px-4 py-3 border rounded-xl flex flex-col items-center gap-1 transition-all min-w-[140px] ${selectedGame === game.game_id
-                                ? 'bg-indigo-900/30 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
-                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
+                        key={(game.game_id || game.gameId)}
+                        onClick={() => setSelectedGame((game.game_id || game.gameId))}
+                        className={`flex-shrink-0 px-4 py-3 border rounded-xl flex flex-col items-center gap-1 transition-all min-w-[140px] ${selectedGame === (game.game_id || game.gameId)
+                            ? 'bg-indigo-900/30 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                            : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
                             }`}
                     >
                         <div className="flex items-center gap-3 w-full justify-between px-1">
-                            <span className={`font-black text-sm ${selectedGame === game.game_id ? 'text-white' : ''}`}>{game.away_team}</span>
+                            <span className={`font-black text-sm ${selectedGame === (game.game_id || game.gameId) ? 'text-white' : ''}`}>{game.away || game.away_team}</span>
                             <span className={`text-[10px] px-1.5 py-[1px] rounded font-bold uppercase tracking-wider ${game.status === 'LIVE' ? 'bg-red-500/20 text-red-400 animate-pulse' :
-                                    game.status === 'FINAL' ? 'bg-slate-700/50 text-slate-400' :
-                                        'bg-emerald-500/10 text-emerald-500'
+                                game.status === 'FINAL' ? 'bg-slate-700/50 text-slate-400' :
+                                    'bg-emerald-500/10 text-emerald-500'
                                 }`}>
                                 {game.status === 'LIVE' ? 'LIVE' : game.status === 'FINAL' ? 'FNL' : 'UP'}
                             </span>
-                            <span className={`font-black text-sm ${selectedGame === game.game_id ? 'text-white' : ''}`}>{game.home_team}</span>
+                            <span className={`font-black text-sm ${selectedGame === (game.game_id || game.gameId) ? 'text-white' : ''}`}>{game.home || game.home_team}</span>
                         </div>
                         <div className="flex items-center justify-between w-full px-2 mt-1">
                             <span className={`font-mono text-sm ${game.away_score > game.home_score ? 'text-emerald-400 font-bold' : ''}`}>{game.away_score || '-'}</span>

@@ -38,7 +38,7 @@ export function VanguardLearningExportContent() {
 
         try {
             // Initiate the export on the backend
-            const res = await ApiContract.execute<{ download_url: string, stats: any }>(null, {
+            const res = await ApiContract.execute<{ download_url?: string, training_data?: any, stats: any }>(null, {
                 path: 'vanguard/admin/learning/export',
                 options: { method: 'POST' }
             });
@@ -53,6 +53,17 @@ export function VanguardLearningExportContent() {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+            } else if (res.data?.training_data) {
+                // Fallback: programmatic blob download from raw JSON response
+                const blob = new Blob([JSON.stringify(res.data.training_data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `vanguard_learning_export_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }
 
             // Refresh history after

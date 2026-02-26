@@ -52,7 +52,12 @@ export function H2HHistoryPanelContent({ playerId, opponentId }: { playerId: str
     }, [loadH2H, playerId, opponentId]);
 
     if (!playerId || playerId === '0' || !opponentId) {
-        return null;
+        return (
+            <div className="p-8 text-center border border-slate-700/50 rounded-xl bg-slate-800/20 text-slate-400">
+                <Info className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                <p>Select an opponent to view H2H history</p>
+            </div>
+        );
     }
 
     if (loading) {
