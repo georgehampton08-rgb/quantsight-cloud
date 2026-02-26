@@ -25,7 +25,7 @@ export const HealthProvider = ({ children }: { children: ReactNode }) => {
 
     const checkHealth = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://quantsight-cloud-458498663186.us-central1.run.app';
+            const API_BASE = import.meta.env.VITE_API_URL || 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
             // Measure API latency
             const startTime = performance.now();

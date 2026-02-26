@@ -9,6 +9,7 @@ export const ALLOW_WEB_FALLBACK_IN_ELECTRON = true;
 // Hardcoded fallback for now, but configured cleanly for env override
 const FALLBACK_BASE_URL = 'https://quantsight-cloud-458498663186.us-central1.run.app';
 const VITE_API_URL = import.meta.env?.VITE_API_URL || FALLBACK_BASE_URL;
+const VITE_PULSE_API_URL = import.meta.env?.VITE_PULSE_API_URL || 'https://quantsight-pulse-458498663186.us-central1.run.app';
 
 // Track if we've already warned about fallback to avoid console/toast spam
 let hasWarnedFallbackSession = false;
@@ -101,6 +102,21 @@ export const ApiContract = {
         const res = await fetch(`${VITE_API_URL}/${cleanPath}`, spec.options);
         if (!res.ok) {
             throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+    },
+
+    /**
+     * Specialized execution pathway specifically for Live Pulse streams.
+     * Hard-wires the request to VITE_PULSE_API_URL instead of the standard URL
+     * since main API instances no longer serve long-lived 503 connections.
+     */
+    async pulse<T>(spec: WebSpec): Promise<T> {
+        const cleanPath = spec.path.startsWith('/') ? spec.path.substring(1) : spec.path;
+        console.log(`[ApiContract] Routing Pulse Request to: ${VITE_PULSE_API_URL}/${cleanPath}`);
+        const res = await fetch(`${VITE_PULSE_API_URL}/${cleanPath}`, spec.options);
+        if (!res.ok) {
+            throw new Error(`Pulse Error ${res.status}: ${res.statusText}`);
         }
         return res.json();
     },

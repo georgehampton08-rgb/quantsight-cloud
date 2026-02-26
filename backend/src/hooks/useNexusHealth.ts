@@ -2,15 +2,65 @@
  * useNexusHealth Hook
  * React hook for monitoring Nexus Hub health and cooldown states
  * 
- * Features:
- * - Auto-refresh health status
- * - Cooldown monitoring
- * - Service availability checks
- * - Loading and error states
+ * NOTE: No nexusApi.ts service file exists.
+ * Nexus module is offline (FEATURE_NEXUS_ENABLED = false).
+ * following Dead Code Cleanup session.
+ * Stub detection applied directly per Phase 1 wiring plan.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { NexusApi, SystemHealth, ActiveCooldowns, NexusOverview, HealthStatus } from '../services/nexusApi';
+
+// =============================================================================
+// Stubbed Types (formerly exported from nexusApi.ts)
+// =============================================================================
+export type HealthStatus = 'healthy' | 'degraded' | 'down' | 'cooldown';
+
+export interface ServiceHealth {
+    status: HealthStatus;
+    latency_ms?: number;
+    last_check?: string;
+    message?: string;
+    available?: boolean;
+}
+
+export interface SystemHealth {
+    overall: HealthStatus;
+    last_updated: string;
+    uptime_seconds: number;
+    version: string;
+    core: { [service: string]: ServiceHealth };
+    external: { [service: string]: ServiceHealth };
+    components: { [component: string]: ServiceHealth };
+}
+
+export interface CooldownInfo {
+    active: boolean;
+    started_at: string;
+    expires_at: string;
+    remaining_seconds: number;
+    reason: string;
+    type: string;
+}
+
+export interface ActiveCooldowns {
+    active_cooldowns: { [key: string]: CooldownInfo };
+    count: number;
+    last_checked: string;
+    degraded?: boolean;
+}
+
+export interface EndpointRoute {
+    path: string;
+    handler: string;
+    methods: string[];
+    cooldown_policy?: string;
+}
+
+export interface NexusOverview {
+    health: SystemHealth;
+    cooldown_summary: { active: number };
+    routing_matrix: { endpoints: EndpointRoute[] };
+}
 
 // =============================================================================
 // Types
@@ -75,39 +125,49 @@ export const useNexusHealth = (options: UseNexusHealthOptions = {}): UseNexusHea
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Fetch health data
+    // Fetch health data (STUBBED out per Phase 1)
     const refresh = useCallback(async () => {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
-        try {
-            if (fullOverview) {
-                const overview = await NexusApi.getOverview();
-                setState(prev => ({
-                    ...prev,
-                    overview,
-                    health: overview.health,
-                    loading: false,
-                    lastUpdated: new Date()
-                }));
-            } else {
-                const [health, cooldowns] = await Promise.all([
-                    NexusApi.getHealth(),
-                    NexusApi.getCooldowns()
-                ]);
-                setState(prev => ({
-                    ...prev,
-                    health,
-                    cooldowns,
-                    loading: false,
-                    lastUpdated: new Date()
-                }));
-            }
-        } catch (error: any) {
-            console.error('[useNexusHealth] Fetch failed:', error);
+        // Nexus is disabled via FEATURE_NEXUS_ENABLED = false
+        // Return a static degraded state immediately
+        const stubDate = new Date();
+        const stubHealth: SystemHealth = {
+            overall: 'degraded',
+            last_updated: stubDate.toISOString(),
+            uptime_seconds: 0,
+            version: 'offline-stub',
+            core: {},
+            external: {},
+            components: {}
+        };
+        const stubCooldowns: ActiveCooldowns = {
+            active_cooldowns: {},
+            count: 0,
+            last_checked: stubDate.toISOString(),
+            degraded: true,
+        };
+        const stubOverview: NexusOverview = {
+            health: stubHealth,
+            cooldown_summary: { active: 0 },
+            routing_matrix: { endpoints: [] }
+        };
+
+        if (fullOverview) {
             setState(prev => ({
                 ...prev,
+                overview: stubOverview,
+                health: stubHealth,
                 loading: false,
-                error: error.message || 'Failed to fetch Nexus health'
+                lastUpdated: stubDate
+            }));
+        } else {
+            setState(prev => ({
+                ...prev,
+                health: stubHealth,
+                cooldowns: stubCooldowns,
+                loading: false,
+                lastUpdated: stubDate
             }));
         }
     }, [fullOverview]);

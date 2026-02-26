@@ -178,9 +178,11 @@ export function useSimulationProgress(simulationId: string | null) {
     const [status, setStatus] = useState<string>('');
     const [results, setResults] = useState<any>(null);
 
+    const pulseBase = import.meta.env?.VITE_PULSE_API_URL || 'https://quantsight-pulse-458498663186.us-central1.run.app';
+
     const { isConnected, error } = useServerSentEvents({
         url: simulationId
-            ? `https://quantsight-cloud-458498663186.us-central1.run.app/events/simulation/${simulationId}`
+            ? `${pulseBase}/events/simulation/${simulationId}`
             : '',
         onMessage: (data) => {
             if (data.type === 'progress') {

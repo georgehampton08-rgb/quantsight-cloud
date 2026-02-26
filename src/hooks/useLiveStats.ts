@@ -84,7 +84,7 @@ export interface UseLiveStatsReturn {
     disconnect: () => void;
 }
 
-const API_BASE = 'https://quantsight-cloud-458498663186.us-central1.run.app';
+const API_BASE = import.meta.env?.VITE_PULSE_API_URL || 'https://quantsight-pulse-458498663186.us-central1.run.app';
 
 export function useLiveStats(): UseLiveStatsReturn {
     const [games, setGames] = useState<LiveGame[]>([]);
@@ -172,7 +172,7 @@ export function useLiveStats(): UseLiveStatsReturn {
  */
 export function usePlayerPulse(playerId: string, changedPlayerIds: Set<string>, durationMs: number = 3000): boolean {
     const [isPulsing, setIsPulsing] = useState(false);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const shouldPulse = changedPlayerIds.has(playerId);

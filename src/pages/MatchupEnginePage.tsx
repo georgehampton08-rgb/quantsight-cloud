@@ -62,7 +62,7 @@ export default function MatchupEnginePage() {
                 // Fetch REAL radar dimensions from the API
                 try {
                     const base = import.meta.env.VITE_API_URL || '';
-                    const radarRes = await fetch(`${base}/aegis/radar?player_id=${selectedPlayer.id}&opponent_id=${opponentId}`);
+                    const radarRes = await fetch(`${base}/radar/${selectedPlayer.id}?opponent_id=${opponentId}`);
                     if (radarRes.ok) {
                         const radarResult = await radarRes.json();
                         if (radarResult.player_stats && radarResult.opponent_defense) {
