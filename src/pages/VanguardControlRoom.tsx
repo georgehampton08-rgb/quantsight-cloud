@@ -706,304 +706,307 @@ export default function VanguardControlRoom() {
         : 'text-slate-500';
 
     return (
-        <div className="p-4 sm:p-8 h-full overflow-y-scroll space-y-5 sm:space-y-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#060b13] to-black font-sans">
-
-            {/* Toast */}
-            {toast && (
-                <div className={`fixed top-4 right-4 z-50 px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
-                    {toast.msg}
-                </div>
-            )}
-
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                <div>
-                    <h1 className="text-xl sm:text-3xl font-extrabold text-white flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center backdrop-blur-sm">
-                            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+        <div className="flex flex-col h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#060b13] to-black font-sans items-center">
+            <div className="w-full max-w-7xl flex flex-col h-full min-h-0">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-5 sm:space-y-8 min-h-0 pb-12">
+                    {/* Toast */}
+                    {toast && (
+                        <div className={`fixed top-4 right-4 z-50 px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
+                            {toast.msg}
                         </div>
-                        Vanguard Control Room
-                    </h1>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-0.5">System Health & Incident Management • v3.2.0</p>
-                </div>
-                <button
-                    onClick={() => loadData(true)}
-                    disabled={refreshing}
-                    className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide backdrop-blur-sm"
-                >
-                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                    Refresh
-                </button>
-            </div>
+                    )}
 
-            {/* Tabs — full wording, glass style, web-first adaptive */}
-            <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-                {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
-                    const isActive = activeTab === tab;
-                    const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm tracking-widest font-black transition-all duration-300 flex items-center justify-center gap-2.5 border backdrop-blur-xl group relative overflow-hidden";
-
-                    let colorCls = "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white shadow-lg";
-                    if (isActive) {
-                        if (tab === 'HEALTH') colorCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.25)]";
-                        else if (tab === 'INCIDENTS') colorCls = "bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)]";
-                        else if (tab === 'ARCHIVES') colorCls = "bg-blue-500/15 text-blue-400 border-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.2)]";
-                        else if (tab === 'LEARNING') colorCls = "bg-cyan-500/15 text-cyan-400 border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.25)]";
-                    }
-                    return (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
-                            className={`${baseCls} ${colorCls}`}>
-                            {/* Inner glow effect for active tab */}
-                            {isActive && <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent pointer-events-none" />}
-
-                            {tab === 'HEALTH' && <Activity className="w-4 h-4" />}
-                            {tab === 'INCIDENTS' && <AlertTriangle className="w-4 h-4" />}
-                            {tab === 'ARCHIVES' && <FileKey className="w-4 h-4" />}
-                            {tab === 'LEARNING' && <Cpu className="w-4 h-4" />}
-                            <span className="relative z-10 drop-shadow-md">{tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}</span>
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 flex-shrink-0">
+                        <div>
+                            <h1 className="text-xl sm:text-3xl font-extrabold text-white flex items-center gap-2 sm:gap-3">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center backdrop-blur-sm">
+                                    <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                                </div>
+                                Vanguard Control Room
+                            </h1>
+                            <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-0.5">System Health & Incident Management • v3.2.0</p>
+                        </div>
+                        <button
+                            onClick={() => loadData(true)}
+                            disabled={refreshing}
+                            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide backdrop-blur-sm"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                            Refresh
                         </button>
-                    );
-                })}
-            </div>
-
-            {/* ── HEALTH TAB ───────────────────────────────────────────────── */}
-            {activeTab === 'HEALTH' && (
-                <div className="space-y-5 sm:space-y-6">
-                    {/* Main card */}
-                    <div className="bg-[#0b1120]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 shadow-[0_15px_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
-                        {/* Dramatic glow hidden behind the card */}
-                        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
-                        <div className="space-y-2 flex-1">
-                            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Overall System Health</h2>
-                            {loading ? <Loader2 className="w-10 h-10 animate-spin text-slate-500" /> : (
-                                <>
-                                    <div className={`text-6xl sm:text-7xl font-bold font-mono tracking-tighter ${scoreColor}`}>
-                                        {stats?.health_score?.toFixed(1) ?? '—'}
-                                    </div>
-                                    <div className="pt-3 sm:pt-4 space-y-1">
-                                        <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Status:</span>
-                                            <span className={stats && stats.health_score >= 80 ? "text-emerald-500" : stats && stats.health_score >= 50 ? "text-amber-500" : "text-red-500"}>
-                                                {stats ? (stats.health_score >= 80 ? "OPERATIONAL" : stats.health_score >= 50 ? "DEGRADED" : "CRITICAL") : "—"}
-                                            </span>
-                                        </p>
-                                        <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Mode:</span>
-                                            <span className="text-amber-500">{stats?.vanguard_mode?.replace('VanguardMode.', '') ?? '—'}</span>
-                                        </p>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                        <div className="self-center sm:mr-8">
-                            <DoughnutScore score={stats?.health_score ?? 0} />
-                        </div>
                     </div>
 
-                    {/* Score Breakdown Bars */}
-                    {stats?.health_breakdown && (
-                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                            <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase opacity-80">Score Breakdown</h3>
-                            <div className="space-y-5">
-                                {[
-                                    { label: 'Incidents', score: stats.health_breakdown.incident_score, weight: '40%', color: 'bg-amber-500' },
-                                    { label: 'Subsystems', score: stats.health_breakdown.subsystem_score, weight: '35%', color: 'bg-emerald-500' },
-                                    { label: 'Endpoints', score: stats.health_breakdown.endpoint_score, weight: '25%', color: 'bg-blue-500' },
-                                ].map(b => (
-                                    <div key={b.label}>
-                                        <div className="flex justify-between items-baseline mb-1.5">
-                                            <span className="text-sm font-semibold text-slate-300">{b.label} <span className="text-slate-600 text-xs">({b.weight})</span></span>
-                                            <span className={`text-sm font-bold font-mono ${b.score >= 80 ? 'text-emerald-400' : b.score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
-                                                {b.score.toFixed(1)}
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-slate-700/40 rounded-full h-2">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-700 ${b.color}`}
-                                                style={{ width: `${Math.min(100, b.score)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    {/* Tabs — full wording, glass style, web-first adaptive */}
+                    <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 flex-shrink-0">
+                        {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
+                            const isActive = activeTab === tab;
+                            const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm tracking-widest font-black transition-all duration-300 flex items-center justify-center gap-2.5 border backdrop-blur-xl group relative overflow-hidden";
 
-                    {/* Metric Strip — real data */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-                        {[
-                            { label: 'Active Incidents', value: loading ? '—' : String(stats?.active_incidents ?? '—'), color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
-                            { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
-                            { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
-                            { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
-                        ].map(m => (
-                            <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
-                                <div className={`text-3xl sm:text-4xl font-black font-mono ${m.color}`}>{m.value}</div>
-                            </div>
-                        ))}
+                            let colorCls = "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white shadow-lg";
+                            if (isActive) {
+                                if (tab === 'HEALTH') colorCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.25)]";
+                                else if (tab === 'INCIDENTS') colorCls = "bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)]";
+                                else if (tab === 'ARCHIVES') colorCls = "bg-blue-500/15 text-blue-400 border-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.2)]";
+                                else if (tab === 'LEARNING') colorCls = "bg-cyan-500/15 text-cyan-400 border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.25)]";
+                            }
+                            return (
+                                <button key={tab} onClick={() => setActiveTab(tab)}
+                                    className={`${baseCls} ${colorCls}`}>
+                                    {/* Inner glow effect for active tab */}
+                                    {isActive && <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent pointer-events-none" />}
+
+                                    {tab === 'HEALTH' && <Activity className="w-4 h-4" />}
+                                    {tab === 'INCIDENTS' && <AlertTriangle className="w-4 h-4" />}
+                                    {tab === 'ARCHIVES' && <FileKey className="w-4 h-4" />}
+                                    {tab === 'LEARNING' && <Cpu className="w-4 h-4" />}
+                                    <span className="relative z-10 drop-shadow-md">{tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}</span>
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* Subsystems — driven by API */}
-                    <div className="pt-2 sm:pt-4">
-                        <h3 className="text-lg font-bold text-white mb-4">Subsystems</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
-                            {stats?.subsystem_health ? (
-                                Object.entries(stats.subsystem_health)
-                                    .filter(([k]) => k !== 'redis')  // Redis shown in metric strip
-                                    .map(([name, healthy]) => (
-                                        <SubSystemCard
-                                            key={name}
-                                            name={name.toUpperCase()}
-                                            active={healthy}
-                                            subtitle={healthy ? 'Online' : 'Offline'}
-                                        />
-                                    ))
-                            ) : (
-                                <>
-                                    <SubSystemCard name="INQUISITOR" active={true} subtitle="Sample: 5%" />
-                                    <SubSystemCard name="ARCHIVIST" active={true} subtitle="Online" />
-                                    <SubSystemCard name="PROFILER" active={true} subtitle="Online" />
-                                    <SubSystemCard name="SURGEON" active={false} subtitle="Disabled" />
-                                    <SubSystemCard name="VACCINE" active={true} subtitle="Online" />
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Hot Endpoints */}
-                    {stats?.hot_endpoints && stats.hot_endpoints.length > 0 && (
-                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                            <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase flex items-center gap-3 opacity-80">
-                                <AlertTriangle className="w-4 h-4 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                                Hot Endpoints
-                            </h3>
-                            <div className="space-y-3">
-                                {stats.hot_endpoints.map((ep, i) => {
-                                    const maxCount = stats.hot_endpoints![0].active_count;
-                                    const pct = maxCount > 0 ? (ep.active_count / maxCount) * 100 : 0;
-                                    return (
-                                        <div key={i}>
-                                            <div className="flex justify-between items-baseline mb-1">
-                                                <span className="text-sm font-mono text-slate-300 truncate mr-4">{ep.endpoint}</span>
-                                                <span className="text-xs font-bold text-amber-400 flex-shrink-0">{ep.active_count} hits</span>
+                    {/* ── HEALTH TAB ───────────────────────────────────────────────── */}
+                    {activeTab === 'HEALTH' && (
+                        <div className="space-y-5 sm:space-y-6">
+                            {/* Main card */}
+                            <div className="bg-[#0b1120]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6 shadow-[0_15px_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                                {/* Dramatic glow hidden behind the card */}
+                                <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
+                                <div className="space-y-2 flex-1">
+                                    <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Overall System Health</h2>
+                                    {loading ? <Loader2 className="w-10 h-10 animate-spin text-slate-500" /> : (
+                                        <>
+                                            <div className={`text-6xl sm:text-7xl font-bold font-mono tracking-tighter ${scoreColor}`}>
+                                                {stats?.health_score?.toFixed(1) ?? '—'}
                                             </div>
-                                            <div className="w-full bg-slate-700/30 rounded-full h-1.5">
-                                                <div className="h-1.5 rounded-full bg-amber-500/70 transition-all duration-500" style={{ width: `${pct}%` }} />
+                                            <div className="pt-3 sm:pt-4 space-y-1">
+                                                <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Status:</span>
+                                                    <span className={stats && stats.health_score >= 80 ? "text-emerald-500" : stats && stats.health_score >= 50 ? "text-amber-500" : "text-red-500"}>
+                                                        {stats ? (stats.health_score >= 80 ? "OPERATIONAL" : stats.health_score >= 50 ? "DEGRADED" : "CRITICAL") : "—"}
+                                                    </span>
+                                                </p>
+                                                <p className="text-sm font-semibold"><span className="text-slate-500 mr-2">Mode:</span>
+                                                    <span className="text-amber-500">{stats?.vanguard_mode?.replace('VanguardMode.', '') ?? '—'}</span>
+                                                </p>
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        </>
+                                    )}
+                                </div>
+                                <div className="self-center sm:mr-8">
+                                    <DoughnutScore score={stats?.health_score ?? 0} />
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-            )}
 
-            {/* ── INCIDENTS TAB ─────────────────────────────────────────────── */}
-            {activeTab === 'INCIDENTS' && (
-                <div className="space-y-4">
-                    {/* Toolbar */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-700/50">
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
-                                <input
-                                    type="checkbox"
-                                    checked={selected.size === activeIncidents.length && activeIncidents.length > 0}
-                                    onChange={selectAll}
-                                    className="w-4 h-4 bg-slate-800 border-slate-600 rounded text-amber-500"
-                                />
-                                Select All
-                            </label>
-                            <select className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5">
-                                <option>Newest First</option>
-                                <option>Oldest First</option>
-                                <option>Highest Impact</option>
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <button
-                                onClick={analyzeAll}
-                                disabled={analyzingAll}
-                                className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg transition-colors font-bold text-sm shadow-[0_0_15px_rgba(147,51,234,0.3)]"
-                            >
-                                {analyzingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
-                                Analyze All
-                            </button>
-                            <span className="text-sm text-slate-400">{activeIncidents.length} active</span>
-                        </div>
-                    </div>
+                            {/* Score Breakdown Bars */}
+                            {stats?.health_breakdown && (
+                                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                                    <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase opacity-80">Score Breakdown</h3>
+                                    <div className="space-y-5">
+                                        {[
+                                            { label: 'Incidents', score: stats.health_breakdown.incident_score, weight: '40%', color: 'bg-amber-500' },
+                                            { label: 'Subsystems', score: stats.health_breakdown.subsystem_score, weight: '35%', color: 'bg-emerald-500' },
+                                            { label: 'Endpoints', score: stats.health_breakdown.endpoint_score, weight: '25%', color: 'bg-blue-500' },
+                                        ].map(b => (
+                                            <div key={b.label}>
+                                                <div className="flex justify-between items-baseline mb-1.5">
+                                                    <span className="text-sm font-semibold text-slate-300">{b.label} <span className="text-slate-600 text-xs">({b.weight})</span></span>
+                                                    <span className={`text-sm font-bold font-mono ${b.score >= 80 ? 'text-emerald-400' : b.score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                                                        {b.score.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-slate-700/40 rounded-full h-2">
+                                                    <div
+                                                        className={`h-2 rounded-full transition-all duration-700 ${b.color}`}
+                                                        style={{ width: `${Math.min(100, b.score)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                    {loading ? (
-                        <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-slate-500" /></div>
-                    ) : activeIncidents.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-                            <ShieldCheck className="w-12 h-12 mb-4 text-emerald-700" />
-                            <p className="font-semibold">No active incidents</p>
-                        </div>
-                    ) : (
-                        activeIncidents.map(inc => (
-                            <IncidentCard
-                                key={inc.fingerprint}
-                                inc={inc}
-                                selected={selected.has(inc.fingerprint)}
-                                onToggle={() => toggleSelect(inc.fingerprint)}
-                                onResolve={() => resolveIncident(inc.fingerprint)}
-                                resolving={!!resolving[inc.fingerprint]}
-                            />
-                        ))
-                    )}
-                </div>
-            )}
-
-            {/* ── ARCHIVES TAB ──────────────────────────────────────────────── */}
-            {activeTab === 'ARCHIVES' && (
-                <div className="space-y-6">
-                    <VanguardArchivesViewer />
-                    <VaccinePanel />
-                </div>
-            )}
-
-            {/* ── LEARNING TAB ──────────────────────────────────────────────── */}
-            {activeTab === 'LEARNING' && (
-                <div className="space-y-5 sm:space-y-6">
-                    {loading ? (
-                        <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-slate-500" /></div>
-                    ) : (
-                        <>
+                            {/* Metric Strip — real data */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                                 {[
-                                    { label: 'Total Resolutions', value: learning?.total_resolutions ?? '—', color: 'text-white' },
-                                    { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
-                                    { label: 'Pending', value: learning?.pending_verification ?? '—', color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
-                                    { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
+                                    { label: 'Active Incidents', value: loading ? '—' : String(stats?.active_incidents ?? '—'), color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
+                                    { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
+                                    { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
+                                    { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
                                 ].map(m => (
-                                    <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl text-center">
+                                    <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                         <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
-                                        <div className={`text-3xl sm:text-4xl font-black ${m.color}`}>{String(m.value)}</div>
+                                        <div className={`text-3xl sm:text-4xl font-black font-mono ${m.color}`}>{m.value}</div>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 min-h-[300px] shadow-2xl">
-                                <h3 className="text-white font-black text-lg mb-6 flex items-center gap-3 opacity-90">
-                                    <Brain className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                                    Top Success Patterns
-                                </h3>
-                                {learning?.patterns && learning.patterns.length > 0 ? (
-                                    learning.patterns.map((p: any, i) => (
-                                        <div key={i} className="border-b border-slate-700/40 py-3 text-sm text-slate-300">{JSON.stringify(p)}</div>
-                                    ))
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-12 text-slate-600">
-                                        <Brain className="w-10 h-10 mb-3" />
-                                        <p className="text-sm">No patterns yet — patterns emerge after resolutions are verified</p>
-                                    </div>
-                                )}
+                            {/* Subsystems — driven by API */}
+                            <div className="pt-2 sm:pt-4">
+                                <h3 className="text-lg font-bold text-white mb-4">Subsystems</h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+                                    {stats?.subsystem_health ? (
+                                        Object.entries(stats.subsystem_health)
+                                            .filter(([k]) => k !== 'redis')  // Redis shown in metric strip
+                                            .map(([name, healthy]) => (
+                                                <SubSystemCard
+                                                    key={name}
+                                                    name={name.toUpperCase()}
+                                                    active={healthy}
+                                                    subtitle={healthy ? 'Online' : 'Offline'}
+                                                />
+                                            ))
+                                    ) : (
+                                        <>
+                                            <SubSystemCard name="INQUISITOR" active={true} subtitle="Sample: 5%" />
+                                            <SubSystemCard name="ARCHIVIST" active={true} subtitle="Online" />
+                                            <SubSystemCard name="PROFILER" active={true} subtitle="Online" />
+                                            <SubSystemCard name="SURGEON" active={false} subtitle="Disabled" />
+                                            <SubSystemCard name="VACCINE" active={true} subtitle="Online" />
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                            <VanguardLearningExport />
-                        </>
+
+                            {/* Hot Endpoints */}
+                            {stats?.hot_endpoints && stats.hot_endpoints.length > 0 && (
+                                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                                    <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase flex items-center gap-3 opacity-80">
+                                        <AlertTriangle className="w-4 h-4 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                                        Hot Endpoints
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {stats.hot_endpoints.map((ep, i) => {
+                                            const maxCount = stats.hot_endpoints![0].active_count;
+                                            const pct = maxCount > 0 ? (ep.active_count / maxCount) * 100 : 0;
+                                            return (
+                                                <div key={i}>
+                                                    <div className="flex justify-between items-baseline mb-1">
+                                                        <span className="text-sm font-mono text-slate-300 truncate mr-4">{ep.endpoint}</span>
+                                                        <span className="text-xs font-bold text-amber-400 flex-shrink-0">{ep.active_count} hits</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-700/30 rounded-full h-1.5">
+                                                        <div className="h-1.5 rounded-full bg-amber-500/70 transition-all duration-500" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── INCIDENTS TAB ─────────────────────────────────────────────── */}
+                    {activeTab === 'INCIDENTS' && (
+                        <div className="space-y-4">
+                            {/* Toolbar */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-700/50">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.size === activeIncidents.length && activeIncidents.length > 0}
+                                            onChange={selectAll}
+                                            className="w-4 h-4 bg-slate-800 border-slate-600 rounded text-amber-500"
+                                        />
+                                        Select All
+                                    </label>
+                                    <select className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5">
+                                        <option>Newest First</option>
+                                        <option>Oldest First</option>
+                                        <option>Highest Impact</option>
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <button
+                                        onClick={analyzeAll}
+                                        disabled={analyzingAll}
+                                        className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg transition-colors font-bold text-sm shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+                                    >
+                                        {analyzingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
+                                        Analyze All
+                                    </button>
+                                    <span className="text-sm text-slate-400">{activeIncidents.length} active</span>
+                                </div>
+                            </div>
+
+                            {loading ? (
+                                <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-slate-500" /></div>
+                            ) : activeIncidents.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+                                    <ShieldCheck className="w-12 h-12 mb-4 text-emerald-700" />
+                                    <p className="font-semibold">No active incidents</p>
+                                </div>
+                            ) : (
+                                activeIncidents.map(inc => (
+                                    <IncidentCard
+                                        key={inc.fingerprint}
+                                        inc={inc}
+                                        selected={selected.has(inc.fingerprint)}
+                                        onToggle={() => toggleSelect(inc.fingerprint)}
+                                        onResolve={() => resolveIncident(inc.fingerprint)}
+                                        resolving={!!resolving[inc.fingerprint]}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── ARCHIVES TAB ──────────────────────────────────────────────── */}
+                    {activeTab === 'ARCHIVES' && (
+                        <div className="space-y-6">
+                            <VanguardArchivesViewer />
+                            <VaccinePanel />
+                        </div>
+                    )}
+
+                    {/* ── LEARNING TAB ──────────────────────────────────────────────── */}
+                    {activeTab === 'LEARNING' && (
+                        <div className="space-y-5 sm:space-y-6">
+                            {loading ? (
+                                <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-slate-500" /></div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+                                        {[
+                                            { label: 'Total Resolutions', value: learning?.total_resolutions ?? '—', color: 'text-white' },
+                                            { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
+                                            { label: 'Pending', value: learning?.pending_verification ?? '—', color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
+                                            { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
+                                        ].map(m => (
+                                            <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl text-center">
+                                                <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
+                                                <div className={`text-3xl sm:text-4xl font-black ${m.color}`}>{String(m.value)}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 min-h-[300px] shadow-2xl">
+                                        <h3 className="text-white font-black text-lg mb-6 flex items-center gap-3 opacity-90">
+                                            <Brain className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                                            Top Success Patterns
+                                        </h3>
+                                        {learning?.patterns && learning.patterns.length > 0 ? (
+                                            learning.patterns.map((p: any, i) => (
+                                                <div key={i} className="border-b border-slate-700/40 py-3 text-sm text-slate-300">{JSON.stringify(p)}</div>
+                                            ))
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-12 text-slate-600">
+                                                <Brain className="w-10 h-10 mb-3" />
+                                                <p className="text-sm">No patterns yet — patterns emerge after resolutions are verified</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <VanguardLearningExport />
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
