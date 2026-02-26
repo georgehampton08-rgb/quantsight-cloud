@@ -108,6 +108,9 @@ try:
     LIVE_STREAM_AVAILABLE = True
     logger.info("✅ Live stream routes imported successfully")
 except ImportError as e:
+    logger.warning(f"⚠️ Live stream routes not available: {e}")
+    LIVE_STREAM_AVAILABLE = False
+except Exception as e:
     import traceback
     logger.error(f"❌ Live stream routes not available: {e}")
     logger.error(f"Full traceback:\n{traceback.format_exc()}")
