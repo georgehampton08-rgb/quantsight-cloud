@@ -119,34 +119,125 @@ async def list_all_incidents(status: Optional[str] = None, limit: int = 100):
 @router.get("/vanguard/admin/stats")
 async def get_vanguard_stats():
     """
-    Live stat summary for the Control Room header cards.
-    Computes counts live from Firestore to avoid stale metadata drift.
+    Composite health score for the Vanguard Control Room.
+
+    Score = (Incident × 0.40) + (Subsystem × 0.35) + (Endpoint × 0.25)
     """
     try:
         from vanguard.core.config import get_vanguard_config
+        from vanguard.bootstrap.redis_client import ping_redis
+        import math
+
         config = get_vanguard_config()
         storage = get_incident_storage()
         fingerprints = await storage.list_incidents(limit=2000)
 
+        # ── Count incidents + collect endpoint stats ─────────────────────
         active = 0
         resolved = 0
+        endpoint_hits: dict[str, int] = {}  # endpoint → active occurrence count
+
         for fp in fingerprints:
             inc = await storage.load(fp)
-            if inc:
-                if inc.get("status") == "active":
-                    active += 1
-                else:
-                    resolved += 1
+            if not inc:
+                continue
+            if inc.get("status") == "active":
+                active += 1
+                ep = inc.get("endpoint", "unknown")
+                endpoint_hits[ep] = endpoint_hits.get(ep, 0) + inc.get("occurrence_count", 1)
+            else:
+                resolved += 1
 
-        # Health score: 100 with no incidents, -10 per active incident, floor 0
-        health_score = max(0.0, 100.0 - (active * 10.0))
+        total = active + resolved
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Component 1 — Incident Score (40%)
+        # Log decay: 0→100, 5→84, 10→75, 25→62, 50→52, 100→43
+        # ═══════════════════════════════════════════════════════════════════
+        if active == 0:
+            incident_score = 100.0
+        else:
+            incident_score = max(20.0, 100.0 - (math.log10(active + 1) * 40.0))
+        # Resolution ratio bonus (up to +10)
+        if total > 0:
+            incident_score = min(100.0, incident_score + (resolved / total) * 10.0)
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Component 2 — Subsystem Score (35%)
+        # Weighted check of each Vanguard subsystem
+        # ═══════════════════════════════════════════════════════════════════
+        storage_mb = storage.get_storage_size_mb()
+        storage_cap = config.storage_max_mb
+        redis_ok = False
+        try:
+            redis_ok = await ping_redis()
+        except Exception:
+            pass
+
+        subsystem_health = {
+            "inquisitor": config.enabled,
+            "archivist": storage_mb < (storage_cap * 0.90),
+            "profiler": config.llm_enabled,
+            "vaccine": config.vaccine_enabled,
+            "surgeon": config.mode.value in ("CIRCUIT_BREAKER", "FULL_SOVEREIGN"),
+            "redis": redis_ok,
+        }
+
+        # Weighted scoring: required subsystems matter more
+        weights = {
+            "inquisitor": 30,
+            "archivist": 25,
+            "profiler": 20,
+            "vaccine": 15,
+            "redis": 5,
+            "surgeon": 5,
+        }
+        total_weight = sum(weights.values())
+        healthy_weight = sum(w for k, w in weights.items() if subsystem_health.get(k, False))
+        subsystem_score = (healthy_weight / total_weight) * 100.0
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Component 3 — Endpoint Error Rate (25%)
+        # Ratio of unique erroring endpoints to total known endpoints
+        # ═══════════════════════════════════════════════════════════════════
+        erroring_endpoints = len(endpoint_hits)
+        if erroring_endpoints == 0:
+            endpoint_score = 100.0
+        else:
+            # Scale: 1 endpoint erroring = ~90, 5 = ~70, 10 = ~55
+            endpoint_score = max(20.0, 100.0 - (math.log10(erroring_endpoints + 1) * 45.0))
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Composite Score
+        # ═══════════════════════════════════════════════════════════════════
+        health_score = (
+            incident_score * 0.40 +
+            subsystem_score * 0.35 +
+            endpoint_score * 0.25
+        )
+
+        # Hot endpoints — top 5 most problematic
+        hot_endpoints = sorted(
+            [{"endpoint": ep, "active_count": c} for ep, c in endpoint_hits.items()],
+            key=lambda x: x["active_count"],
+            reverse=True,
+        )[:5]
 
         return {
             "active_incidents": active,
             "resolved_incidents": resolved,
             "health_score": round(health_score, 1),
+            "health_breakdown": {
+                "incident_score": round(incident_score, 1),
+                "subsystem_score": round(subsystem_score, 1),
+                "endpoint_score": round(endpoint_score, 1),
+            },
+            "subsystem_health": subsystem_health,
+            "hot_endpoints": hot_endpoints,
+            "storage_mb": round(storage_mb, 2),
+            "storage_cap_mb": storage_cap,
             "vanguard_mode": config.mode.value,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
     except Exception as e:
         logger.error(f"Stats fetch failed: {e}")
@@ -154,9 +245,13 @@ async def get_vanguard_stats():
             "active_incidents": 0,
             "resolved_incidents": 0,
             "health_score": 100.0,
+            "health_breakdown": {"incident_score": 100.0, "subsystem_score": 100.0, "endpoint_score": 100.0},
+            "subsystem_health": {},
+            "hot_endpoints": [],
             "vanguard_mode": "UNKNOWN",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
+
 
 
 @router.post("/vanguard/admin/incidents/{fingerprint}/resolve")
