@@ -39,8 +39,20 @@ ENDPOINT_PREFIXES = [
     "/matchup", "/players", "/teams", "/schedule", "/admin",
 ]
 
-# Target labels (from incident_exporter.py)
+# Target labels — V1 (reduced set for small corpus <500 incidents)
+# Consolidate into 6 coarse classes to ensure enough samples per class.
+# V2 expansion happens when corpus grows past 500 labeled incidents.
 TARGET_LABELS = [
+    "MISSING_ROUTE",     # 404, route not found
+    "DEPENDENCY",        # Timeouts, connection failures, NBA API errors, DB errors
+    "AUTH",              # 401, 403, permission denied
+    "RATE_LIMIT",        # 429, too many requests
+    "SERVER_ERROR",      # 500, code errors, import failures, memory
+    "UNKNOWN",           # Unclassifiable
+]
+
+# V2 labels — activate when corpus exceeds 500 labeled incidents
+V2_LABELS = [
     "MISSING_ROUTE",
     "VALIDATION_ERROR",
     "SERVER_ERROR",

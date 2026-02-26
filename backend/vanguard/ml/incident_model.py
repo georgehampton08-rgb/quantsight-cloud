@@ -4,20 +4,21 @@ Phase 9 — Incident Model (Lazy-Loaded Inference Wrapper)
 Provides a production-safe interface for ML incident classification.
 
 Key patterns:
-    - functools.lru_cache(maxsize=1) for one-time model loading
-    - GCS download on first call, cached in memory thereafter
+    - asyncio.to_thread() for non-blocking GCS downloads
+    - Singleton with memory cache, /tmp disk cache, GCS origin
     - Fallback to None (caller must handle) if model unavailable
     - Feature extraction reuses ml.incident_classifier.features
+    - Admin reload endpoint clears cache and re-downloads
 
 Integration point:
     ai_analyzer.py → _create_fallback_analysis() → incident_model.classify()
 """
 
+import asyncio
 import os
 import io
-import functools
 import logging
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
 logger = logging.getLogger("vanguard.ml.incident_model")
@@ -37,6 +38,8 @@ class IncidentModelWrapper:
     """Production wrapper for the incident classifier.
     
     Thread-safe, lazy-loaded, with graceful degradation.
+    All GCS operations are offloaded to a thread pool to
+    avoid blocking the async event loop.
     """
     
     def __init__(self):
@@ -74,7 +77,11 @@ class IncidentModelWrapper:
         return False
     
     def _try_load_from_gcs(self) -> bool:
-        """Download model from GCS and cache locally."""
+        """Download model from GCS and cache locally.
+        
+        WARNING: This method performs synchronous I/O. In async contexts,
+        always call via asyncio.to_thread() or use load_async().
+        """
         try:
             from google.cloud import storage
             import joblib
@@ -93,15 +100,16 @@ class IncidentModelWrapper:
             
             # Download encoder
             encoder_blob = bucket.blob(GCS_ENCODER_BLOB)
+            encoder_bytes = None
             if encoder_blob.exists():
                 encoder_bytes = encoder_blob.download_as_bytes()
                 self._encoder = joblib.load(io.BytesIO(encoder_bytes))
             
-            # Cache locally for faster subsequent loads
+            # Cache locally for faster subsequent loads (cold start optimization)
             os.makedirs(os.path.dirname(LOCAL_MODEL_PATH), exist_ok=True)
             with open(LOCAL_MODEL_PATH, "wb") as f:
                 f.write(model_bytes)
-            if self._encoder:
+            if encoder_bytes:
                 with open(LOCAL_ENCODER_PATH, "wb") as f:
                     f.write(encoder_bytes)
             
@@ -133,20 +141,16 @@ class IncidentModelWrapper:
             logger.debug(f"Artifacts dir load failed: {e}")
         return False
     
-    def load(self) -> bool:
-        """Load the model from any available source.
+    def _load_sync(self) -> bool:
+        """Synchronous load from any available source.
         
-        Priority: local cache → GCS → artifacts dir
-        
-        Returns:
-            True if model loaded successfully
+        Priority: local /tmp cache → GCS → artifacts dir
         """
         if self._loaded:
             return self._model is not None
         
         self._loaded = True  # Mark attempted (even if fails)
         
-        # Try sources in priority order
         for loader_name, loader in [
             ("local_cache", self._try_load_from_local),
             ("gcs", self._try_load_from_gcs),
@@ -161,6 +165,57 @@ class IncidentModelWrapper:
         self._load_error = "Model not found in any source"
         logger.warning(f"ML incident classifier unavailable: {self._load_error}")
         return False
+    
+    async def load_async(self) -> bool:
+        """Non-blocking model load. Offloads GCS I/O to thread pool.
+        
+        Use this from async contexts (FastAPI request handlers, middleware).
+        """
+        if self._loaded:
+            return self._model is not None
+        
+        # Try local cache first (fast, no I/O worth offloading)
+        if self._try_load_from_local():
+            self._loaded = True
+            self._load_error = None
+            self._load_timestamp = datetime.now(timezone.utc).isoformat()
+            self._model_version = "loaded_from_local_cache"
+            return True
+        
+        # GCS download is the blocking operation — offload to thread pool
+        result = await asyncio.to_thread(self._load_sync)
+        return result
+    
+    def load(self) -> bool:
+        """Synchronous load for non-async callers (e.g. CLI, tests).
+        
+        In async contexts, prefer load_async().
+        """
+        return self._load_sync()
+    
+    async def reload(self) -> bool:
+        """Force reload model from origin (for admin endpoint).
+        
+        Clears all caches and re-downloads from GCS.
+        """
+        logger.info("ML model reload requested — clearing caches")
+        
+        # Clear memory state
+        self._model = None
+        self._encoder = None
+        self._loaded = False
+        self._load_error = None
+        
+        # Clear local disk cache
+        for path in [LOCAL_MODEL_PATH, LOCAL_ENCODER_PATH]:
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        
+        # Reload from origin (non-blocking)
+        return await self.load_async()
     
     def classify(
         self,
@@ -179,7 +234,7 @@ class IncidentModelWrapper:
                 - probabilities: dict (class → probability)
                 - model_version: str
         """
-        # Ensure model is loaded
+        # Ensure model is loaded (sync — fast if cached in memory)
         if not self.load():
             return None
         
@@ -200,10 +255,7 @@ class IncidentModelWrapper:
                 predicted_idx = probas.argmax()
                 confidence = float(probas[predicted_idx])
             elif hasattr(model, "named_steps") and hasattr(model.named_steps.get("clf", None), "predict_proba"):
-                probas = model.named_steps["clf"].predict_proba(
-                    model.named_steps.get("resample", None) 
-                    and X or X
-                )[0]
+                probas = model.named_steps["clf"].predict_proba(X)[0]
                 predicted_idx = probas.argmax()
                 confidence = float(probas[predicted_idx])
             else:

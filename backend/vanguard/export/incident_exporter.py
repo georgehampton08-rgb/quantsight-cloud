@@ -19,6 +19,7 @@ Usage:
 
 import os
 import re
+import sys
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
@@ -32,16 +33,16 @@ logger = logging.getLogger("vanguard.export")
 # Heuristic rule matching for auto-labeling
 # ─────────────────────────────────────────────
 _LABEL_RULES = [
-    (re.compile(r"FailedPrecondition|FAILED_PRECONDITION|missing.+index", re.IGNORECASE), "DATABASE_ERROR", 75),
-    (re.compile(r"DeadlineExceeded|DEADLINE_EXCEEDED|timeout", re.IGNORECASE), "DEPENDENCY_TIMEOUT", 65),
-    (re.compile(r"ConnectionError|ConnectionRefused|ECONNREFUSED", re.IGNORECASE), "CONNECTION_FAILURE", 60),
-    (re.compile(r"ReadTimeout|ReadTimeoutError|aiohttp.*timeout", re.IGNORECASE), "DEPENDENCY_TIMEOUT", 60),
-    (re.compile(r"PermissionDenied|PERMISSION_DENIED|403|Unauthorized|401", re.IGNORECASE), "AUTH_FAILURE", 70),
-    (re.compile(r"KeyError|AttributeError|TypeError", re.IGNORECASE), "CODE_ERROR", 55),
-    (re.compile(r"ImportError|ModuleNotFoundError", re.IGNORECASE), "IMPORT_FAILURE", 80),
-    (re.compile(r"MemoryError|OOM|OutOfMemory", re.IGNORECASE), "MEMORY_PRESSURE", 70),
+    (re.compile(r"FailedPrecondition|FAILED_PRECONDITION|missing.+index", re.IGNORECASE), "DEPENDENCY", 75),
+    (re.compile(r"DeadlineExceeded|DEADLINE_EXCEEDED|timeout", re.IGNORECASE), "DEPENDENCY", 65),
+    (re.compile(r"ConnectionError|ConnectionRefused|ECONNREFUSED", re.IGNORECASE), "DEPENDENCY", 60),
+    (re.compile(r"ReadTimeout|ReadTimeoutError|aiohttp.*timeout", re.IGNORECASE), "DEPENDENCY", 60),
+    (re.compile(r"PermissionDenied|PERMISSION_DENIED|403|Unauthorized|401", re.IGNORECASE), "AUTH", 70),
+    (re.compile(r"KeyError|AttributeError|TypeError", re.IGNORECASE), "SERVER_ERROR", 55),
+    (re.compile(r"ImportError|ModuleNotFoundError", re.IGNORECASE), "SERVER_ERROR", 80),
+    (re.compile(r"MemoryError|OOM|OutOfMemory", re.IGNORECASE), "SERVER_ERROR", 70),
     (re.compile(r"RateLimited|429|Too.*Many.*Requests", re.IGNORECASE), "RATE_LIMIT", 65),
-    (re.compile(r"nba_api|stats\.nba\.com|NBAStatsHTTP", re.IGNORECASE), "NBA_API_ERROR", 60),
+    (re.compile(r"nba_api|stats\.nba\.com|NBAStatsHTTP", re.IGNORECASE), "DEPENDENCY", 60),
 ]
 
 
@@ -80,10 +81,10 @@ def _derive_ml_label(incident: Dict[str, Any]) -> str:
     error_category = labels.get("error_category", "")
     category_map = {
         "not_found": "MISSING_ROUTE",
-        "validation_error": "VALIDATION_ERROR",
+        "validation_error": "SERVER_ERROR",  # V1: consolidated into SERVER_ERROR
         "internal_error": "SERVER_ERROR",
-        "timeout": "DEPENDENCY_TIMEOUT",
-        "authentication": "AUTH_FAILURE",
+        "timeout": "DEPENDENCY",
+        "authentication": "AUTH",
     }
     if error_category in category_map:
         return category_map[error_category]
@@ -94,18 +95,16 @@ def _derive_ml_label(incident: Dict[str, Any]) -> str:
         code = int(status_match.group(1))
         if code == 404:
             return "MISSING_ROUTE"
-        elif code == 400:
-            return "VALIDATION_ERROR"
-        elif code == 422:
-            return "VALIDATION_ERROR"
-        elif code == 403 or code == 401:
-            return "AUTH_FAILURE"
+        elif code in (400, 422):
+            return "SERVER_ERROR"  # V1: consolidated
+        elif code in (401, 403):
+            return "AUTH"
         elif code == 429:
             return "RATE_LIMIT"
         elif code == 500:
             return "SERVER_ERROR"
-        elif code == 502 or code == 503 or code == 504:
-            return "DEPENDENCY_TIMEOUT"
+        elif code in (502, 503, 504):
+            return "DEPENDENCY"
     
     return "UNKNOWN"
 
@@ -284,30 +283,74 @@ class IncidentExporter:
         return df
     
     def export_dataframe_to_bigquery(self, df: pd.DataFrame) -> int:
-        """Export a DataFrame to BigQuery using load_table_from_dataframe.
+        """Export a DataFrame to BigQuery via staging table + MERGE.
+        
+        Idempotent pipeline:
+            1. Append to staging table (no dedup risk)
+            2. MERGE INTO canonical table keyed by fingerprint
+            3. Truncate staging table
+        
+        This prevents duplicate rows from repeated/overlapping exports.
         
         Args:
             df: Transformed DataFrame
             
         Returns:
-            Number of rows written
+            Number of rows merged
         """
         from google.cloud import bigquery
         
         client = self._get_bq_client()
-        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        canonical = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        staging = f"{self.project_id}.{self.dataset_id}.{self.table_id}_staging"
         
+        # Step 1: Append to staging table
         job_config = bigquery.LoadJobConfig(
-            write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,  # Fresh staging
         )
         
         job = client.load_table_from_dataframe(
-            df, table_ref, job_config=job_config
+            df, staging, job_config=job_config
         )
         job.result()  # Wait for completion
+        logger.info(f"Staged {job.output_rows} rows to {staging}")
         
-        logger.info(f"✅ Exported {job.output_rows} rows to {table_ref}")
-        return job.output_rows
+        # Step 2: MERGE into canonical table keyed by fingerprint
+        merge_sql = f"""
+        MERGE `{canonical}` AS target
+        USING `{staging}` AS source
+        ON target.fingerprint = source.fingerprint
+        WHEN MATCHED THEN UPDATE SET
+            endpoint = source.endpoint,
+            error_type = source.error_type,
+            error_message = source.error_message,
+            severity = source.severity,
+            status = source.status,
+            occurrence_count = source.occurrence_count,
+            last_seen = source.last_seen,
+            method = source.method,
+            status_code = source.status_code,
+            traceback_preview = source.traceback_preview,
+            ai_confidence = source.ai_confidence,
+            ai_root_cause = source.ai_root_cause,
+            ai_ready_to_resolve = source.ai_ready_to_resolve,
+            heuristic_match = source.heuristic_match,
+            heuristic_confidence = source.heuristic_confidence,
+            ml_label = source.ml_label,
+            exported_at = source.exported_at
+        WHEN NOT MATCHED THEN INSERT ROW
+        """
+        
+        merge_job = client.query(merge_sql)
+        result = merge_job.result()
+        rows_affected = merge_job.num_dml_affected_rows or 0
+        
+        logger.info(f"✅ Merged {rows_affected} rows into {canonical} (deduped by fingerprint)")
+        
+        # Step 3: Clean staging table
+        client.query(f"TRUNCATE TABLE `{staging}`").result()
+        
+        return rows_affected
     
     async def export_to_bigquery(
         self,

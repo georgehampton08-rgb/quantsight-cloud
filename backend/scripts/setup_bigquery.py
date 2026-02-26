@@ -209,6 +209,18 @@ def main():
             partition_field=config["partition_field"],
             clustering_fields=config["clustering_fields"],
         )
+    
+    # Step 2b: Create staging tables for MERGE dedup pattern
+    for table_name in ["incidents"]:
+        staging_name = f"{table_name}_staging"
+        staging_ref = f"{PROJECT_ID}.{DATASET_ID}.{staging_name}"
+        staging_table = bigquery.Table(staging_ref, schema=TABLES[table_name]["schema"])
+        staging_table.description = f"Staging table for {table_name} MERGE dedup (auto-truncated)"
+        try:
+            client.create_table(staging_table, exists_ok=True)
+            logger.info(f"✅ Staging table {staging_ref} ready")
+        except Exception as e:
+            logger.error(f"❌ Failed to create staging table {staging_name}: {e}")
 
     # Step 3: Verify
     verify_setup(client)
