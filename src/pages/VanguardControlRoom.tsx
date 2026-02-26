@@ -520,7 +520,7 @@ export default function VanguardControlRoom() {
         : 'text-slate-500';
 
     return (
-        <div className="p-4 sm:p-8 h-full overflow-y-auto space-y-5 sm:space-y-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#060b13] to-black font-sans">
+        <div className="p-4 sm:p-8 h-full overflow-y-scroll space-y-5 sm:space-y-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#060b13] to-black font-sans">
 
             {/* Toast */}
             {toast && (
