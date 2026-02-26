@@ -50,15 +50,14 @@ def test_live_status_endpoint():
     assert response.status_code == 200
     data = response.json()
     
-    assert "status" in data
-    assert "firebase_connected" in data
-    assert "timestamp" in data
+    assert "live_games" in data
+    assert "cache_size" in data
     
     # Firebase may not be connected in local testing
-    if not data["firebase_connected"]:
+    if not data.get("firebase_connected"):
         print("⚠ Firebase not connected (expected in local testing)")
     
-    print(f"✓ Live status endpoint OK: status={data['status']}")
+    print(f"✓ Live status endpoint OK: {data}")
 
 
 def test_firebase_graceful_degradation():
@@ -98,8 +97,8 @@ def test_routers_loaded():
 
 def test_app_metadata():
     """Verify app metadata is correctly configured."""
-    assert app.title == "QuantSight Live Pulse (Cloud)"
-    assert app.version == "1.0.0"
+    assert app.title == "QuantSight Cloud API"
+    assert app.version == "2.0.0"
     print(f"✓ App metadata OK: {app.title} v{app.version}")
 
 

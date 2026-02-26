@@ -160,13 +160,6 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Admin injury routes not available: {e}")
 
-# Include Nexus service routes
-try:
-    from api.nexus_routes import router as nexus_router
-    app.include_router(nexus_router)
-    logger.info("✅ Nexus API routes registered (/nexus/*)")
-except ImportError as e:
-    logger.warning(f"⚠️ Nexus API routes not available: {e}")
 
 # Include Aegis simulation routes
 try:
