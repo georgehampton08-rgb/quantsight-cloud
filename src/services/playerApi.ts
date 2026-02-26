@@ -74,7 +74,8 @@ declare global {
     }
 }
 
-import { ApiContract, Normalizers } from '../api/client';
+import { ApiContract } from '../api/client';
+import { normalizePlayerProfile, normalizeMatchupResult } from '../api/normalizers';
 
 export const PlayerApi = {
     search: async (query: string) => {
@@ -87,7 +88,7 @@ export const PlayerApi = {
         const res = await ApiContract.execute<PlayerProfile>('getPlayerProfile', {
             path: `players/${id}`
         }, [id]);
-        return Normalizers.profile(res.data) as PlayerProfile;
+        return normalizePlayerProfile(res.data) as PlayerProfile;
     },
     analyzeMatchup: async (playerId: string, opponent: string) => {
         // Defensive: extract ID if opponent is accidentally passed as an object
@@ -95,7 +96,7 @@ export const PlayerApi = {
         const res = await ApiContract.execute<MatchupResult>('analyzeMatchup', {
             path: `matchup/${playerId}/${opponentId}`
         }, [playerId, opponentId]);
-        return res.data;
+        return normalizeMatchupResult(res.data) as MatchupResult;
     },
     saveKeys: async (apiKey: string) => {
         const res = await ApiContract.execute<{ status: string, message: string }>('saveKeys', {

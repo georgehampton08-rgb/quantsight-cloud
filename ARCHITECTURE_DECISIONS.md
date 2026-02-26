@@ -169,3 +169,14 @@ PREDICTIVE_OPEN ──[error rate drops < 20%]──→ CLOSED
 - BigQuery API must be enabled in GCP project
 - Service account needs `bigquery.dataEditor` role
 - Load jobs are atomic (all-or-nothing), safe for idempotent reruns
+
+---
+
+## ADR-008: Electron IPC Parity Audit Deferred
+
+**Date:** 2026-02-26  
+**Status:** Deferred  
+**Decision:** Phase 4 Electron parity audit deferred pending confirmation of active desktop app usage.  
+**Context:** Desktop app IPC surface has not been verified against current backend route registry. Web fallback is active for all non-IPC endpoints. Application is primarily functioning as a PWA/Cloud Twin web deployment with zero active Electron artifacts or build tools in current package execution context.  
+**Consequences:** Desktop mode may silently use web fallback for routes that could have IPC mappings. No user-facing breakage expected since FAIL OPEN is implemented.  
+**Revisit Trigger:** When desktop app has confirmed active users.

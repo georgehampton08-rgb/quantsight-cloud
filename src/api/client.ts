@@ -45,6 +45,13 @@ export const ApiContract = {
         const _meta = { timestamp: Date.now() } as any;
 
         // 1. Try IPC Direct mapping
+        // DORMANT: Electron IPC transport.
+        // App runs as PWA only (quantsight-pwa@2.0.0).
+        // No electron binary exists in current build.
+        // IPC branch preserved for future desktop
+        // reactivation. See ADR-008.
+        // All requests use web transport via
+        // VITE_API_BASE_URL and VITE_PULSE_API_URL.
         if (ipcMethod && window.electronAPI && typeof (window.electronAPI as any)[ipcMethod] === 'function') {
             try {
                 const data = await (window.electronAPI as any)[ipcMethod](...args);

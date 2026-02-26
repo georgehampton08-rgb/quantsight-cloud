@@ -11,6 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { ApiContract } from '../api/client';
+import { normalizeSimulationResult } from '../api/normalizers';
 
 // Inlined from removed aegisApi.ts
 interface StatProjection { points: number; rebounds: number; assists: number; threes: number;[key: string]: number; }
@@ -70,38 +71,34 @@ export function useSimulation({
         setError(null);
 
         try {
-            const base = import.meta.env.VITE_API_URL || '';
+            const base = import.meta.env.VITE_API_URL || 'https://quantsight-cloud-458498663186.us-central1.run.app';
             const params = new URLSearchParams({
-                player_id: playerId,
                 opponent_id: targetOpponent,
                 ...(ptsLine !== undefined && { pts_line: String(ptsLine) }),
                 ...(rebLine !== undefined && { reb_line: String(rebLine) }),
                 ...(astLine !== undefined && { ast_line: String(astLine) }),
             });
-            const res = await fetch(`${base}/aegis/simulate?${params}`);
-            if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
-            const result: SimulationResult & { error?: string } = await res.json();
+            const res = await fetch(`${base}/aegis/simulate/${playerId}?${params}`);
 
-            // Stub detection
-            const isStub = result.projections &&
-                Object.values(result.projections.expected_value).every(val => val === 0) &&
-                result.confidence?.score === 0;
-
-            if (result.error) {
-                setSimulation(result);
-                setError(result.error);
-            } else if (isStub) {
-                setSimulation({
-                    available: false,
-                    reason: "simulation_disabled",
-                    feature_flag: "FEATURE_AEGIS_SIM_ENABLED",
-                    projections: null,
-                    confidence: null
-                });
-            } else {
-                setSimulation(result);
+            if (!res.ok) {
+                if (res.status === 503) {
+                    const errorBody = await res.json().catch(() => null);
+                    // Pass the 503 detail body to normalizer
+                    const normalized = normalizeSimulationResult(errorBody);
+                    setSimulation(normalized as any);
+                    setError(null);
+                    return;
+                }
+                throw new Error(`Simulation failed: ${res.status}`);
             }
+
+            const result = await res.json();
+            const normalized = normalizeSimulationResult(result);
+            setSimulation(normalized as any);
+            setError(null);
+
         } catch (e: any) {
+            setSimulation(normalizeSimulationResult({ error: e.message }) as any);
             setError(e.message || 'Simulation failed');
             console.error('[useSimulation] Error:', e);
         } finally {

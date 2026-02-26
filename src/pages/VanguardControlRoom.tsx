@@ -8,6 +8,7 @@ import { ApiContract } from '../api/client';
 import { VanguardLearningExport } from '../components/vanguard/VanguardLearningExport';
 import { VanguardArchivesViewer } from '../components/vanguard/VanguardArchivesViewer';
 import { VaccinePanel } from '../components/vanguard/VaccinePanel';
+import { normalizeVanguardIncidentList } from '../api/normalizers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Incident {
@@ -634,8 +635,8 @@ export default function VanguardControlRoom() {
             ]);
 
             if (incRes.data) {
-                const raw = incRes.data as any;
-                setIncidents(Array.isArray(raw) ? raw : (raw.incidents || []));
+                const normalized = normalizeVanguardIncidentList(incRes.data);
+                setIncidents(normalized);
             }
             if (statsRes.data) setStats(statsRes.data);
             if (learnRes.data) setLearning(learnRes.data);
