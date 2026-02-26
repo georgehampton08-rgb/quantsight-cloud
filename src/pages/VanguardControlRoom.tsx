@@ -5,6 +5,9 @@ import {
     ChevronUp, Clock, Hash
 } from 'lucide-react';
 import { ApiContract } from '../api/client';
+import { VanguardLearningExport } from '../components/vanguard/VanguardLearningExport';
+import { VanguardArchivesViewer } from '../components/vanguard/VanguardArchivesViewer';
+import { VaccinePanel } from '../components/vanguard/VaccinePanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Incident {
@@ -349,8 +352,8 @@ function AnalysisModal({
                             {/* ── Vaccine Recommendation ── */}
                             {vaccineRec && (
                                 <div className={`rounded-2xl border p-5 relative overflow-hidden ${vaccineRec.feasible
-                                        ? 'bg-emerald-950/30 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
-                                        : 'bg-slate-800/40 border-slate-700/40'
+                                    ? 'bg-emerald-950/30 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                                    : 'bg-slate-800/40 border-slate-700/40'
                                     }`}>
                                     <div className="flex items-center gap-3 mb-4">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${vaccineRec.feasible ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-700/50 border border-slate-600/30'
@@ -368,8 +371,8 @@ function AnalysisModal({
                                                 </span>
                                                 {vaccineRec.patch_risk && vaccineRec.feasible && (
                                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.patch_risk === 'low' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                            vaccineRec.patch_risk === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                                                'bg-red-500/20 text-red-400'
+                                                        vaccineRec.patch_risk === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                                            'bg-red-500/20 text-red-400'
                                                         }`}>
                                                         {vaccineRec.patch_risk.toUpperCase()} RISK
                                                     </span>
@@ -952,10 +955,9 @@ export default function VanguardControlRoom() {
 
             {/* ── ARCHIVES TAB ──────────────────────────────────────────────── */}
             {activeTab === 'ARCHIVES' && (
-                <div className="flex flex-col items-center justify-center py-20 sm:py-32 rounded-2xl bg-slate-800/30 border border-slate-700/50">
-                    <FileKey className="w-14 h-14 sm:w-16 sm:h-16 text-slate-500 mb-6" />
-                    <h2 className="text-white font-bold text-lg sm:text-xl mb-2">Archive Management</h2>
-                    <p className="text-slate-400 text-sm">Weekly archives · 7 day retention</p>
+                <div className="space-y-6">
+                    <VanguardArchivesViewer />
+                    <VaccinePanel />
                 </div>
             )}
 
@@ -996,6 +998,7 @@ export default function VanguardControlRoom() {
                                     </div>
                                 )}
                             </div>
+                            <VanguardLearningExport />
                         </>
                     )}
                 </div>

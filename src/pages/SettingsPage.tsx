@@ -3,6 +3,7 @@ import { Settings, Info } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { PlayerApi } from '../services/playerApi';
 import { VanguardHealthWidget } from '../components/vanguard/VanguardHealthWidget';
+import { HealthDepsPanel } from '../components/settings/HealthDepsPanel';
 
 export default function SettingsPage() {
     const { showToast } = useToast();
@@ -38,6 +39,9 @@ export default function SettingsPage() {
 
                 {/* Vanguard Health Dashboard Replacement */}
                 <VanguardHealthWidget />
+
+                {/* Health Dependencies Panel */}
+                <HealthDepsPanel />
 
                 {/* AI Configuration - Styled like target image */}
                 <section className="p-6 rounded-xl border border-slate-700/50 bg-[#121b2d]">
