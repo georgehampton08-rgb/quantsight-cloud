@@ -16,6 +16,7 @@ import logging
 from .knowledge_base import CodebaseKnowledgeBase
 from ..services.github_context import GitHubContextFetcher
 from ..core.config import get_vanguard_config
+from .subsystem_oracle import get_oracle
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class IncidentAnalysis(BaseModel):
     expires_at: str
     cached: bool = False
     code_references: List[str] = []
-    prompt_version: str = "2.0"
+    prompt_version: str = "3.0"
     model_id: str = ""
     input_hash: str = ""
     incident_last_seen: str = ""
@@ -49,13 +50,14 @@ class VanguardAIAnalyzer:
     Gemini-powered incident analyzer with intelligent caching
     """
 
-    PROMPT_VERSION = "2.0"  # Bumped: vaccine_recommendation + labels + error_message in prompt
+    PROMPT_VERSION = "3.0"  # Bumped: Injects live Vanguard Subsystem Telemetry
 
     def __init__(self):
         self.kb = CodebaseKnowledgeBase()
         self.github = GitHubContextFetcher()
         self.client = None
         self._genai_loaded = False
+        self.oracle = get_oracle()
 
         # Load config for model name
         config = get_vanguard_config()
@@ -99,11 +101,12 @@ LIVE CODE CONTEXT (from GitHub — use for exact file references)
 {code_contexts}
 
 ═══════════════════════════════════════════════════════════════
-SYSTEM OPERATING STATE
+VANGUARD SUBSYSTEM TELEMETRY (LIVE SNAPSHOT)
 ═══════════════════════════════════════════════════════════════
-Vanguard Mode : {vanguard_mode}
-Revision      : {revision}
-Known Routes  : {available_routes}
+{subsystem_telemetry}
+
+System Operating Mode: {vanguard_mode}
+Revision             : {revision}
 
 ═══════════════════════════════════════════════════════════════
 VACCINE SUBSYSTEM BRIEF
@@ -124,15 +127,17 @@ ANALYSIS REQUIREMENTS
 ═══════════════════════════════════════════════════════════════
 Be technically precise. Name exact files, functions, and line numbers when visible in the
 stack trace or code context. Treat this like a senior SRE writing a production post-mortem.
+Cross-reference the incident with the Subsystem Telemetry: e.g., if Firestore is degraded
+in the live snapshot, that informs the root cause.
 
 {{
-  "root_cause": "<2-4 sentences. Name the exact file, function, and causal chain. E.g. 'vanguard/api/admin_routes.py::resolve_incident (line 189) attempted storage.resolve(fp) but storage was None because get_incident_storage() returned a mock in SILENT_OBSERVER mode. The None propagated into Firestore client.'>",
+  "root_cause": "<2-4 sentences. Name the exact file, function, and causal chain. Note any subsystem degradation from the telemetry that correlates with the error.>",
 
   "error_message_decoded": "<1-2 sentences. Decode the raw error message: what does it actually mean in plain engineering terms and why does it happen in this service?>",
 
-  "impact": "<1-2 sentences. Quantify: which users/features are degraded, at what rate. E.g. 'All resolve operations on the Vanguard admin panel are failing, affecting 100% of manual incident resolutions. Incidents are accumulating unresolved.'>",
+  "impact": "<1-2 sentences. Quantify: which users/features are degraded, at what rate.>",
 
-  "middleware_insight": "<1-2 sentences. Based on the labels (service, component, root_cause, category), what does the middleware tell us about which subsystem owns this error and its blast radius?>",
+  "middleware_insight": "<1-2 sentences. Based on the labels, what does the middleware tell us about which subsystem owns this error and its blast radius?>",
 
   "recommended_fix": [
     "IMMEDIATE: <tactical mitigation you can do right now without a code deploy>",
@@ -140,16 +145,16 @@ stack trace or code context. Treat this like a senior SRE writing a production p
     "PREVENTION: <monitoring alert, test case, or architecture guard to prevent recurrence>"
   ],
 
-  "timeline_analysis": "<2-3 sentences. Analyze the first_seen → last_seen gap. Is this a one-shot error, a recurring burst, or a slowly escalating issue? What does the hit_count pattern suggest about underlying stability?>",
+  "timeline_analysis": "<2-3 sentences. Analyze the first_seen → last_seen gap against the live telemetry count.>",
 
   "vaccine_recommendation": {{
     "feasible": true,
     "target_file": "<relative path like vanguard/api/admin_routes.py — MUST be within allowed roots, or null if not feasible>",
     "target_function": "<function name>",
     "target_line_hint": <line number from stacktrace, or 0 if unknown>,
-    "change_description": "<1-2 sentences. Describe the exact minimal change: e.g. 'Add a null-guard: if storage is None: raise HTTPException(503) before calling storage.resolve()'>",
+    "change_description": "<1-2 sentences. Describe the exact minimal change.>",
     "patch_risk": "<low|medium|high>",
-    "skip_reason": "<only if feasible=false: why Vaccine cannot auto-patch this — e.g. 'Root cause is infrastructure config, not patchable code'>"
+    "skip_reason": "<only if feasible=false: why Vaccine cannot auto-patch this>"
   }},
 
   "ready_to_resolve": false,
@@ -158,13 +163,12 @@ stack trace or code context. Treat this like a senior SRE writing a production p
 }}
 
 RESOLUTION RULE: Set ready_to_resolve=true ONLY when ALL of:
-  (1) >= 30 minutes since last_seen with no new occurrences
-  (2) Evidence that root cause was addressed (new deployment, config fix, or code change)
-  (3) confidence >= 70
+1. >= 30 minutes since last_seen with no new occurrences
+2. Evidence that root cause was addressed (new deployment, config fix, or code change)
+3. confidence >= 70
 
 Return ONLY valid JSON. No markdown fences, no extra prose.
 """
-    
     def _lazy_load_genai(self):
         """Lazy load genai to prevent import errors from breaking vanguard"""
         if self._genai_loaded:
@@ -249,13 +253,18 @@ Return ONLY valid JSON. No markdown fences, no extra prose.
         except Exception as e:
             logger.error(f"[AI_DEBUG] GitHub fetch failed: {e}")
             code_contexts = []
+            
+        # ── Collect live subsystem telemetry snapshot ──
+        logger.info(f"[AI_DEBUG] Collecting subsystem telemetry via Oracle for {fingerprint}")
+        oracle_snapshot = await self.oracle.collect(fingerprint, storage)
         
-        # Build AI prompt with code context and system context
+        # Build AI prompt with code context, system context, and live telemetry
         logger.info(f"[AI_DEBUG] Building prompt with {len(code_contexts)} code contexts")
         prompt = await self._build_analysis_prompt(
             incident=incident, 
             context=context, 
             code_contexts=code_contexts,
+            oracle_snapshot=oracle_snapshot,
             system_context=kwargs.get('system_context')
         )
         logger.info(f"[AI_DEBUG] Prompt built: {len(prompt)} chars")
@@ -291,7 +300,14 @@ Return ONLY valid JSON. No markdown fences, no extra prose.
             logger.error(f"[AI_DEBUG] Full traceback:\n{traceback.format_exc()}")
             return self._create_fallback_analysis(incident)
     
-    async def _build_analysis_prompt(self, incident: Dict, context: str, code_contexts: List[Dict] = None, **kwargs) -> str:
+    async def _build_analysis_prompt(
+        self, 
+        incident: Dict, 
+        context: str, 
+        code_contexts: List[Dict] = None, 
+        oracle_snapshot = None, 
+        **kwargs
+    ) -> str:
         """Build comprehensive analysis prompt for Gemini"""
 
         # Get metadata / traceback
@@ -310,6 +326,11 @@ Return ONLY valid JSON. No markdown fences, no extra prose.
             labels_text = "\n".join(f"  {k}: {v}" for k, v in labels.items())
         else:
             labels_text = "  (none — labels not captured for this incident)"
+            
+        # Format live telemetry
+        telemetry_text = "N/A (Oracle skipped)"
+        if oracle_snapshot:
+            telemetry_text = oracle_snapshot.to_prompt_text()
 
         prompt = self.ANALYSIS_PROMPT_TEMPLATE.format(
             context=context,
@@ -324,10 +345,10 @@ Return ONLY valid JSON. No markdown fences, no extra prose.
             last_seen=incident.get('last_seen', incident.get('timestamp', 'unknown')),
             traceback=traceback_text,
             code_contexts=self._format_code_contexts(code_contexts or []),
+            subsystem_telemetry=telemetry_text,
             system_time=datetime.now(timezone.utc).isoformat(),
             vanguard_mode=kwargs.get('system_context', {}).get('mode', 'UNKNOWN'),
             revision=kwargs.get('system_context', {}).get('revision', 'local'),
-            available_routes=json.dumps(kwargs.get('system_context', {}).get('routes', [])[:30])
         )
         return prompt.strip()
     
