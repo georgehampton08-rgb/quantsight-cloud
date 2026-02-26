@@ -51,19 +51,21 @@ export function VanguardArchivesViewerContent() {
     };
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden relative">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5 border-b border-slate-700/50 bg-slate-900/50">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-                        <Archive className="w-4 h-4 text-blue-400" />
-                    </div>
-                    <div>
-                        <h3 className="text-white font-bold text-base">Security & Audit Logs</h3>
-                        <p className="text-slate-500 text-xs">Immutable Vanguard operation history</p>
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden relative flex flex-col h-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5 border-b border-slate-700/50 bg-slate-900/50 flex-shrink-0">
+                <div className="flex items-center justify-between w-full sm:w-auto">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                            <Archive className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold text-base">Security & Audit Logs</h3>
+                            <p className="text-slate-500 text-xs">Immutable Vanguard operation history</p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
                     <select
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
@@ -83,7 +85,7 @@ export function VanguardArchivesViewerContent() {
                 </div>
             </div>
 
-            <div className="divide-y divide-slate-700/30 max-h-[600px] overflow-y-auto">
+            <div className="flex-1 min-h-[300px] sm:min-h-0 overflow-y-auto divide-y divide-slate-700/30">
                 {loading ? (
                     <div className="p-12 text-center text-slate-500 animate-pulse">Scanning archives...</div>
                 ) : archives.length === 0 ? (

@@ -27,7 +27,7 @@ export default function MatchupRadar({ playerStats, opponentDefense }: MatchupRa
     ];
 
     return (
-        <div className="w-full h-[300px] relative">
+        <div className="w-full aspect-square max-h-[400px] relative">
             <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
                     <PolarGrid stroke="#334155" />

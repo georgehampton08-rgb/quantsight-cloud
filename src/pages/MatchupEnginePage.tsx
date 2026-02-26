@@ -129,17 +129,17 @@ export default function MatchupEnginePage() {
             </header>
 
             {selectedPlayer ? (
-                <div className="space-y-6 animate-in fade-in duration-500 border border-slate-700/50 rounded-xl p-8 bg-slate-900/30">
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-6 animate-in fade-in duration-500 border border-slate-700/50 rounded-xl p-4 sm:p-8 bg-slate-900/30">
                     {matchupMode === 'team' ? (
                         /* Team vs Player Mode */
-                        <>
-                            <div className="flex justify-between items-center mb-6">
-                                <div className="flex items-center gap-4">
-                                    <img src={getPlayerAvatarUrl(selectedPlayer?.id)} className="w-16 h-16 rounded-full border-2 border-financial-accent object-cover" />
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-white">{selectedPlayer?.name || 'Unknown Player'}</h2>
+                        <div className="flex flex-col h-full">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
+                                    <img src={getPlayerAvatarUrl(selectedPlayer?.id)} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-financial-accent object-cover flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className="text-xl sm:text-2xl font-bold text-white truncate">{selectedPlayer?.name || 'Unknown Player'}</h2>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-slate-400 text-sm">VS</span>
+                                            <span className="text-slate-400 text-xs sm:text-sm flex-shrink-0">VS</span>
                                             <select
                                                 value={opponentId}
                                                 onChange={(e) => {
@@ -147,7 +147,7 @@ export default function MatchupEnginePage() {
                                                     setOpponentId(e.target.value);
                                                     setOpponentAbbr(team?.abbreviation || 'OPP');
                                                 }}
-                                                className="bg-slate-800 border border-slate-700 rounded text-sm text-financial-accent px-2 py-1 outline-none focus:border-financial-accent max-h-48 overflow-y-auto"
+                                                className="bg-slate-800 border border-slate-700 rounded text-xs sm:text-sm text-financial-accent px-2 py-1 outline-none focus:border-financial-accent w-full sm:w-auto overflow-hidden text-ellipsis whitespace-nowrap"
                                             >
                                                 <option value="">Select Team...</option>
                                                 {teams.length > 0 ? (
@@ -167,42 +167,44 @@ export default function MatchupEnginePage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <div className="text-xs text-slate-500 uppercase">System Logic</div>
-                                    <div className="text-orange-400 font-bold">
+                                <div className="text-left sm:text-right w-full sm:w-auto bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-lg sm:rounded-none">
+                                    <div className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider mb-1">System Logic</div>
+                                    <div className="text-orange-400 font-bold text-sm sm:text-base">
                                         {loading ? "Computing..." : "Live Analysis Active"}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="h-[400px] flex items-center justify-center">
+                            <div className="flex-1 min-h-0 flex items-center justify-center -mx-4 sm:mx-0 relative">
                                 {loading ? (
-                                    <div className="text-financial-accent animate-pulse">Running Simulation...</div>
+                                    <div className="text-financial-accent animate-pulse p-8">Running Simulation...</div>
                                 ) : analysis ? (
-                                    <MatchupRadar
-                                        playerStats={radarData.player || {
-                                            scoring: 50,
-                                            playmaking: 50,
-                                            rebounding: 50,
-                                            defense: 50,
-                                            pace: 50
-                                        }}
-                                        opponentDefense={radarData.opponent || {
-                                            scoring: 50,
-                                            playmaking: 50,
-                                            rebounding: 50,
-                                            defense: 50,
-                                            pace: 50
-                                        }}
-                                    />
+                                    <div className="w-full max-w-full overflow-hidden h-full min-h-[300px] flex items-center justify-center">
+                                        <MatchupRadar
+                                            playerStats={radarData.player || {
+                                                scoring: 50,
+                                                playmaking: 50,
+                                                rebounding: 50,
+                                                defense: 50,
+                                                pace: 50
+                                            }}
+                                            opponentDefense={radarData.opponent || {
+                                                scoring: 50,
+                                                playmaking: 50,
+                                                rebounding: 50,
+                                                defense: 50,
+                                                pace: 50
+                                            }}
+                                        />
+                                    </div>
                                 ) : (
-                                    <div className="text-red-400">Analysis Data Unavailable</div>
+                                    <div className="text-red-400 p-8">Analysis Data Unavailable</div>
                                 )}
                             </div>
-                        </>
+                        </div>
                     ) : (
                         /* Player vs Player Mode - H2H */
-                        <div className="space-y-6">
+                        <div className="space-y-6 flex flex-col h-full">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <Zap className="w-5 h-5 text-orange-400" />

@@ -216,12 +216,14 @@ export default function PlayerProfilePage() {
     ] as const;
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto pb-12 p-6">
-                <HeroSection player={profile} />
+        <div className="h-full overflow-y-auto flex flex-col">
+            <div className="max-w-7xl mx-auto w-full pb-12 p-4 sm:p-6 flex-1 min-h-0 flex flex-col">
+                <div className="flex-shrink-0">
+                    <HeroSection player={profile} />
+                </div>
 
                 {/* Tab Navigation */}
-                <div className="flex gap-1 sm:gap-2 border-b border-slate-800 pb-4 mb-6 sm:mb-8 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                <div className="flex-shrink-0 flex gap-1 sm:gap-2 border-b border-slate-800 pb-4 mb-6 sm:mb-8 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -239,7 +241,7 @@ export default function PlayerProfilePage() {
                 </div>
 
                 {/* Tab Content */}
-                <div className="animate-in fade-in duration-300">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 animate-in fade-in duration-300">
                     {activeTab === 'Overview' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="space-y-6">
