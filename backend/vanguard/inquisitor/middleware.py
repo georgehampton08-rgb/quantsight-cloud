@@ -168,52 +168,72 @@ class VanguardTelemetryMiddleware(BaseHTTPMiddleware):
         # Get request ID from context (set by RequestIDMiddleware)
         request_id = get_request_id()
         
-        # ✅ PHASE 4: Check quarantine and rate limits BEFORE processing request
         endpoint = request.url.path
-        
-        # Check if endpoint is quarantined
-        storage = _safe_get_storage()
-        if storage is not None and hasattr(storage, "get_document"):
-            try:
-                quarantine_doc = await storage.get_document(
-                    collection="vanguard_quarantine",
-                    document_id=endpoint.replace("/", "_")
-                )
-                
-                if quarantine_doc and quarantine_doc.get("active"):
-                    from fastapi.responses import JSONResponse
-                    logger.warning("quarantine_block", endpoint=endpoint)
-                    return JSONResponse(
-                        status_code=503,
-                        content={
-                            "error": "Service temporarily unavailable",
-                            "reason": "Endpoint quarantined by Vanguard Surgeon",
-                            "contact": "Check Vanguard Control Room for details"
-                        }
-                    )
-            except Exception as quarantine_error:
-                logger.error("quarantine_check_failed", error=str(quarantine_error))
-        
-            # Check rate limits
-            try:
-                import random
-                rate_limit_doc = await storage.get_document(
-                    collection="vanguard_rate_limits",
-                    document_id=endpoint.replace("/", "_")
-                )
-                
-                if rate_limit_doc and rate_limit_doc.get("active"):
-                    limit_pct = rate_limit_doc.get("limit_pct", 100)
-                    # Drop requests above limit percentage
-                    if random.randint(1, 100) > limit_pct:
-                        from fastapi.responses import JSONResponse
-                        logger.info("rate_limit_drop", endpoint=endpoint, limit=limit_pct)
-                        return JSONResponse(
-                            status_code=429,
-                            content={"error": "Too many requests", "retry_after": 60}
-                        )
-            except Exception as rate_limit_error:
-                logger.error("rate_limit_check_failed", error=str(rate_limit_error))
+
+        # ── PHASE 4 PRE-CONDITION: Firestore quarantine hot-path NEUTRALIZED ──────
+        # This block previously executed a synchronous Firestore read on EVERY
+        # request to check if an endpoint was quarantined or rate-limited.
+        #
+        # WHY IT WAS DISABLED (2026-02-26, Phase 4 pre-conditions commit):
+        #   1. Latency: Every request paid a ~10–50ms Firestore RTT even when
+        #      zero endpoints were quarantined.
+        #   2. Conflict: Step 4.4 (SurgeonMiddleware) implements an in-memory
+        #      sliding-window circuit breaker (O(1) dict lookup).  Running both
+        #      systems simultaneously would produce inconsistent state — an
+        #      endpoint could be allowed by the in-memory check and blocked by
+        #      a stale Firestore doc (or vice versa).
+        #   3. Redundancy: SurgeonMiddleware runs BEFORE InquisitorMiddleware in
+        #      the stack, so by the time this code executes the circuit check has
+        #      already happened.
+        #
+        # MIGRATION PATH:
+        #   - Step 4.4 (SurgeonMiddleware) is the authoritative circuit gate.
+        #   - The Firestore `vanguard_quarantine` and `vanguard_rate_limits`
+        #     collections remain intact (Governance Rule 3: 14-day zero-caller
+        #     confirmation required before schema deletion).
+        #   - After Step 4.8 validation passes and VANGUARD_MODE=CIRCUIT_BREAKER
+        #     is stable ≥ 14 days, this block and the two Firestore collections
+        #     can be permanently removed.
+        #
+        # storage = _safe_get_storage()
+        # if storage is not None and hasattr(storage, "get_document"):
+        #     try:
+        #         quarantine_doc = await storage.get_document(
+        #             collection="vanguard_quarantine",
+        #             document_id=endpoint.replace("/", "_")
+        #         )
+        #         if quarantine_doc and quarantine_doc.get("active"):
+        #             from fastapi.responses import JSONResponse
+        #             logger.warning("quarantine_block", endpoint=endpoint)
+        #             return JSONResponse(
+        #                 status_code=503,
+        #                 content={
+        #                     "error": "Service temporarily unavailable",
+        #                     "reason": "Endpoint quarantined by Vanguard Surgeon",
+        #                     "contact": "Check Vanguard Control Room for details"
+        #                 }
+        #             )
+        #     except Exception as quarantine_error:
+        #         logger.error("quarantine_check_failed", error=str(quarantine_error))
+        #
+        #     try:
+        #         import random
+        #         rate_limit_doc = await storage.get_document(
+        #             collection="vanguard_rate_limits",
+        #             document_id=endpoint.replace("/", "_")
+        #         )
+        #         if rate_limit_doc and rate_limit_doc.get("active"):
+        #             limit_pct = rate_limit_doc.get("limit_pct", 100)
+        #             if random.randint(1, 100) > limit_pct:
+        #                 from fastapi.responses import JSONResponse
+        #                 logger.info("rate_limit_drop", endpoint=endpoint, limit=limit_pct)
+        #                 return JSONResponse(
+        #                     status_code=429,
+        #                     content={"error": "Too many requests", "retry_after": 60}
+        #                 )
+        #     except Exception as rate_limit_error:
+        #         logger.error("rate_limit_check_failed", error=str(rate_limit_error))
+        # ── END PHASE 4 PRE-CONDITION NEUTRALIZATION ──────────────────────────────
 
         
         # Check if we should fully trace this request

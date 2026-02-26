@@ -1,7 +1,29 @@
 """
-Circuit Breaker
-===============
-Endpoint quarantine logic with OPEN/HALF_OPEN/CLOSED states.
+Circuit Breaker — 1ST-GEN STUB (DEPRECATED)
+============================================
+⚠️  PHASE 4 PRE-CONDITION: DO NOT EXTEND OR IMPORT FOR NEW WORK.
+
+This file is the Phase 3 circuit breaker stub.  It contains a critical
+semantic inversion: OPEN = healthy and CLOSED = quarantined, which is the
+exact OPPOSITE of industry convention and the Phase 4 spec:
+
+    Phase 4 spec / industry standard:
+        CLOSED   = healthy, traffic passes through
+        OPEN     = quarantined, traffic blocked
+        HALF_OPEN = probe state, one request allowed
+
+    This file (1st-gen / WRONG):
+        OPEN   = healthy   ← inverted
+        CLOSED = blocked   ← inverted
+
+Step 4.3 replaces this file wholesale with a correct CLOSED→OPEN→HALF_OPEN
+state machine backed by the FailureTracker sliding window.
+
+This file is PRESERVED (not deleted) per Governance Rule 3:
+  No deletions without 14-day zero-caller confirmation.
+Callers of get_circuit_breaker() will be migrated in Step 4.3.
+
+Flagged: 2026-02-26 by Phase 4 Pre-conditions commit.
 """
 
 import time

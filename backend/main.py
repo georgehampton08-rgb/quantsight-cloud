@@ -425,6 +425,27 @@ async def health_deps():
         return {"status": "Vanguard not available"}
 
 
+@app.get("/healthz")
+async def healthz():
+    """
+    Phase 4 blast-radius anchor.
+    Thin alias for /readyz — returns 200 OK if Firestore is reachable.
+    SurgeonMiddleware hardcodes /healthz in its immune list so it can
+    NEVER be quarantined even when all other circuits are OPEN.
+    Cloud Run health probes may target either /readyz or /healthz;
+    this route ensures both are always safe.
+    """
+    try:
+        from vanguard.health_monitor import get_health_monitor
+        monitor = get_health_monitor()
+        result = await asyncio.wait_for(monitor.check_firestore(), timeout=2.0)
+        if result.get("status") == "critical":
+            return Response(status_code=503, content=f"Service Unavailable: {result.get('error')}")
+        return Response(status_code=200, content="OK")
+    except Exception as e:
+        return Response(status_code=503, content=f"Service Unavailable: {e}")
+
+
 
 @app.get("/status")
 async def status():

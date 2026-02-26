@@ -29,6 +29,13 @@ _FLAG_DEFAULTS: dict = {
     "FEATURE_MIDDLEWARE_V2":           False,   # Upgraded middleware event schema
     "FEATURE_NBA_HARDENED_CLIENT":     False,   # Hardened NBA API connector
     "VANGUARD_VACCINE_ENABLED":        False,   # Vaccine patch application (existing)
+    # ── Phase 4: Circuit Breaker Activation ─────────────────────────────────
+    # Each flag is AND-gated with VANGUARD_MODE (must be CIRCUIT_BREAKER or
+    # FULL_SOVEREIGN).  Flags allow independent per-subsystem rollback without
+    # demoting the entire Vanguard mode.
+    "FEATURE_SURGEON_MIDDLEWARE":      False,   # SurgeonMiddleware in-memory circuit checks
+    "FEATURE_LOAD_SHEDDER":            False,   # LoadSheddingMiddleware (psutil memory guard)
+    "FEATURE_INDEX_DOCTOR":            False,   # Auto-PR for missing Firestore indexes
 }
 
 _TRUTHY = {"1", "true", "yes", "on"}
