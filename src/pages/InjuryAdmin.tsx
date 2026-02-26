@@ -45,6 +45,7 @@ export default function InjuryAdmin() {
     const [playerSearch, setPlayerSearch] = useState('');
     const [searchResults, setSearchResults] = useState<PlayerProfile[]>([]);
     const [showSearchResults, setShowSearchResults] = useState(false);
+    const [filterTeam, setFilterTeam] = useState<string>('ALL');
 
     const [formData, setFormData] = useState<FormData>({
         player_id: '',
@@ -172,6 +173,10 @@ export default function InjuryAdmin() {
         setMessage({ type, text });
         setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     };
+
+    const filteredInjuries = filterTeam === 'ALL'
+        ? injuries
+        : injuries.filter(i => i.team_abbr === filterTeam);
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
@@ -314,25 +319,42 @@ export default function InjuryAdmin() {
 
                 {/* Current Injuries - Scrollable */}
                 <Card className="bg-slate-800/50 border-slate-700">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <CardTitle className="text-blue-400">Current Injuries</CardTitle>
-                        <Button
-                            onClick={loadInjuries}
-                            disabled={loading}
-                            variant="outline"
-                            size="sm"
-                            className="border-slate-600"
-                        >
-                            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                            Refresh
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Select
+                                value={filterTeam}
+                                onValueChange={setFilterTeam}
+                            >
+                                <SelectTrigger className="bg-slate-900 border-slate-600 w-32 h-9">
+                                    <SelectValue placeholder="Filter Team" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Teams</SelectItem>
+                                    {NBA_TEAMS.map(team => (
+                                        <SelectItem key={team} value={team}>{team}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Button
+                                onClick={loadInjuries}
+                                disabled={loading}
+                                variant="outline"
+                                size="sm"
+                                className="border-slate-600"
+                            >
+                                <RefreshCw className={`w-4 h-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                <span className="hidden sm:inline">Refresh</span>
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-                            {injuries.length === 0 ? (
-                                <p className="text-slate-400 text-center py-8">No injuries to display</p>
+                        <div className="max-h-96 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-700">
+                            {filteredInjuries.length === 0 ? (
+                                <p className="text-slate-400 text-center py-8">No injuries found matching criteria</p>
                             ) : (
-                                injuries.map((inj) => (
+                                filteredInjuries.map((inj) => (
                                     <div
                                         key={inj.player_id}
                                         className="flex items-center justify-between p-4 bg-slate-900/50 border-l-4 border-red-500 rounded-r"
