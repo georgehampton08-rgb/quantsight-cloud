@@ -528,46 +528,51 @@ export default function VanguardControlRoom() {
             )}
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-                        <Activity className="w-7 h-7 sm:w-8 sm:h-8 text-[#2ad8a0]" />
+                    <h1 className="text-xl sm:text-3xl font-extrabold text-white flex items-center gap-2 sm:gap-3">
+                        <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-financial-accent" />
                         Vanguard Control Room
                     </h1>
-                    <p className="text-sm text-slate-400 mt-1 pl-1">System Health & Incident Management • v3.1.2</p>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 pl-0.5">System Health & Incident Management • v3.2.0</p>
                 </div>
                 <button
                     onClick={() => loadData(true)}
                     disabled={refreshing}
-                    className="self-start sm:self-auto flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-sm font-semibold tracking-wide"
+                    className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-lg bg-financial-accent/10 border border-financial-accent/40 text-financial-accent hover:bg-financial-accent/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide"
                 >
                     <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
 
-            {/* Tabs — scrollable on mobile */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
-                {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
-                    const isActive = activeTab === tab;
-                    let cls = "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-800 hover:text-slate-300";
-                    if (isActive) {
-                        if (tab === 'HEALTH') cls = "bg-emerald-400/20 text-emerald-400 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)]";
-                        else if (tab === 'INCIDENTS') cls = "bg-amber-400/20 text-amber-400 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.2)]";
-                        else if (tab === 'LEARNING') cls = "bg-[#2ad8a0] text-slate-900 border-[#2ad8a0] font-bold shadow-[0_0_20px_rgba(42,216,160,0.5)]";
-                        else if (tab === 'ARCHIVES') cls = "bg-blue-400/20 text-blue-400 border-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.2)]";
-                    }
-                    return (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
-                            className={`flex-shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg border text-xs tracking-widest font-bold transition-all flex items-center gap-2 ${cls}`}>
-                            {tab === 'HEALTH' && <Activity className="w-3 h-3" />}
-                            {tab === 'INCIDENTS' && <AlertTriangle className="w-3 h-3" />}
-                            {tab === 'ARCHIVES' && <FileKey className="w-3 h-3" />}
-                            {tab === 'LEARNING' && <Cpu className="w-3 h-3" />}
-                            {tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}
-                        </button>
-                    );
-                })}
+            {/* Tabs — adaptive: scrollable snap on mobile, equal-width on desktop */}
+            <div className="relative">
+                <div className="flex gap-1.5 sm:gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+                    {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
+                        const isActive = activeTab === tab;
+                        const baseClasses = "snap-start flex-shrink-0 sm:flex-1 px-3 sm:px-5 py-2.5 rounded-xl text-xs tracking-widest font-bold transition-all flex items-center justify-center gap-1.5 border";
+
+                        let activeCls = "bg-slate-800/50 text-slate-500 border-slate-700/40 hover:bg-slate-800 hover:text-slate-300";
+                        if (isActive) {
+                            if (tab === 'HEALTH') activeCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-[0_0_20px_rgba(0,229,160,0.15)]";
+                            else if (tab === 'INCIDENTS') activeCls = "bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]";
+                            else if (tab === 'ARCHIVES') activeCls = "bg-blue-500/15 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]";
+                            else if (tab === 'LEARNING') activeCls = "bg-financial-accent/15 text-financial-accent border-financial-accent/30 shadow-[0_0_20px_rgba(0,229,160,0.2)]";
+                        }
+                        return (
+                            <button key={tab} onClick={() => setActiveTab(tab)}
+                                className={`${baseClasses} ${activeCls}`}>
+                                {tab === 'HEALTH' && <Activity className="w-3.5 h-3.5" />}
+                                {tab === 'INCIDENTS' && <AlertTriangle className="w-3.5 h-3.5" />}
+                                {tab === 'ARCHIVES' && <FileKey className="w-3.5 h-3.5" />}
+                                {tab === 'LEARNING' && <Cpu className="w-3.5 h-3.5" />}
+                                <span className="hidden xs:inline">{tab === 'INCIDENTS' ? `INCIDENTS (${activeIncidents.length})` : tab}</span>
+                                <span className="xs:hidden">{tab === 'INCIDENTS' ? `${activeIncidents.length}` : tab.slice(0, 4)}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* ── HEALTH TAB ───────────────────────────────────────────────── */}
