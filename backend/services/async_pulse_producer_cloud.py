@@ -351,6 +351,14 @@ class CloudAsyncPulseProducer:
                 'changes': {},
             }
 
+            # Step 7: Phase 8 — WebSocket broadcast to subscribers
+            try:
+                from vanguard.core.feature_flags import flag
+                if flag("FEATURE_WEBSOCKET_ENABLED"):
+                    await self._ws_broadcast(games, all_leaders, live_games_list)
+            except Exception as e:
+                logger.debug(f"WS broadcast skipped: {e}")
+
         except Exception as e:
             logger.error(f"❌ Firebase update failed: {e}", exc_info=True)
     
@@ -465,6 +473,83 @@ class CloudAsyncPulseProducer:
         leaders.sort(key=lambda x: x['pie'], reverse=True)
         return leaders
     
+    async def _ws_broadcast(self, games, all_leaders, live_games_list):
+        """
+        Phase 8: Broadcast pulse data to WebSocket subscribers.
+        FAIL OPEN — broadcast errors never crash the producer cycle.
+        """
+        try:
+            from services.ws_connection_manager import get_ws_manager
+            from services.presence_manager import get_presence_manager
+
+            manager = get_ws_manager()
+            presence = get_presence_manager()
+
+            if manager.active_count == 0:
+                return  # No WebSocket clients — skip broadcast
+
+            # Broadcast leaders update (to all connected clients)
+            if all_leaders:
+                await manager.broadcast_to_subscribers(
+                    event_type="leaders_update",
+                    data={
+                        "leaders": all_leaders[:10],
+                        "cycle_id": self._update_count,
+                    },
+                )
+
+            # Broadcast per-team game updates
+            for game_data in live_games_list:
+                if game_data.get("status") != "LIVE":
+                    continue
+                game_payload = dict(game_data)
+                # Enrich with viewer count
+                try:
+                    viewers = await presence.get_viewers("game_id", game_data["game_id"])
+                    game_payload["viewers"] = viewers
+                except Exception:
+                    game_payload["viewers"] = 0
+
+                home = game_data.get("home_team", "")
+                away = game_data.get("away_team", "")
+                if home:
+                    await manager.broadcast_to_subscribers(
+                        event_type="game_update",
+                        data=game_payload,
+                        filter_key="team",
+                        filter_value=home,
+                    )
+                if away:
+                    await manager.broadcast_to_subscribers(
+                        event_type="game_update",
+                        data=game_payload,
+                        filter_key="team",
+                        filter_value=away,
+                    )
+
+            # Broadcast per-player updates
+            for player in all_leaders[:20]:  # Top 20 to avoid excessive broadcasts
+                player_payload = dict(player)
+                player_id_str = str(player.get("player_id", ""))
+                if not player_id_str:
+                    continue
+                # Enrich with viewer count
+                try:
+                    viewers = await presence.get_viewers("player_id", player_id_str)
+                    player_payload["viewers"] = viewers
+                except Exception:
+                    player_payload["viewers"] = 0
+
+                await manager.broadcast_to_subscribers(
+                    event_type="player_update",
+                    data=player_payload,
+                    filter_key="player_id",
+                    filter_value=player_id_str,
+                )
+
+        except Exception as e:
+            logger.debug(f"WS broadcast error (non-fatal): {e}")
+
     def get_latest_snapshot(self) -> Optional[Dict]:
         """Return the most recent live-data snapshot for SSE streaming."""
         return self._latest_snapshot

@@ -42,7 +42,7 @@ _FLAG_DEFAULTS: dict = {
     # ── Phase 6: gRPC Extraction + Bigtable ──────────────────────────────
     "FEATURE_GRPC_SERVER":              False,   # Embedded Vanguard gRPC server (port 50051)
     "FEATURE_BIGTABLE_WRITES":          False,   # Bigtable write path for pulse data
-    "FEATURE_WEBSOCKET_ENABLED":        False,   # WebSocket upgrade path (stub only)
+    "FEATURE_WEBSOCKET_ENABLED":        True,    # WebSocket full-duplex (Phase 8 ACTIVE)
 }
 
 _TRUTHY = {"1", "true", "yes", "on"}

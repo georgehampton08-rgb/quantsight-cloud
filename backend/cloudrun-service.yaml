@@ -11,9 +11,22 @@ spec:
         # VPC connector for NBA API access (required)
         run.googleapis.com/vpc-access-connector: projects/quantsight-prod/locations/us-central1/connectors/nba-api-connector
         run.googleapis.com/vpc-access-egress: private-ranges-only
+        # Phase 8: Scaling for WebSocket support
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "2"
+        run.googleapis.com/execution-environment: gen2
     spec:
+      # Phase 8: 800 concurrent (500 WS + 300 HTTP/SSE headroom)
+      containerConcurrency: 800
+      # Phase 8: 1-hour timeout for WebSocket connections
+      timeoutSeconds: 3600
       containers:
       - image: us-central1-docker.pkg.dev/quantsight-prod/cloud-run-source-deploy/quantsight-cloud
+        resources:
+          limits:
+            # Phase 8: Increased for WebSocket connection memory (50KB × 500 = 25MB baseline)
+            memory: "512Mi"
+            cpu: "2"
         env:
         # DATABASE_URL for legacy compatibility (SQLite, won't trigger Cloud SQL)
         - name: DATABASE_URL
@@ -25,3 +38,6 @@ spec:
           value: "8080"
         - name: DEPLOYMENT_MODE
           value: "cloud"
+        # Phase 8: WebSocket activation
+        - name: FEATURE_WEBSOCKET_ENABLED
+          value: "true"

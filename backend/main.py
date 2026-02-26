@@ -155,7 +155,26 @@ async def lifespan(app: FastAPI):
                 except Exception as e:
                     logger.error(f"❌ Failed to start cloud producer: {e}")
             
+            # Phase 8: Start WebSocket heartbeat loop
+            _heartbeat_task = None
+            try:
+                from vanguard.core.feature_flags import flag
+                if flag("FEATURE_WEBSOCKET_ENABLED"):
+                    from services.ws_heartbeat import heartbeat_loop
+                    _heartbeat_task = asyncio.create_task(heartbeat_loop())
+                    logger.info("✅ WebSocket heartbeat loop started")
+            except Exception as e:
+                logger.warning(f"⚠️ WebSocket heartbeat not started: {e}")
+            
             yield
+            
+            # Shutdown heartbeat
+            if _heartbeat_task and not _heartbeat_task.done():
+                _heartbeat_task.cancel()
+                try:
+                    await _heartbeat_task
+                except asyncio.CancelledError:
+                    pass
             
             # Shutdown
             logger.info("🛑 Cloud Run shutting down...")
@@ -256,11 +275,11 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Live Pulse router not available: {e}")
 
-# Include WebSocket upgrade path (Phase 6 — stub, disabled by default)
+# Phase 8: WebSocket full-duplex + Presence + Annotations
 try:
     from api.websocket_routes import router as ws_router
     app.include_router(ws_router)
-    logger.info("✅ WebSocket routes registered at /ws/* (FEATURE_WEBSOCKET_ENABLED controls activation)")
+    logger.info("✅ WebSocket routes registered at /live/ws, /live/presence/*, /annotations/*")
 except ImportError as e:
     logger.warning(f"⚠️ WebSocket routes not available: {e}")
 
@@ -469,6 +488,16 @@ async def health_deps():
         # Phase 7: ensure otel_ok is always fresh
         SYSTEM_SNAPSHOT["otel_ok"] = is_otel_ok()
         SYSTEM_SNAPSHOT["firestore_region"] = "nam5"
+        
+        # Phase 8: WebSocket connection stats
+        try:
+            from services.ws_connection_manager import get_ws_manager
+            ws_stats = get_ws_manager().get_stats()
+            SYSTEM_SNAPSHOT.update(ws_stats)
+        except Exception:
+            SYSTEM_SNAPSHOT["websocket_connections_active"] = 0
+            SYSTEM_SNAPSHOT["websocket_enabled"] = False
+        
         return SYSTEM_SNAPSHOT
     except ImportError:
         return {"status": "Vanguard not available", "otel_ok": is_otel_ok()}
