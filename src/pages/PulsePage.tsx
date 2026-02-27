@@ -78,8 +78,8 @@ const PulsePage: React.FC = () => {
         return (order[a.status] || 4) - (order[b.status] || 4);
     });
 
-    // Get first live game for featured display
-    const featuredGame = games.find(g => g.status === 'LIVE');
+    // Get first live game for featured display, fallback to next upcoming game
+    const featuredGame = games.find(g => g.status === 'LIVE' || g.status === 'HALFTIME') || games.find(g => g.status === 'UPCOMING');
 
     return (
         <div className="matchup-lab-page h-full flex flex-col p-4 sm:p-8">
@@ -143,29 +143,29 @@ const PulsePage: React.FC = () => {
                                             {featuredGame.clock}
                                         </div>
                                         <div className="text-gray-400 text-sm tracking-widest uppercase">
-                                            Q{featuredGame.period}
+                                            {featuredGame.status === 'UPCOMING' ? 'STARTING SOON' : `Q${featuredGame.period}`}
                                         </div>
                                     </div>
 
                                     <div className="flex justify-between items-center px-4 mb-8">
                                         <div className="text-center">
-                                            <div className="text-4xl font-bold text-white mb-1">{featuredGame.home_score}</div>
+                                            <div className="text-4xl font-bold text-white mb-1">{featuredGame.status === 'UPCOMING' ? '-' : featuredGame.home_score}</div>
                                             <div className="text-lg text-gray-400 font-bold">{featuredGame.home_team}</div>
                                         </div>
                                         <div className="text-2xl font-mono text-gray-600">vs</div>
                                         <div className="text-center">
-                                            <div className="text-4xl font-bold text-white mb-1">{featuredGame.away_score}</div>
+                                            <div className="text-4xl font-bold text-white mb-1">{featuredGame.status === 'UPCOMING' ? '-' : featuredGame.away_score}</div>
                                             <div className="text-lg text-gray-400 font-bold">{featuredGame.away_team}</div>
                                         </div>
                                     </div>
 
                                     <div className="bg-white/5 rounded-lg p-4 text-center">
-                                        <div className="text-xs text-gray-500 uppercase mb-1">Differential</div>
-                                        <div className={`text-2xl font-bold font-mono ${Math.abs(featuredGame.home_score - featuredGame.away_score) <= 5
+                                        <div className="text-xs text-gray-500 uppercase mb-1">{featuredGame.status === 'UPCOMING' ? 'Status' : 'Differential'}</div>
+                                        <div className={`text-2xl font-bold font-mono ${featuredGame.status !== 'UPCOMING' && Math.abs(featuredGame.home_score - featuredGame.away_score) <= 5
                                             ? 'text-yellow-400 animate-pulse'
                                             : 'text-white'
                                             }`}>
-                                            {Math.abs(featuredGame.home_score - featuredGame.away_score)} PTS
+                                            {featuredGame.status === 'UPCOMING' ? 'UPCOMING' : `${Math.abs(featuredGame.home_score - featuredGame.away_score)} PTS`}
                                         </div>
                                     </div>
                                 </>
