@@ -223,26 +223,29 @@ async def get_vanguard_stats():
         except Exception:
             pass
 
+        # Surgeon: use env var directly because pydantic-settings validation_alias
+        # does not resolve VanguardMode enum from VANGUARD_MODE env var.
+        effective_mode = os.getenv("VANGUARD_MODE", config.mode.value)
+
         subsystem_health = {
             "inquisitor": config.enabled,
             "archivist": storage_mb < (storage_cap * 0.90),
             "profiler": config.llm_enabled,
             "vaccine": config.vaccine_enabled,
-            "surgeon": config.mode.value in ("CIRCUIT_BREAKER", "FULL_SOVEREIGN"),
+            "surgeon": effective_mode in ("CIRCUIT_BREAKER", "FULL_SOVEREIGN"),
             "redis": redis_ok,
         }
 
         # ── Debug logging for subsystem health diagnostics ──────────────
-        import os
         logger.info(
             "SUBSYSTEM_HEALTH_DEBUG | "
             f"enabled={config.enabled} | "
             f"llm_enabled={config.llm_enabled} | "
             f"vaccine_enabled={config.vaccine_enabled} | "
             f"mode={config.mode.value} | "
+            f"effective_mode={effective_mode} | "
             f"redis_ok={redis_ok} | "
             f"storage_mb={storage_mb:.2f}/{storage_cap} | "
-            f"ENV_VANGUARD_MODE={os.getenv('VANGUARD_MODE', 'NOT_SET')} | "
             f"health={subsystem_health}"
         )
 
@@ -299,7 +302,7 @@ async def get_vanguard_stats():
             "hot_endpoints": hot_endpoints,
             "storage_mb": round(storage_mb, 2),
             "storage_cap_mb": storage_cap,
-            "vanguard_mode": config.mode.value,
+            "vanguard_mode": effective_mode,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
     except Exception as e:
