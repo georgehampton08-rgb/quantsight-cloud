@@ -1035,6 +1035,27 @@ export default function VanguardControlRoom() {
                                                     </p>
                                                 </div>
                                             </div>
+                                            {totalResolvedPages > 1 && (
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setResolvedPage(p => Math.max(1, p - 1))}
+                                                        disabled={resolvedPage === 1}
+                                                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-xs font-semibold"
+                                                    >
+                                                        Prev
+                                                    </button>
+                                                    <span className="text-slate-400 text-xs font-medium">
+                                                        {resolvedPage}/{totalResolvedPages}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setResolvedPage(p => Math.min(totalResolvedPages, p + 1))}
+                                                        disabled={resolvedPage === totalResolvedPages}
+                                                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-xs font-semibold"
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-700/30">
                                             {resolvedIncidents.length === 0 ? (
@@ -1094,6 +1115,36 @@ export default function VanguardControlRoom() {
                                                                     {/* ── Expanded Detail ──────────────────────── */}
                                                                     {isExpanded && (
                                                                         <div className="mt-4 ml-11 space-y-3" onClick={e => e.stopPropagation()}>
+                                                                            {/* Always-visible: Incident Detail Card */}
+                                                                            <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
+                                                                                <p className="text-xs font-bold text-slate-300 mb-2">📋 Incident Details</p>
+                                                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs">
+                                                                                    <div><span className="text-slate-500">Error:</span> <span className="text-slate-300 font-semibold">{inc.error_type}</span></div>
+                                                                                    <div><span className="text-slate-500">Severity:</span> <span className={`font-semibold ${inc.severity === 'critical' ? 'text-red-400' : inc.severity === 'warning' ? 'text-amber-400' : 'text-slate-300'}`}>{inc.severity || 'standard'}</span></div>
+                                                                                    <div><span className="text-slate-500">Occurrences:</span> <span className="text-slate-300 font-semibold">{inc.occurrence_count}×</span></div>
+                                                                                    <div className="col-span-2 sm:col-span-3"><span className="text-slate-500">Endpoint:</span> <span className="text-slate-300 font-mono">{inc.endpoint}</span></div>
+                                                                                    {inc.first_seen && (
+                                                                                        <div><span className="text-slate-500">First Seen:</span> <span className="text-slate-300">{new Date(inc.first_seen).toLocaleString()}</span></div>
+                                                                                    )}
+                                                                                    {inc.last_seen && (
+                                                                                        <div><span className="text-slate-500">Last Seen:</span> <span className="text-slate-300">{new Date(inc.last_seen).toLocaleString()}</span></div>
+                                                                                    )}
+                                                                                    {inc.resolved_at && (
+                                                                                        <div><span className="text-slate-500">Resolved:</span> <span className="text-emerald-400">{new Date(inc.resolved_at).toLocaleString()}</span></div>
+                                                                                    )}
+                                                                                </div>
+                                                                                {/* Labels */}
+                                                                                {inc.labels && Object.keys(inc.labels).length > 0 && (
+                                                                                    <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-700/40">
+                                                                                        {Object.entries(inc.labels).map(([k, v]) => (
+                                                                                            <span key={k} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 font-mono">
+                                                                                                {k}: {String(v)}
+                                                                                            </span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+
                                                                             {/* Resolution Notes */}
                                                                             {inc.resolution_notes && (
                                                                                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
@@ -1123,12 +1174,8 @@ export default function VanguardControlRoom() {
                                                                                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
                                                                                     <p className="text-xs font-bold text-blue-400 mb-2">✅ Resolution Summary</p>
                                                                                     <div className="grid grid-cols-2 gap-2 text-xs">
-                                                                                        <div><span className="text-slate-500">Error:</span> <span className="text-slate-300">{resSummary.error_type}</span></div>
-                                                                                        <div><span className="text-slate-500">Endpoint:</span> <span className="text-slate-300 font-mono">{resSummary.endpoint}</span></div>
-                                                                                        <div><span className="text-slate-500">Occurrences:</span> <span className="text-slate-300">{resSummary.occurrence_count}×</span></div>
-                                                                                        <div><span className="text-slate-500">Duration:</span> <span className="text-slate-300">{resSummary.duration_active || 'N/A'}</span></div>
-                                                                                        {resSummary.first_seen && (
-                                                                                            <div><span className="text-slate-500">First Seen:</span> <span className="text-slate-300">{new Date(resSummary.first_seen).toLocaleString()}</span></div>
+                                                                                        {resSummary.duration_active && (
+                                                                                            <div><span className="text-slate-500">Active Duration:</span> <span className="text-slate-300">{resSummary.duration_active}</span></div>
                                                                                         )}
                                                                                         {resSummary.resolution_notes && resSummary.resolution_notes !== 'No notes provided' && (
                                                                                             <div className="col-span-2"><span className="text-slate-500">Notes:</span> <span className="text-slate-300">{resSummary.resolution_notes}</span></div>
@@ -1137,20 +1184,29 @@ export default function VanguardControlRoom() {
                                                                                 </div>
                                                                             )}
 
-                                                                            {/* Raw AI Analysis (if no structured data) */}
-                                                                            {!preAnalysis && !resSummary && inc.ai_analysis && Object.keys(inc.ai_analysis).length > 0 && (
-                                                                                <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-                                                                                    <p className="text-xs font-bold text-slate-400 mb-1">Cached Analysis</p>
-                                                                                    <pre className="text-xs text-slate-400 overflow-x-auto whitespace-pre-wrap">
-                                                                                        {JSON.stringify(inc.ai_analysis, null, 2)}
-                                                                                    </pre>
+                                                                            {/* Cached AI Analysis */}
+                                                                            {inc.ai_analysis && Object.keys(inc.ai_analysis).length > 0 && (
+                                                                                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                                                                                    <p className="text-xs font-bold text-purple-400 mb-2">🧠 AI Analysis</p>
+                                                                                    {(inc.ai_analysis as any)?.summary && (
+                                                                                        <p className="text-xs text-slate-300 mb-1">{String((inc.ai_analysis as any).summary)}</p>
+                                                                                    )}
+                                                                                    {(inc.ai_analysis as any)?.root_cause && (
+                                                                                        <p className="text-xs text-slate-400"><span className="font-semibold text-slate-300">Root Cause:</span> {String((inc.ai_analysis as any).root_cause)}</p>
+                                                                                    )}
+                                                                                    {(inc.ai_analysis as any)?.recommendation && (
+                                                                                        <p className="text-xs text-slate-400 mt-1"><span className="font-semibold text-slate-300">Fix:</span> {String((inc.ai_analysis as any).recommendation)}</p>
+                                                                                    )}
+                                                                                    {(inc.ai_analysis as any)?.confidence !== undefined && (
+                                                                                        <p className="text-xs text-slate-500 mt-1">Confidence: {String((inc.ai_analysis as any).confidence)}%</p>
+                                                                                    )}
                                                                                 </div>
                                                                             )}
 
-                                                                            {/* Metadata */}
-                                                                            <div className="flex items-center gap-4 text-[10px] text-slate-600">
+                                                                            {/* Metadata footer */}
+                                                                            <div className="flex items-center gap-4 text-[10px] text-slate-600 pt-1">
                                                                                 {inc.resolved_by && <span>Resolved by: {inc.resolved_by}</span>}
-                                                                                <span>Fingerprint: {inc.fingerprint.slice(0, 20)}…</span>
+                                                                                <span className="font-mono">{inc.fingerprint}</span>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -1159,28 +1215,7 @@ export default function VanguardControlRoom() {
                                                         );
                                                     })}
 
-                                                    {/* Pagination */}
-                                                    {totalResolvedPages > 1 && (
-                                                        <div className="flex items-center justify-center gap-2 p-4 border-t border-slate-700/50">
-                                                            <button
-                                                                onClick={() => setResolvedPage(p => Math.max(1, p - 1))}
-                                                                disabled={resolvedPage === 1}
-                                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-sm font-semibold"
-                                                            >
-                                                                Previous
-                                                            </button>
-                                                            <span className="text-slate-400 text-sm font-medium px-4">
-                                                                Page {resolvedPage} of {totalResolvedPages}
-                                                            </span>
-                                                            <button
-                                                                onClick={() => setResolvedPage(p => Math.min(totalResolvedPages, p + 1))}
-                                                                disabled={resolvedPage === totalResolvedPages}
-                                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-sm font-semibold"
-                                                            >
-                                                                Next
-                                                            </button>
-                                                        </div>
-                                                    )}
+
                                                 </>
                                             )}
                                         </div>
