@@ -179,7 +179,7 @@ export function BoxScoreViewerContent() {
     };
 
     return (
-        <div className="h-full flex flex-col space-y-4">
+        <div className="h-full w-full min-w-0 flex flex-col space-y-4 overflow-hidden">
             {/* Game Selector Strip */}
             <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-600">
                 {games.map(game => (
@@ -225,7 +225,7 @@ export function BoxScoreViewerContent() {
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 flex-1 min-h-0">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden pr-2">
 
                     {/* AWAY TEAM */}
                     <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">

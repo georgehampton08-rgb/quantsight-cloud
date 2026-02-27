@@ -95,7 +95,7 @@ export default function CascadingSelector() {
     };
 
     return (
-        <div className="relative z-50 mr-4" ref={containerRef}>
+        <div className="relative z-50 md:mr-4 w-full" ref={containerRef}>
             {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -106,9 +106,9 @@ export default function CascadingSelector() {
                         : 'bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500'}
                 `}
             >
-                <Map className="w-4 h-4" />
-                <span className="font-medium text-sm tracking-wide">Select Context</span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <Map className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium text-sm tracking-wide truncate">Select Context</span>
+                <ChevronDown className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             <Modal

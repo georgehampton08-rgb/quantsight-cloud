@@ -98,7 +98,7 @@ export default function CommandCenterPage() {
     const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'BOXSCORE'>('OVERVIEW');
 
     return (
-        <div className="p-4 sm:p-8 h-full overflow-y-auto w-full flex flex-col font-sans">
+        <div className="p-4 sm:p-8 h-full overflow-y-auto overflow-x-hidden w-full flex flex-col font-sans">
             <header className="mb-6 flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
@@ -128,7 +128,7 @@ export default function CommandCenterPage() {
                 </div>
             </header>
 
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col min-w-0 w-full">
                 {activeTab === 'OVERVIEW' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                         {/* Dramatic glow hidden behind the card */}

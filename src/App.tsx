@@ -63,7 +63,7 @@ function App() {
 
                                 <Sidebar />
 
-                                <div className="flex flex-col flex-1 h-full relative">
+                                <div className="flex flex-col flex-1 min-w-0 h-full relative">
                                     <TopBar />
                                     <MainCanvas />
                                 </div>

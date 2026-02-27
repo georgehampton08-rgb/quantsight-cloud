@@ -12,13 +12,25 @@ interface HealthDepsData {
     ml_classifier_ok: boolean;
 }
 
-const ServiceStatusRow = ({ name, status }: { name: string, status: string }) => {
-    const isHealthy = status === 'HEALTHY' || status === 'OK' || status === 'ACTIVE';
+const ServiceStatusRow = ({ name, status }: { name: string, status: string | object }) => {
+    // If status is an object (e.g. from circuit breakers or fallbacks), extract a meaningful string or stringify it
+    let displayStatus = 'UNKNOWN';
+    if (typeof status === 'string') {
+        displayStatus = status;
+    } else if (status && typeof status === 'object') {
+        if ('status' in status) {
+            displayStatus = (status as any).status;
+        } else {
+            displayStatus = 'ACTIVE'; // Fallback for things like {active_fallbacks: ...}
+        }
+    }
+
+    const isHealthy = displayStatus === 'HEALTHY' || displayStatus === 'OK' || displayStatus === 'ACTIVE';
     return (
         <div className="flex items-center justify-between py-2 border-b border-slate-700/30 last:border-0 text-sm">
-            <span className="text-slate-300 font-medium">{name}</span>
-            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${isHealthy ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                {status}
+            <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
+            <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isHealthy ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                {displayStatus}
             </span>
         </div>
     );
