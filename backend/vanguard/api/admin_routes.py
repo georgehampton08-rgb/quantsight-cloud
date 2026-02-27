@@ -1811,17 +1811,37 @@ async def vaccine_run_stream(request: Request):
                         "python_ver": __import__('sys').version.split()[0],
                     },
                 }
-                async with aiofiles.open(audit_file, "w") as f:
-                    await f.write(json.dumps(audit_doc, indent=2, default=str))
 
-                ev = make_event(
-                    "info",
-                    f"Audit saved → {audit_file.name} "
-                    f"({audit_file.stat().st_size / 1024:.1f} KB)",
-                    progress=98,
-                    detail=str(audit_file),
-                )
-                yield _emit("log", ev)
+                # ── Primary: save to Firestore (persists across deploys) ──
+                try:
+                    from firebase_admin import firestore as _fs
+                    _db = _fs.client()
+                    _db.collection("vaccine_runs").document(run_id).set(audit_doc)
+                    ev = make_event(
+                        "info",
+                        f"Audit saved to Firestore → vaccine_runs/{run_id}",
+                        progress=97,
+                    )
+                    yield _emit("log", ev)
+                except Exception as fse:
+                    ev = make_event("warn", f"Firestore audit save failed: {fse}", progress=97)
+                    yield _emit("log", ev)
+
+                # ── Secondary: also save to disk (fast local reads) ──
+                try:
+                    async with aiofiles.open(audit_file, "w") as f:
+                        await f.write(json.dumps(audit_doc, indent=2, default=str))
+                    ev = make_event(
+                        "info",
+                        f"Audit also saved to disk → {audit_file.name} "
+                        f"({audit_file.stat().st_size / 1024:.1f} KB)",
+                        progress=98,
+                        detail=str(audit_file),
+                    )
+                    yield _emit("log", ev)
+                except Exception as dse:
+                    ev = make_event("warn", f"Disk audit save failed (non-critical): {dse}", progress=98)
+                    yield _emit("log", ev)
             except Exception as se:
                 ev = make_event("warn", f"Audit save failed: {se}", progress=98)
                 yield _emit("log", ev)
@@ -1874,13 +1894,45 @@ async def vaccine_run_stream(request: Request):
 async def get_vaccine_run_history():
     """
     List all saved vaccine run audit files, newest first.
+    Reads from Firestore (primary) with local disk fallback.
     Each entry: { run_id, triggered_at, duration_ms, summary, size_bytes }.
     """
+    history = []
+
+    # ── Primary: Firestore ────────────────────────────────────────────────────
+    try:
+        from firebase_admin import firestore as _fs
+        from google.cloud.firestore_v1 import query as _fq
+        _db = _fs.client()
+        docs = (
+            _db.collection("vaccine_runs")
+            .order_by("triggered_at", direction=_fq.Query.DESCENDING)
+            .limit(50)
+            .stream()
+        )
+        for doc in docs:
+            d = doc.to_dict()
+            # Estimate size from log + patches length
+            raw = json.dumps(d, default=str)
+            history.append({
+                "run_id":       d.get("run_id", doc.id),
+                "triggered_at": d.get("triggered_at", ""),
+                "completed_at": d.get("completed_at", ""),
+                "duration_ms":  d.get("duration_ms", 0),
+                "summary":      d.get("summary", {}),
+                "size_bytes":   len(raw),
+                "patch_count":  len(d.get("patches", [])),
+            })
+        if history:
+            return {"runs": history, "total": len(history), "source": "firestore"}
+    except Exception as e:
+        logger.warning(f"Firestore run history failed, falling back to disk: {e}")
+
+    # ── Fallback: local disk ──────────────────────────────────────────────────
     try:
         run_dir = _vaccine_run_dir()
         files = sorted(run_dir.glob("run_*.json"), reverse=True)
-        history = []
-        for f in files[:50]:  # cap at 50 entries
+        for f in files[:50]:
             try:
                 raw = f.read_text(encoding="utf-8")
                 doc = json.loads(raw)
@@ -1895,7 +1947,7 @@ async def get_vaccine_run_history():
                 })
             except Exception:
                 history.append({"run_id": f.stem, "error": "unreadable"})
-        return {"runs": history, "total": len(history)}
+        return {"runs": history, "total": len(history), "source": "disk"}
     except Exception as e:
         logger.error(f"Run history failed: {e}")
         return {"runs": [], "total": 0, "error": str(e)}
@@ -1905,11 +1957,23 @@ async def get_vaccine_run_history():
 async def get_vaccine_run_detail(run_id: str):
     """
     Fetch a specific vaccine run audit file by run_id.
+    Reads from Firestore (primary) with local disk fallback.
     Returns full log, summary, and patches for frontend auditing.
     """
+    safe_id = run_id.replace("/", "").replace("..", "")
+
+    # ── Primary: Firestore ────────────────────────────────────────────────────
     try:
-        # Sanitize to prevent path traversal
-        safe_id = run_id.replace("/", "").replace("..", "")
+        from firebase_admin import firestore as _fs
+        _db = _fs.client()
+        doc = _db.collection("vaccine_runs").document(safe_id).get()
+        if doc.exists:
+            return doc.to_dict()
+    except Exception as e:
+        logger.warning(f"Firestore run detail failed, falling back to disk: {e}")
+
+    # ── Fallback: local disk ──────────────────────────────────────────────────
+    try:
         run_dir = _vaccine_run_dir()
         audit_file = run_dir / f"{safe_id}.json"
 
