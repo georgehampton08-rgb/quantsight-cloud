@@ -283,6 +283,16 @@ class VaccineGenerator:
             logger.error("💉 Cannot generate fix: No GenAI client")
             return None
 
+        # Fetch codebase knowledge base context (cached, non-blocking)
+        kb_context = ""
+        try:
+            from vanguard.vaccine.codebase_kb import get_codebase_context
+            kb_context = await get_codebase_context()
+            if kb_context:
+                logger.debug(f"💉 KB context injected ({len(kb_context)} chars)")
+        except Exception as kb_err:
+            logger.debug(f"💉 KB unavailable (non-fatal): {kb_err}")
+
         try:
             code_refs = analysis.get('code_references', [])
             if not code_refs:
@@ -299,7 +309,7 @@ class VaccineGenerator:
             code_snippet = live_snippet or stored_snippet
 
             # Build richer prompt
-            prompt = self._build_fix_prompt(analysis, ref, code_snippet, code_refs[1:])
+            prompt = self._build_fix_prompt(analysis, ref, code_snippet, code_refs[1:], kb_context)
 
             model = os.getenv("VANGUARD_LLM_MODEL", "gemini-2.0-flash")
             response = client.models.generate_content(
@@ -346,8 +356,9 @@ class VaccineGenerator:
         primary_ref: Dict[str, Any],
         code_snippet: str,
         secondary_refs: List[Any],
+        kb_context: str = "",
     ) -> str:
-        """Build a rich prompt for Gemini that includes live code context."""
+        """Build a rich, KB-grounded prompt for Gemini."""
 
         # Stacktrace (last 25 lines, truncated)
         stacktrace = analysis.get('stacktrace', '') or analysis.get('traceback', '')
@@ -356,13 +367,13 @@ class VaccineGenerator:
             if len(st_lines) > 25:
                 stacktrace = "\n".join(["... (truncated)", *st_lines[-25:]])
 
-        # AI-cached root cause and recommended steps if available
+        # AI root cause + recommended steps
         ai_root_cause = analysis.get('root_cause', 'Unknown')
-        ai_recommended = analysis.get('recommended_fix', '')
+        ai_recommended = analysis.get('recommended_fix', '') or analysis.get('recommendation', '')
         if isinstance(ai_recommended, list):
             ai_recommended = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(ai_recommended))
 
-        # Secondary context refs (other frames in the stacktrace)
+        # Secondary context refs (other stack frames)
         secondary_context = ""
         for ref in secondary_refs[:3]:
             if isinstance(ref, dict):
@@ -372,39 +383,54 @@ class VaccineGenerator:
                 if sfile and ssnip:
                     secondary_context += f"\n### Secondary context: {sfile}:{sline}\n```python\n{ssnip[:400]}\n```\n"
 
-        return f"""You are a code repair specialist for the QuantSight NBA analytics backend (Python/FastAPI/Firestore).
-Generate a minimal, surgical fix for the error below.
+        # KB preamble — injected FIRST so Gemini loads architecture before seeing the error
+        kb_section = ""
+        if kb_context:
+            kb_section = f"""
+---
+{kb_context}
+---
+"""
 
-## ERROR
-Type:    {analysis.get('error_type', 'Unknown')}
-Message: {analysis.get('error_message', 'Unknown error')}
+        return f"""You are the autonomous code repair agent for QuantSight — an NBA analytics platform.
+Your job is to generate a minimal, surgical patch for the error below.
+You have been given full codebase context — use it to ensure your fix is architecturally consistent.
+{kb_section}
+## ERROR TO FIX
+Type:        {analysis.get('error_type', 'Unknown')}
+Message:     {analysis.get('error_message', 'Unknown error')}
+Endpoint:    {analysis.get('endpoint', 'unknown')}
+Fingerprint: {analysis.get('fingerprint', 'unknown')}
 
-## ROOT CAUSE (AI analysis)
+## AI ROOT CAUSE ANALYSIS
 {ai_root_cause}
 
 ## RECOMMENDED APPROACH
-{ai_recommended or '(none provided)'}
+{ai_recommended or '(none provided — use your best judgment based on the root cause)'}
 
-## STACKTRACE
+## FULL STACKTRACE
 ```
 {stacktrace or 'Not available'}
 ```
 
-## PRIMARY FILE TO FIX: {primary_ref.get('file', '')} (error at line {primary_ref.get('line', '?')})
+## PRIMARY FILE TO PATCH: {primary_ref.get('file', 'unknown')}  (error at line {primary_ref.get('line', '?')})
 ```python
-{code_snippet or '(source not available)'}
+{code_snippet or '(source file not readable on disk)'}
 ```
 {secondary_context}
-## RULES
-1. Change ONLY what is necessary to fix the error
-2. Keep the same function signatures and return types
-3. Add a short inline comment on the changed line(s) explaining what was fixed
-4. Do NOT add new imports unless absolutely required
-5. Do NOT restructure or reformat surrounding code
+## PATCH REQUIREMENTS
+1. Change ONLY the minimum lines necessary — do not refactor or reformat
+2. Preserve all existing function signatures and return types
+3. Follow the error handling patterns shown in ## QuantSight Codebase Context above
+4. Add a single inline comment: `# VACCINE: <what was fixed>` on the changed line
+5. Do NOT add imports that are not in the codebase's requirements.txt
+6. Do NOT modify main.py, .env, config.py, Dockerfile, or requirements.txt
+7. If the fix cannot be expressed in <{self.MAX_LINES_CHANGED} changed lines, return: ```python\n# VACCINE: fix too complex — manual review required\n```
 
-## OUTPUT FORMAT (required — no extra text)
+## OUTPUT FORMAT (exactly this — no other text)
 ```python
-# fixed code here
+# VACCINE: <one-line explanation>
+<fixed code block>
 ```
 """
 

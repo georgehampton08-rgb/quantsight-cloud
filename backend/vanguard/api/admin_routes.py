@@ -1124,9 +1124,154 @@ async def generate_vaccine_fix(fingerprint: str):
         raise HTTPException(500, f"Vaccine generation failed: {str(e)}")
 
 
-# ============================================================================
-# AUDIT LOG ENDPOINT (Phase 7)
-# ============================================================================
+@router.post("/vanguard/admin/vaccine/run-now")
+async def trigger_vaccine_run():
+    """
+    Manually trigger an immediate full vaccine cycle.
+
+    Scans ALL active incidents, runs AI analysis on any missing it,
+    then attempts to generate and store a code patch for each one.
+    Also fires all pending chaos scenarios immediately.
+
+    Returns a full run report showing what was analyzed, patched, and skipped.
+    """
+    import asyncio
+    from vanguard.vaccine.generator import get_vaccine
+    from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
+
+    run_start = datetime.utcnow()
+    report = {
+        "triggered_at": run_start.isoformat() + "Z",
+        "incidents_scanned": 0,
+        "analyzed": [],
+        "patched": [],
+        "skipped": [],
+        "chaos_scenarios_fired": [],
+        "errors": [],
+    }
+
+    try:
+        storage = get_incident_storage()
+        vaccine = get_vaccine()
+        analyzer = VanguardAIAnalyzer()
+
+        # ── Step 1: Load all active incidents ─────────────────────────────────
+        fingerprints = await storage.list_incidents(limit=200)
+        active_incidents = []
+        for fp in fingerprints:
+            inc = await storage.load(fp)
+            if inc and inc.get("status") == "active":
+                active_incidents.append(inc)
+
+        report["incidents_scanned"] = len(active_incidents)
+        logger.info(f"[VACCINE-RUN] Scanning {len(active_incidents)} active incidents")
+
+        # ── Step 2: For each incident — ensure AI analysis, then generate fix ─
+        for incident in active_incidents:
+            fp = incident.get("fingerprint", "unknown")
+            try:
+                # Run AI analysis if not already cached
+                ai_analysis = incident.get("ai_analysis")
+                if not ai_analysis or not isinstance(ai_analysis, dict) or not ai_analysis.get("root_cause"):
+                    try:
+                        ai_result = await analyzer.analyze(incident)
+                        if ai_result:
+                            ai_analysis = {
+                                "summary": ai_result.summary,
+                                "root_cause": ai_result.root_cause,
+                                "recommendation": ai_result.recommendation,
+                                "confidence": ai_result.confidence,
+                                "code_references": [r.__dict__ if hasattr(r, '__dict__') else r
+                                                    for r in (ai_result.code_references or [])],
+                                "vaccine_recommendation": ai_result.vaccine_recommendation,
+                            }
+                            await storage.update_incident(fp, {"ai_analysis": ai_analysis})
+                            report["analyzed"].append(fp)
+                    except Exception as ae:
+                        report["errors"].append({"fingerprint": fp, "stage": "analysis", "error": str(ae)})
+                        continue
+
+                if not ai_analysis:
+                    report["skipped"].append({"fingerprint": fp, "reason": "No AI analysis available"})
+                    continue
+
+                # Build analysis dict for vaccine
+                analysis_dict = {
+                    **ai_analysis,
+                    "fingerprint": fp,
+                    "error_type": incident.get("error_type", ""),
+                    "error_message": incident.get("error_message", ""),
+                    "endpoint": incident.get("endpoint", ""),
+                }
+
+                # Check eligibility
+                can_gen, reason = await vaccine.can_generate_fix(analysis_dict)
+                if not can_gen:
+                    report["skipped"].append({"fingerprint": fp, "reason": reason})
+                    continue
+
+                # Generate patch
+                patch = await vaccine.generate_fix(analysis_dict)
+                if patch:
+                    # Store patch on the incident for visibility in UI
+                    await storage.update_incident(fp, {
+                        "vaccine_patch": {
+                            "file_path": patch.file_path,
+                            "line_start": patch.line_start,
+                            "line_end": patch.line_end,
+                            "explanation": patch.explanation,
+                            "confidence": patch.confidence,
+                            "generated_at": datetime.utcnow().isoformat() + "Z",
+                            "original_code": patch.original_code[:500],
+                            "fixed_code": patch.fixed_code[:500],
+                        }
+                    })
+                    report["patched"].append({
+                        "fingerprint": fp,
+                        "file": patch.file_path,
+                        "confidence": patch.confidence,
+                    })
+                    logger.info(f"[VACCINE-RUN] Patched {fp} → {patch.file_path} ({patch.confidence:.0f}%)")
+                else:
+                    report["skipped"].append({"fingerprint": fp, "reason": "Patch generation returned None"})
+
+            except Exception as e:
+                report["errors"].append({"fingerprint": fp, "stage": "vaccine", "error": str(e)})
+                logger.warning(f"[VACCINE-RUN] Error on {fp}: {e}")
+
+        # ── Step 3: Fire chaos scenarios immediately ───────────────────────────
+        try:
+            from vanguard.vaccine.chaos_scheduler import ChaosScheduler
+            scheduler = ChaosScheduler()
+            scenarios = scheduler.scenarios
+            for scenario in scenarios:
+                asyncio.create_task(scheduler._run_scenario(scenario))
+                report["chaos_scenarios_fired"].append(scenario)
+            logger.info(f"[VACCINE-RUN] Fired {len(scenarios)} chaos scenarios")
+        except Exception as ce:
+            report["errors"].append({"stage": "chaos", "error": str(ce)})
+
+        report["duration_ms"] = int((datetime.utcnow() - run_start).total_seconds() * 1000)
+        report["vaccine_status"] = vaccine.get_status()
+
+        logger.info(
+            f"[VACCINE-RUN] Complete — "
+            f"scanned={report['incidents_scanned']}, "
+            f"analyzed={len(report['analyzed'])}, "
+            f"patched={len(report['patched'])}, "
+            f"skipped={len(report['skipped'])}, "
+            f"errors={len(report['errors'])}"
+        )
+        return report
+
+    except Exception as e:
+        logger.error(f"[VACCINE-RUN] Fatal: {e}")
+        report["fatal_error"] = str(e)
+        report["duration_ms"] = int((datetime.utcnow() - run_start).total_seconds() * 1000)
+        return report
+
+
+
 
 @router.get("/vanguard/admin/audit")
 async def get_audit_log(limit: int = 100, action: Optional[str] = None):
@@ -1238,3 +1383,606 @@ async def get_learning_export_history():
     except Exception as e:
         logger.warning(f"Export history unavailable: {e}")
         return {"exports": [], "total": 0, "message": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VACCINE LIVE STREAM + AUDIT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import json
+import asyncio
+import aiofiles
+from pathlib import Path
+from fastapi.responses import StreamingResponse
+
+
+# Where audit files are stored on the server's filesystem
+def _vaccine_run_dir() -> Path:
+    """Resolve the directory for vaccine run audit files."""
+    candidates = [
+        Path("/app/data/vaccine_runs"),               # Cloud Run
+        Path(__file__).resolve().parents[3] / "data" / "vaccine_runs",  # local dev
+    ]
+    for p in candidates:
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        except Exception:
+            continue
+    fallback = Path("/tmp/vaccine_runs")
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def _emit(event_type: str, payload: dict) -> str:
+    """Format a Server-Sent Event message."""
+    return f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
+
+
+@router.get("/vanguard/admin/vaccine/run-stream")
+async def vaccine_run_stream(request: Request):
+    """
+    SSE endpoint: triggers a full vaccine cycle and streams live JSON events.
+
+    Event types emitted:
+      log     — { level, msg, detail?, fingerprint?, file?, confidence?, progress }
+      summary — { incidents_scanned, analyzed, patched, skipped, errors, chaos_fired, duration_ms }
+      done    — {} (stream teardown signal)
+
+    On completion, a rich audit file is saved to /data/vaccine_runs/{run_id}.json
+    capturing who triggered it, all incident actions, and every patch generated.
+    Fetch via GET /vanguard/admin/vaccine/run-history/{run_id}.
+    """
+    from vanguard.vaccine.generator import get_vaccine
+    from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
+    import socket
+
+    run_id = datetime.utcnow().strftime("run_%Y%m%d_%H%M%S")
+    run_start = datetime.utcnow()
+
+    # ── Capture full request context for audit trail ───────────────────────────
+    headers = dict(request.headers)
+    client_ip = (
+        headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or headers.get("x-real-ip", "")
+        or (request.client.host if request.client else "unknown")
+    )
+    triggered_by = {
+        "ip":               client_ip,
+        "forwarded_for":   headers.get("x-forwarded-for", None),
+        "user_agent":      headers.get("user-agent", "unknown"),
+        "referer":         headers.get("referer", headers.get("referrer", None)),
+        "host":            headers.get("host", None),
+        "accept_language": headers.get("accept-language", None),
+        "origin":          headers.get("origin", None),
+        "method":          request.method,
+        "url":             str(request.url),
+        "timestamp_utc":   run_start.isoformat() + "Z",
+        "server_hostname": socket.gethostname(),
+        "server_env":      os.getenv("K_SERVICE", os.getenv("ENVIRONMENT", "local")),
+    }
+
+    # Accumulated audit log (stored to file on completion)
+    audit_log: list[dict] = []
+    patches_saved: list[dict] = []
+    incident_snapshots: list[dict] = []  # per-incident audit records
+
+    # Counters
+    stats = {"scanned": 0, "analyzed": 0, "patched": 0, "skipped": 0, "errors": 0, "chaos": 0}
+
+    async def stream():
+        nonlocal audit_log, patches_saved, stats
+
+        def make_event(level: str, msg: str, **extra) -> dict:
+            # Use full ISO timestamp in the stored log, short HH:MM:SS for display
+            now = datetime.utcnow()
+            entry = {
+                "level": level,
+                "msg": msg,
+                "ts": now.strftime("%H:%M:%S"),          # display
+                "ts_iso": now.isoformat() + "Z",         # audit precision
+                **{k: v for k, v in extra.items() if v is not None},
+            }
+            audit_log.append(entry)
+            return entry
+
+        try:
+            # ── Phase 0: Init ──────────────────────────────────────────────────
+            ev = make_event("info", f"Vaccine cycle {run_id} starting...",
+                            progress=2, detail=f"run_id={run_id}")
+            yield _emit("log", ev)
+
+            storage = get_incident_storage()
+            vaccine = get_vaccine()
+            analyzer = VanguardAIAnalyzer()
+
+            vac_status = vaccine.get_status()
+            ev = make_event("info",
+                            f"Vaccine v{vac_status['version']} loaded — "
+                            f"daily fixes used {vac_status['daily_fixes']}/{vac_status['daily_limit']}, "
+                            f"min confidence {vac_status['min_confidence']}%",
+                            progress=5)
+            yield _emit("log", ev)
+
+            if not vac_status["enabled"]:
+                ev = make_event("warn",
+                                "VANGUARD_VACCINE_ENABLED=false — patches will be DRY-RUN only.",
+                                progress=5)
+                yield _emit("log", ev)
+
+            # ── Phase 1: Scan active incidents ────────────────────────────────
+            ev = make_event("scan", "Fetching all active incidents from storage...", progress=8)
+            yield _emit("log", ev)
+
+            fingerprints = await storage.list_incidents(limit=200)
+            active = []
+            for fp in fingerprints:
+                if await request.is_disconnected():
+                    return
+                inc = await storage.load(fp)
+                if inc and inc.get("status") == "active":
+                    active.append(inc)
+
+            stats["scanned"] = len(active)
+            ev = make_event("scan",
+                            f"Found {len(active)} active incident(s) to process.",
+                            progress=12)
+            yield _emit("log", ev)
+
+            if not active:
+                ev = make_event("done", "No active incidents — vaccine cycle complete.", progress=100)
+                yield _emit("log", ev)
+                yield _emit("summary", {**stats, "duration_ms": 0})
+                yield _emit("done", {})
+                return
+
+            # ── Phase 2: Per-incident loop ────────────────────────────────────
+            total = len(active)
+            for idx, incident in enumerate(active):
+                if await request.is_disconnected():
+                    return
+
+                fp = incident.get("fingerprint", "unknown")
+                title = incident.get("title", incident.get("error_type", "Unknown Error"))
+                base_progress = 15 + int((idx / total) * 70)
+
+                # Build this incident's audit snapshot — enriched step by step below
+                inc_snapshot = {
+                    "index":            idx + 1,
+                    "fingerprint":      fp,
+                    "title":            title,
+                    "error_type":       incident.get("error_type", ""),
+                    "error_message":    incident.get("error_message", ""),
+                    "endpoint":         incident.get("endpoint", ""),
+                    "occurrence_count": incident.get("occurrence_count", 1),
+                    "severity":         incident.get("severity", "unknown"),
+                    "first_seen":       incident.get("first_seen", ""),
+                    "last_seen":        incident.get("last_seen", ""),
+                    "stacktrace_lines": len((incident.get("stacktrace") or "").splitlines()),
+                    "action_taken":     "pending",
+                    "ai_confidence":    None,
+                    "ai_root_cause":    None,
+                    "patch_file":       None,
+                    "patch_confidence": None,
+                    "skip_reason":      None,
+                    "error_detail":     None,
+                    "processed_at":     datetime.utcnow().isoformat() + "Z",
+                }
+
+                ev = make_event(
+                    "incident",
+                    f"[{idx+1}/{total}] Incident: {title}",
+                    fingerprint=fp,
+                    progress=base_progress,
+                    detail=(
+                        f"type={incident.get('error_type','?')} "
+                        f"count={incident.get('occurrence_count',1)} "
+                        f"endpoint={incident.get('endpoint','?')} "
+                        f"severity={incident.get('severity','?')}"
+                    )
+                )
+                yield _emit("log", ev)
+
+                # ── 2a: AI analysis ──────────────────────────────────────────
+                ai_analysis = incident.get("ai_analysis")
+                has_analysis = (
+                    isinstance(ai_analysis, dict)
+                    and ai_analysis.get("root_cause")
+                    and ai_analysis.get("confidence", 0) > 0
+                )
+
+                if not has_analysis:
+                    ev = make_event("analysis",
+                                   f"Running Gemini analysis on '{title}'...",
+                                   fingerprint=fp, progress=base_progress + 2)
+                    yield _emit("log", ev)
+                    try:
+                        ai_result = await analyzer.analyze(incident)
+                        if ai_result:
+                            ai_analysis = {
+                                "summary":                ai_result.summary,
+                                "root_cause":             ai_result.root_cause,
+                                "recommendation":         ai_result.recommendation,
+                                "confidence":             ai_result.confidence,
+                                "code_references":        [
+                                    r.__dict__ if hasattr(r, "__dict__") else r
+                                    for r in (ai_result.code_references or [])
+                                ],
+                                "vaccine_recommendation": ai_result.vaccine_recommendation,
+                                "error_type":             incident.get("error_type", ""),
+                                "error_message":          incident.get("error_message", ""),
+                            }
+                            await storage.update_incident(fp, {"ai_analysis": ai_analysis})
+                            stats["analyzed"] += 1
+                            inc_snapshot["ai_confidence"] = ai_result.confidence
+                            inc_snapshot["ai_root_cause"] = ai_result.root_cause
+                            ev = make_event(
+                                "analysis",
+                                f"AI analysis complete — confidence {ai_result.confidence}% — "
+                                f"root cause: {ai_result.root_cause[:120]}",
+                                fingerprint=fp,
+                                confidence=ai_result.confidence,
+                                progress=base_progress + 5,
+                                detail=f"recommendation: {ai_result.recommendation[:200]}"
+                            )
+                            yield _emit("log", ev)
+                        else:
+                            ev = make_event("warn", "Gemini returned no analysis.",
+                                           fingerprint=fp, progress=base_progress + 5)
+                            yield _emit("log", ev)
+                    except Exception as ae:
+                        stats["errors"] += 1
+                        ev = make_event("error", f"Analysis failed: {ae}",
+                                       fingerprint=fp, progress=base_progress + 5)
+                        yield _emit("log", ev)
+                        continue
+                else:
+                    ev = make_event("analysis",
+                                   f"Using cached AI analysis — confidence {ai_analysis.get('confidence',0)}%",
+                                   fingerprint=fp,
+                                   confidence=ai_analysis.get("confidence", 0),
+                                   progress=base_progress + 3)
+                    yield _emit("log", ev)
+                    inc_snapshot["ai_confidence"] = ai_analysis.get("confidence", 0)
+                    inc_snapshot["ai_root_cause"] = ai_analysis.get("root_cause", "")
+
+                if not ai_analysis:
+                    stats["skipped"] += 1
+                    ev = make_event("skip", "No AI analysis available — skipping.",
+                                   fingerprint=fp, progress=base_progress + 6)
+                    yield _emit("log", ev)
+                    continue
+
+                # ── 2b: Vaccine eligibility gate ─────────────────────────────
+                analysis_dict = {
+                    **ai_analysis,
+                    "fingerprint":   fp,
+                    "error_type":    incident.get("error_type", ""),
+                    "error_message": incident.get("error_message", ""),
+                    "endpoint":      incident.get("endpoint", ""),
+                    "stacktrace":    incident.get("stacktrace", ""),
+                }
+                can_gen, reason = await vaccine.can_generate_fix(analysis_dict)
+                ev = make_event(
+                    "info" if can_gen else "skip",
+                    f"Gate check: {'✅ ELIGIBLE' if can_gen else f'⛔ SKIP — {reason}'}",
+                    fingerprint=fp,
+                    progress=base_progress + 8,
+                    detail=reason if not can_gen else None,
+                )
+                yield _emit("log", ev)
+
+                if not can_gen:
+                    stats["skipped"] += 1
+                    inc_snapshot["action_taken"] = "skipped"
+                    inc_snapshot["skip_reason"] = reason
+                    incident_snapshots.append(inc_snapshot)
+                    continue
+
+                # ── 2c: Generate patch ───────────────────────────────────────
+                code_refs = ai_analysis.get("code_references", [])
+                primary_file = (code_refs[0].get("file") if isinstance(code_refs[0], dict) else str(code_refs[0])) if code_refs else "unknown"
+                ev = make_event("patch",
+                               f"Calling Gemini to generate surgical fix for {primary_file}...",
+                               fingerprint=fp, file=primary_file, progress=base_progress + 12)
+                yield _emit("log", ev)
+
+                try:
+                    patch = await vaccine.generate_fix(analysis_dict)
+                    if patch:
+                        # Save patch to incident
+                        patch_record = {
+                            "file_path":     patch.file_path,
+                            "line_start":    patch.line_start,
+                            "line_end":      patch.line_end,
+                            "explanation":   patch.explanation,
+                            "confidence":    patch.confidence,
+                            "generated_at":  datetime.utcnow().isoformat() + "Z",
+                            "original_code": patch.original_code[:500],
+                            "fixed_code":    patch.fixed_code[:500],
+                        }
+                        await storage.update_incident(fp, {"vaccine_patch": patch_record})
+
+                        # Save full patch to audit log
+                        patches_saved.append({
+                            "fingerprint": fp,
+                            "title":       title,
+                            **patch_record,
+                            # Full code for audit (not truncated)
+                            "original_code_full": patch.original_code,
+                            "fixed_code_full":    patch.fixed_code,
+                        })
+
+                        stats["patched"] += 1
+                        inc_snapshot["action_taken"] = "patched"
+                        inc_snapshot["patch_file"] = patch.file_path
+                        inc_snapshot["patch_confidence"] = patch.confidence
+                        inc_snapshot["patch_lines"] = f"{patch.line_start}-{patch.line_end}"
+                        ev = make_event(
+                            "patch",
+                            f"✅ Patch generated — {patch.file_path}:{patch.line_start}-{patch.line_end} "
+                            f"({patch.confidence:.0f}% confidence)",
+                            fingerprint=fp,
+                            file=patch.file_path,
+                            confidence=patch.confidence,
+                            progress=base_progress + 18,
+                            detail=patch.explanation[:200],
+                        )
+                        yield _emit("log", ev)
+                    else:
+                        stats["skipped"] += 1
+                        inc_snapshot["action_taken"] = "skipped"
+                        inc_snapshot["skip_reason"] = "Patch generation returned None"
+                        ev = make_event("skip",
+                                       "Vaccine returned no patch (confidence or references insufficient).",
+                                       fingerprint=fp, progress=base_progress + 18)
+                        yield _emit("log", ev)
+                except Exception as pe:
+                    stats["errors"] += 1
+                    inc_snapshot["action_taken"] = "error"
+                    inc_snapshot["error_detail"] = str(pe)
+                    ev = make_event("error", f"Patch generation failed: {pe}",
+                                   fingerprint=fp, progress=base_progress + 18)
+                    yield _emit("log", ev)
+
+                incident_snapshots.append(inc_snapshot)
+
+            # ── Phase 3: Chaos scenarios ──────────────────────────────────────
+            ev = make_event("chaos", "Firing chaos validation scenarios...", progress=88)
+            yield _emit("log", ev)
+            try:
+                from vanguard.vaccine.chaos_scheduler import ChaosScheduler
+                scheduler = ChaosScheduler()
+                for scenario in scheduler.scenarios:
+                    asyncio.create_task(scheduler._run_scenario(scenario))
+                    stats["chaos"] += 1
+                    ev = make_event("chaos", f"⚡ Scenario fired: {scenario}", progress=90)
+                    yield _emit("log", ev)
+            except Exception as ce:
+                ev = make_event("warn", f"Chaos scheduler unavailable: {ce}", progress=90)
+                yield _emit("log", ev)
+
+            # ── Phase 4: Save audit file ──────────────────────────────────────
+            duration_ms = int((datetime.utcnow() - run_start).total_seconds() * 1000)
+            ev = make_event("info", f"Saving audit file {run_id}.json...", progress=95)
+            yield _emit("log", ev)
+
+            try:
+                audit_file = _vaccine_run_dir() / f"{run_id}.json"
+                audit_doc = {
+                    # ── Identity ──────────────────────────────────────────────
+                    "run_id":         run_id,
+                    "schema_version": "2.0",
+
+                    # ── Who triggered it ──────────────────────────────────────
+                    "triggered_by": triggered_by,
+
+                    # ── Timeline ──────────────────────────────────────────────
+                    "triggered_at":  run_start.isoformat() + "Z",
+                    "completed_at":  datetime.utcnow().isoformat() + "Z",
+                    "duration_ms":   duration_ms,
+
+                    # ── Summary counts ────────────────────────────────────────
+                    "summary": {
+                        "incidents_scanned": stats["scanned"],
+                        "analyzed":          stats["analyzed"],
+                        "patched":           stats["patched"],
+                        "skipped":           stats["skipped"],
+                        "errors":            stats["errors"],
+                        "chaos_fired":       stats["chaos"],
+                    },
+
+                    # ── Per-incident audit records ────────────────────────────
+                    "incidents": incident_snapshots,
+
+                    # ── Full patch code for auditing ──────────────────────────
+                    "patches": patches_saved,
+
+                    # ── Chronological event log ───────────────────────────────
+                    "log": audit_log,
+
+                    # ── System state at time of run ───────────────────────────
+                    "vaccine_status": vaccine.get_status(),
+                    "environment": {
+                        "service":    os.getenv("K_SERVICE", "local"),
+                        "revision":   os.getenv("K_REVISION", "local"),
+                        "region":     os.getenv("K_REGION",   "unknown"),
+                        "project":    os.getenv("GOOGLE_CLOUD_PROJECT", "unknown"),
+                        "python_ver": __import__('sys').version.split()[0],
+                    },
+                }
+                async with aiofiles.open(audit_file, "w") as f:
+                    await f.write(json.dumps(audit_doc, indent=2, default=str))
+
+                ev = make_event(
+                    "info",
+                    f"Audit saved → {audit_file.name} "
+                    f"({audit_file.stat().st_size / 1024:.1f} KB)",
+                    progress=98,
+                    detail=str(audit_file),
+                )
+                yield _emit("log", ev)
+            except Exception as se:
+                ev = make_event("warn", f"Audit save failed: {se}", progress=98)
+                yield _emit("log", ev)
+
+            # ── Phase 5: Summary ──────────────────────────────────────────────
+            ev = make_event(
+                "done",
+                f"Vaccine cycle complete — "
+                f"{stats['patched']} patch(es) generated, "
+                f"{stats['analyzed']} analyzed, "
+                f"{stats['skipped']} skipped, "
+                f"{stats['errors']} error(s) — "
+                f"{duration_ms / 1000:.1f}s total",
+                progress=100,
+            )
+            yield _emit("log", ev)
+
+            yield _emit("summary", {
+                "run_id":            run_id,
+                "incidents_scanned": stats["scanned"],
+                "analyzed":          stats["analyzed"],
+                "patched":           stats["patched"],
+                "skipped":           stats["skipped"],
+                "errors":            stats["errors"],
+                "chaos_fired":       stats["chaos"],
+                "duration_ms":       duration_ms,
+            })
+            yield _emit("done", {"run_id": run_id})
+
+        except Exception as fatal:
+            logger.error(f"[VACCINE-STREAM] Fatal: {fatal}")
+            ev = {"level": "error", "msg": f"Fatal: {fatal}", "ts": datetime.utcnow().strftime("%H:%M:%S")}
+            yield _emit("log", ev)
+            yield _emit("done", {"error": str(fatal)})
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control":      "no-cache",
+            "X-Accel-Buffering":  "no",
+            "Connection":         "keep-alive",
+        },
+    )
+
+
+# ── Audit File History ─────────────────────────────────────────────────────────
+
+@router.get("/vanguard/admin/vaccine/run-history")
+async def get_vaccine_run_history():
+    """
+    List all saved vaccine run audit files, newest first.
+    Each entry: { run_id, triggered_at, duration_ms, summary, size_bytes }.
+    """
+    try:
+        run_dir = _vaccine_run_dir()
+        files = sorted(run_dir.glob("run_*.json"), reverse=True)
+        history = []
+        for f in files[:50]:  # cap at 50 entries
+            try:
+                raw = f.read_text(encoding="utf-8")
+                doc = json.loads(raw)
+                history.append({
+                    "run_id":       doc.get("run_id", f.stem),
+                    "triggered_at": doc.get("triggered_at", ""),
+                    "completed_at": doc.get("completed_at", ""),
+                    "duration_ms":  doc.get("duration_ms", 0),
+                    "summary":      doc.get("summary", {}),
+                    "size_bytes":   f.stat().st_size,
+                    "patch_count":  len(doc.get("patches", [])),
+                })
+            except Exception:
+                history.append({"run_id": f.stem, "error": "unreadable"})
+        return {"runs": history, "total": len(history)}
+    except Exception as e:
+        logger.error(f"Run history failed: {e}")
+        return {"runs": [], "total": 0, "error": str(e)}
+
+
+@router.get("/vanguard/admin/vaccine/run-history/{run_id}")
+async def get_vaccine_run_detail(run_id: str):
+    """
+    Fetch a specific vaccine run audit file by run_id.
+    Returns full log, summary, and patches for frontend auditing.
+    """
+    try:
+        # Sanitize to prevent path traversal
+        safe_id = run_id.replace("/", "").replace("..", "")
+        run_dir = _vaccine_run_dir()
+        audit_file = run_dir / f"{safe_id}.json"
+
+        if not audit_file.exists():
+            raise HTTPException(404, f"Run {run_id} not found")
+
+        async with aiofiles.open(audit_file, "r") as f:
+            content = await f.read()
+        return json.loads(content)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Run detail failed: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ── Codebase Knowledge Base Status & Control ──────────────────────────────────
+
+@router.get("/vanguard/admin/vaccine/kb-status")
+async def get_kb_status():
+    """
+    Return the state of the Codebase Knowledge Base used to ground Gemini prompts.
+    VaccinePanel reads this to show KB health and allow manual rebuilds.
+    """
+    try:
+        from vanguard.vaccine import codebase_kb as _kb_mod
+        from vanguard.vaccine.codebase_kb import get_codebase_context
+
+        if _kb_mod._KB_CACHE is None:
+            await get_codebase_context()
+
+        now   = datetime.utcnow()
+        built = _kb_mod._KB_BUILT_AT.replace(tzinfo=None) if _kb_mod._KB_BUILT_AT else None
+        age_s = int((now - built).total_seconds()) if built else None
+        stale = age_s is None or age_s > _kb_mod._KB_TTL_SECONDS
+
+        kb = _kb_mod._KB_CACHE or {}
+        return {
+            "built":          kb.get("built_at"),
+            "age_seconds":    age_s,
+            "stale":          stale,
+            "ttl_seconds":    _kb_mod._KB_TTL_SECONDS,
+            "module_count":   kb.get("module_count", 0),
+            "route_count":    kb.get("route_count", 0),
+            "dep_count":      len(kb.get("dependencies", [])),
+            "root":           kb.get("root", "unknown"),
+            "schema_version": kb.get("schema_version", "unknown"),
+            "markdown_preview": (kb.get("markdown", ""))[:600],
+        }
+    except Exception as e:
+        logger.error(f"KB status failed: {e}")
+        return {"error": str(e), "built": None, "stale": True}
+
+
+@router.post("/vanguard/admin/vaccine/kb-rebuild")
+async def rebuild_kb():
+    """
+    Force an immediate rebuild of the codebase KB.
+    Crawls all backend modules, re-reads routes and patterns, refreshes the
+    context injected into every Gemini vaccine/analysis prompt.
+    """
+    try:
+        from vanguard.vaccine.codebase_kb import build_kb, invalidate_kb
+        await invalidate_kb()
+        kb = await build_kb()
+        return {
+            "status":       "rebuilt",
+            "built_at":     kb.get("built_at"),
+            "module_count": kb.get("module_count", 0),
+            "route_count":  kb.get("route_count", 0),
+            "dep_count":    len(kb.get("dependencies", [])),
+        }
+    except Exception as e:
+        logger.error(f"KB rebuild failed: {e}")
+        raise HTTPException(500, f"KB rebuild failed: {e}")
