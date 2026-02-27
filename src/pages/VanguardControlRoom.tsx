@@ -612,6 +612,10 @@ export default function VanguardControlRoom() {
     const [analyzingAll, setAnalyzingAll] = useState(false);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
+    // Pagination state
+    const [incidentsPage, setIncidentsPage] = useState(1);
+    const incidentsPerPage = 40;
+
     const showToast = (msg: string, ok: boolean) => {
         setToast({ msg, ok });
         setTimeout(() => setToast(null), 3500);
@@ -941,16 +945,39 @@ export default function VanguardControlRoom() {
                                     <p className="font-semibold">No active incidents</p>
                                 </div>
                             ) : (
-                                activeIncidents.map(inc => (
-                                    <IncidentCard
-                                        key={inc.fingerprint}
-                                        inc={inc}
-                                        selected={selected.has(inc.fingerprint)}
-                                        onToggle={() => toggleSelect(inc.fingerprint)}
-                                        onResolve={() => resolveIncident(inc.fingerprint)}
-                                        resolving={!!resolving[inc.fingerprint]}
-                                    />
-                                ))
+                                <>
+                                    {activeIncidents.slice((incidentsPage - 1) * incidentsPerPage, incidentsPage * incidentsPerPage).map(inc => (
+                                        <IncidentCard
+                                            key={inc.fingerprint}
+                                            inc={inc}
+                                            selected={selected.has(inc.fingerprint)}
+                                            onToggle={() => toggleSelect(inc.fingerprint)}
+                                            onResolve={() => resolveIncident(inc.fingerprint)}
+                                            resolving={!!resolving[inc.fingerprint]}
+                                        />
+                                    ))}
+                                    {activeIncidents.length > incidentsPerPage && (
+                                        <div className="flex items-center justify-center gap-2 mt-6 pb-4">
+                                            <button
+                                                onClick={() => setIncidentsPage(p => Math.max(1, p - 1))}
+                                                disabled={incidentsPage === 1}
+                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-sm font-semibold"
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="text-slate-400 text-sm font-medium px-4">
+                                                Page {incidentsPage} of {Math.ceil(activeIncidents.length / incidentsPerPage)}
+                                            </span>
+                                            <button
+                                                onClick={() => setIncidentsPage(p => Math.min(Math.ceil(activeIncidents.length / incidentsPerPage), p + 1))}
+                                                disabled={incidentsPage === Math.ceil(activeIncidents.length / incidentsPerPage)}
+                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-sm font-semibold"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
