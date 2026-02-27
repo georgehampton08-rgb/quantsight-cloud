@@ -15,7 +15,7 @@ export default function MainCanvas() {
             {/* Background elements (grid, particles) could go here */}
             <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none z-0"></div>
 
-            <div className="flex-1 min-h-0 w-full relative z-10">
+            <div className="flex-1 min-h-0 w-full relative z-10 overflow-hidden">
                 <Routes>
                     <Route path="/" element={<CommandCenterPage />} />
                     <Route path="/player" element={<PlayerProfilePage />} />

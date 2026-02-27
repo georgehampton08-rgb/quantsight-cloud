@@ -1228,9 +1228,9 @@ export default function VanguardControlRoom() {
 
                                                                             {/* Metadata footer + Undo button */}
                                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-700/30">
-                                                                                <div className="flex items-center gap-4 text-[10px] text-slate-600">
+                                                                                <div className="flex items-center gap-4 text-[10px] text-slate-600 overflow-hidden">
                                                                                     {inc.resolved_by && <span>Resolved by: {inc.resolved_by}</span>}
-                                                                                    <span className="font-mono">{inc.fingerprint}</span>
+                                                                                    <span className="font-mono truncate max-w-[180px]" title={inc.fingerprint}>{inc.fingerprint}</span>
                                                                                 </div>
                                                                                 <button
                                                                                     onClick={(e) => { e.stopPropagation(); setUndoTarget(inc.fingerprint); }}
@@ -1328,8 +1328,8 @@ export default function VanguardControlRoom() {
                     </div>
 
                     {undoTarget && (
-                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
-                            <p className="text-[10px] text-slate-500 font-mono">{undoTarget}</p>
+                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3 overflow-hidden">
+                            <p className="text-[10px] text-slate-500 font-mono break-all leading-relaxed">{undoTarget}</p>
                             {(() => {
                                 const inc = incidents.find(i => i.fingerprint === undoTarget);
                                 return inc ? (
