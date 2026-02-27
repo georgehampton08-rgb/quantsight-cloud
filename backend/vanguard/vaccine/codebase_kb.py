@@ -298,15 +298,17 @@ def _scan_router_mounts(root: Path) -> list[str]:
     """
     Scan main.py / server.py for app.include_router() calls to map
     which prefix each router is mounted under.
-    Returns lines like: 'vanguard_router → prefix=/vanguard/admin  [server.py]'
+    Returns lines like: 'admin_router → prefix=/vanguard/admin  [main.py]'
     """
     import re
     mounts = []
+    # Match include_router with optional prefix kwarg
     mount_re = re.compile(
-        r'app\.include_router\(\s*([\w.]+)\s*.*?prefix\s*=\s*["\']([^"\']*)["\']",?',
-        re.DOTALL
+        r'app\.include_router\(\s*([\w.]+)(?:\s*,\s*(.+?))?\s*\)',
     )
-    for fname in ("server.py", "main.py"):
+    prefix_re = re.compile(r'prefix\s*=\s*["\']([^"\']*)["\']')
+
+    for fname in ("main.py", "server.py"):
         f = root / fname
         if not f.exists():
             continue
@@ -314,7 +316,9 @@ def _scan_router_mounts(root: Path) -> list[str]:
             src = f.read_text(encoding="utf-8", errors="replace")
             for m in mount_re.finditer(src):
                 router_var = m.group(1).rsplit(".", 1)[-1]
-                prefix = m.group(2)
+                rest = m.group(2) or ""
+                prefix_match = prefix_re.search(rest)
+                prefix = prefix_match.group(1) if prefix_match else "(inline)"
                 mounts.append(f"{router_var} → prefix={prefix}  [{fname}]")
         except Exception:
             pass
