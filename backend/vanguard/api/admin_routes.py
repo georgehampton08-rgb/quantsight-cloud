@@ -418,6 +418,81 @@ async def resolve_incident(http_request: Request, fingerprint: str, request: Res
         raise HTTPException(500, str(e))
 
 
+@router.post("/vanguard/admin/incidents/{fingerprint}/unresolve")
+async def unresolve_incident(http_request: Request, fingerprint: str, request: ResolveRequest):
+    """Revert a resolved incident back to active status."""
+    try:
+        storage = get_incident_storage()
+        
+        incident = await storage.load(fingerprint)
+        if not incident:
+            raise HTTPException(404, f"Incident {fingerprint} not found")
+        
+        if incident.get("status") == "active":
+            return {
+                "success": True,
+                "message": "Incident is already active",
+                "fingerprint": fingerprint
+            }
+        
+        if not request.approved:
+            raise HTTPException(
+                400,
+                "Unresolve requires explicit approval. Send {'approved': true} in request body."
+            )
+        
+        # Revert status to active
+        unresolve_data = {
+            "status": "active",
+            "unresolved_at": datetime.utcnow().isoformat() + "Z",
+            "unresolved_by": "admin",
+            "unresolve_reason": request.resolution_notes or "Undo resolve via Control Room",
+        }
+        
+        success = await storage.update_incident(fingerprint, unresolve_data)
+        
+        if success:
+            # Update metadata counts (reverse the resolve)
+            await storage._update_metadata(is_new=False, is_resolved=False)
+            # Manually adjust: increment active, decrement resolved
+            try:
+                if storage.config.storage_mode == "FIRESTORE":
+                    import firebase_admin
+                    from firebase_admin import firestore
+                    db = firestore.client()
+                    meta_ref = db.collection('vanguard_metadata').document('global')
+                    snapshot = meta_ref.get()
+                    if snapshot.exists:
+                        data = snapshot.to_dict()
+                        data["active_count"] = data.get("active_count", 0) + 1
+                        data["resolved_count"] = max(0, data.get("resolved_count", 0) - 1)
+                        meta_ref.set(data)
+            except Exception as e:
+                logger.warning(f"Metadata unresolve adjustment failed: {e}")
+            
+            logger.info(f"Incident unresolved: {fingerprint}")
+            await audit.log(
+                action="UNRESOLVE_INCIDENT",
+                request_id=http_request.headers.get("X-Request-ID", "unknown"),
+                affected_ids=[fingerprint],
+                metadata={"reason": request.resolution_notes, "approved": request.approved},
+                result="SUCCESS",
+                ip_address=http_request.client.host if http_request.client else None,
+            )
+            return {
+                "success": True,
+                "message": "Incident reverted to active",
+                "fingerprint": fingerprint,
+                "unresolved_at": unresolve_data["unresolved_at"],
+            }
+        else:
+            raise HTTPException(500, "Failed to unresolve incident")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to unresolve incident {fingerprint}: {e}")
+        raise HTTPException(500, str(e))
+
 @router.post("/vanguard/admin/incidents/bulk-resolve")
 async def bulk_resolve_incidents(request: BulkResolveRequest, http_request: Request = None):
     """Resolve multiple incidents by fingerprint with learning tracking."""

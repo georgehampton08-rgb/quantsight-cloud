@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
     Activity, ShieldCheck, AlertTriangle, RefreshCw, Cpu,
     CheckCircle2, Loader2, FileKey, X, Zap, Brain, ChevronDown,
-    ChevronUp, Clock, Hash
+    ChevronUp, Clock, Hash, Undo2
 } from 'lucide-react';
 import { ApiContract } from '../api/client';
 import { VanguardLearningExport } from '../components/vanguard/VanguardLearningExport';
@@ -619,6 +619,8 @@ export default function VanguardControlRoom() {
     const [resolvedPage, setResolvedPage] = useState(1);
     const resolvedPerPage = 60;
     const [expandedResolved, setExpandedResolved] = useState<Set<string>>(new Set());
+    const [undoTarget, setUndoTarget] = useState<string | null>(null);
+    const [unresolving, setUnresolving] = useState<Record<string, boolean>>({});
 
     const showToast = (msg: string, ok: boolean) => {
         setToast({ msg, ok });
@@ -692,6 +694,27 @@ export default function VanguardControlRoom() {
             showToast(`Resolve failed: ${e.message}`, false);
         }
         setResolving(prev => ({ ...prev, [fingerprint]: false }));
+    };
+
+    const unresolveIncident = async (fingerprint: string) => {
+        setUnresolving(prev => ({ ...prev, [fingerprint]: true }));
+        try {
+            await ApiContract.execute(null, {
+                path: `vanguard/admin/incidents/${fingerprint}/unresolve`,
+                options: {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approved: true, resolution_notes: 'Undo resolve via Control Room' })
+                }
+            });
+            showToast('Incident reverted to active', true);
+            setUndoTarget(null);
+            setExpandedResolved(prev => { const n = new Set(prev); n.delete(fingerprint); return n; });
+            await loadData(true);
+        } catch (e: any) {
+            showToast(`Unresolve failed: ${e.message}`, false);
+        }
+        setUnresolving(prev => ({ ...prev, [fingerprint]: false }));
     };
 
     const analyzeAll = async () => {
@@ -1203,10 +1226,19 @@ export default function VanguardControlRoom() {
                                                                                 </div>
                                                                             )}
 
-                                                                            {/* Metadata footer */}
-                                                                            <div className="flex items-center gap-4 text-[10px] text-slate-600 pt-1">
-                                                                                {inc.resolved_by && <span>Resolved by: {inc.resolved_by}</span>}
-                                                                                <span className="font-mono">{inc.fingerprint}</span>
+                                                                            {/* Metadata footer + Undo button */}
+                                                                            <div className="flex items-center justify-between pt-2 border-t border-slate-700/30">
+                                                                                <div className="flex items-center gap-4 text-[10px] text-slate-600">
+                                                                                    {inc.resolved_by && <span>Resolved by: {inc.resolved_by}</span>}
+                                                                                    <span className="font-mono">{inc.fingerprint}</span>
+                                                                                </div>
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); setUndoTarget(inc.fingerprint); }}
+                                                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-lg transition-colors text-xs font-semibold"
+                                                                                >
+                                                                                    <Undo2 className="w-3.5 h-3.5" />
+                                                                                    Undo Resolve
+                                                                                </button>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -1271,6 +1303,66 @@ export default function VanguardControlRoom() {
                     )}
                 </div>
             </div>
+
+            {/* ── Undo Resolve Confirmation Modal ──────────────────────────── */}
+            <Modal
+                isOpen={!!undoTarget}
+                onClose={() => setUndoTarget(null)}
+                title="Undo Resolve"
+                icon={<Undo2 className="w-5 h-5 text-amber-400" />}
+                maxWidth="sm"
+                mobileBottomSheet={false}
+            >
+                <div className="space-y-4">
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-bold text-amber-300 mb-1">Are you sure?</p>
+                                <p className="text-xs text-slate-400">
+                                    This will move the incident back to <span className="text-white font-semibold">Active</span> status.
+                                    It will reappear in the Incidents tab and count against your health score.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {undoTarget && (
+                        <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
+                            <p className="text-[10px] text-slate-500 font-mono">{undoTarget}</p>
+                            {(() => {
+                                const inc = incidents.find(i => i.fingerprint === undoTarget);
+                                return inc ? (
+                                    <div className="mt-1">
+                                        <span className="text-xs text-slate-300 font-semibold">{inc.error_type}</span>
+                                        <span className="text-xs text-slate-500 ml-2">{inc.endpoint}</span>
+                                    </div>
+                                ) : null;
+                            })()}
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-2">
+                        <button
+                            onClick={() => setUndoTarget(null)}
+                            className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors text-sm font-semibold"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => undoTarget && unresolveIncident(undoTarget)}
+                            disabled={!undoTarget || unresolving[undoTarget || '']}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded-xl transition-colors text-sm font-bold disabled:opacity-50"
+                        >
+                            {unresolving[undoTarget || ''] ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Reverting…</>
+                            ) : (
+                                <><Undo2 className="w-4 h-4" /> Confirm Undo</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
