@@ -62,10 +62,41 @@ interface RunHistoryEntry {
 
 interface RunDetail {
     run_id: string;
+    schema_version?: string;
+    triggered_by?: {
+        ip?: string;
+        forwarded_for?: string;
+        user_agent?: string;
+        referer?: string;
+        host?: string;
+        origin?: string;
+        method?: string;
+        url?: string;
+        timestamp_utc?: string;
+        server_hostname?: string;
+        server_env?: string;
+        accept_language?: string;
+    };
     triggered_at: string;
     completed_at: string;
     duration_ms: number;
     summary: RunHistoryEntry['summary'];
+    incidents?: Array<{
+        index: number;
+        fingerprint: string;
+        title: string;
+        error_type: string;
+        error_message: string;
+        endpoint: string;
+        occurrence_count: number;
+        severity: string;
+        action_taken: string;
+        ai_confidence: number;
+        ai_root_cause: string;
+        patch_file: string | null;
+        skip_reason: string | null;
+        processed_at: string;
+    }>;
     log: Array<{ level: string; msg: string; ts: string; detail?: string; fingerprint?: string; file?: string; confidence?: number }>;
     patches: Array<{
         fingerprint: string;
@@ -73,13 +104,21 @@ interface RunDetail {
         file_path: string;
         line_start: number;
         line_end: number;
-        explanation: string;
+        explanation: string | string[];
         confidence: number;
         generated_at: string;
         original_code_full: string;
         fixed_code_full: string;
     }>;
+    environment?: {
+        service?: string;
+        revision?: string;
+        region?: string;
+        project?: string;
+        python_ver?: string;
+    };
 }
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -261,94 +300,194 @@ function RunHistoryPanel() {
         finally { setLoadingDetail(false); }
     };
 
+    // ── Detail view — full overlay modal (prevents cutoff in scroll containers) ──
     if (selected) {
+        const tb = selected.triggered_by;
+        const env = selected.environment;
+        const renderExplanation = (ex: string | string[]) => {
+            if (Array.isArray(ex)) return ex.map((line, i) => <div key={i} className="text-slate-300 text-xs leading-relaxed py-0.5">{line}</div>);
+            return <p className="text-slate-300 text-sm">{String(ex)}</p>;
+        };
+        const actionColor = (a: string) => {
+            if (a === 'patched') return 'text-emerald-400 bg-emerald-500/10';
+            if (a === 'skipped') return 'text-amber-400 bg-amber-500/10';
+            if (a === 'error') return 'text-red-400 bg-red-500/10';
+            return 'text-slate-400 bg-slate-500/10';
+        };
+
         return (
-            <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setSelected(null)}
-                        className="text-slate-400 hover:text-white flex items-center gap-1.5 text-sm transition-colors"
-                    >
-                        ← Back to history
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+                {/* Sticky header */}
+                <div className="flex-shrink-0 bg-[#0a0e1a] border-b border-slate-700/50 px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setSelected(null)}
+                            className="text-slate-400 hover:text-white flex items-center gap-1.5 text-sm transition-colors border border-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-800"
+                        >
+                            ← Back
+                        </button>
+                        <div>
+                            <span className="font-mono text-sm text-indigo-300 font-bold">{selected.run_id}</span>
+                            <span className="text-slate-500 text-xs ml-3">{fmtDate(selected.triggered_at)}</span>
+                            <span className="text-slate-600 text-xs ml-3">{(selected.duration_ms / 1000).toFixed(1)}s</span>
+                            {selected.schema_version && <span className="text-slate-700 text-xs ml-3">schema v{selected.schema_version}</span>}
+                        </div>
+                    </div>
+                    <button onClick={() => setSelected(null)} className="text-slate-500 hover:text-white p-1 rounded-lg transition-colors">
+                        <XCircle className="w-5 h-5" />
                     </button>
-                    <span className="text-slate-600">|</span>
-                    <span className="font-mono text-sm text-indigo-300">{selected.run_id}</span>
-                    <span className="text-slate-500 text-xs">{fmtDate(selected.triggered_at)}</span>
-                    <span className="text-slate-600 text-xs ml-auto">{(selected.duration_ms / 1000).toFixed(1)}s</span>
                 </div>
 
-                <SummaryBar s={selected.summary} />
+                {/* Scrollable body */}
+                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
-                {/* Patches section */}
-                {selected.patches.length > 0 && (
-                    <div className="space-y-3">
-                        <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2">
-                            <Code2 className="w-4 h-4 text-emerald-400" /> Generated Patches ({selected.patches.length})
-                        </h4>
-                        {selected.patches.map((p, i) => (
-                            <div key={i} className="border border-emerald-500/20 rounded-xl overflow-hidden">
-                                <button
-                                    onClick={() => setExpandedPatch(expandedPatch === `${i}` ? null : `${i}`)}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-900/10 hover:bg-emerald-900/20 transition-colors text-left"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <div>
-                                            <div className="text-emerald-300 font-bold text-sm">{p.file_path}<span className="text-slate-500">:{p.line_start}-{p.line_end}</span></div>
-                                            <div className="text-slate-500 text-xs mt-0.5">{p.title} • {p.confidence?.toFixed(0)}% confidence</div>
-                                        </div>
-                                    </div>
-                                    {expandedPatch === `${i}` ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-                                </button>
-                                {expandedPatch === `${i}` && (
-                                    <div className="divide-y divide-slate-800">
-                                        <div className="p-4 bg-slate-900/50">
-                                            <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Explanation</div>
-                                            <p className="text-slate-300 text-sm">{p.explanation}</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800">
-                                            <div className="p-4">
-                                                <div className="text-[10px] text-red-400 uppercase tracking-widest mb-2 font-bold">BEFORE</div>
-                                                <pre className="text-red-300/80 text-[11px] overflow-x-auto font-mono leading-relaxed bg-red-950/20 rounded p-3 max-h-52 overflow-y-auto">
-                                                    {p.original_code_full || '(not captured)'}
-                                                </pre>
-                                            </div>
-                                            <div className="p-4">
-                                                <div className="text-[10px] text-emerald-400 uppercase tracking-widest mb-2 font-bold">AFTER</div>
-                                                <pre className="text-emerald-300/80 text-[11px] overflow-x-auto font-mono leading-relaxed bg-emerald-950/20 rounded p-3 max-h-52 overflow-y-auto">
-                                                    {p.fixed_code_full || '(not captured)'}
-                                                </pre>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                    <SummaryBar s={selected.summary} />
+
+                    {/* ── Triggered By ───────────────────────────────────── */}
+                    {tb && (
+                        <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+                            <div className="bg-slate-900/50 px-4 py-2.5 border-b border-slate-700/30">
+                                <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-cyan-400" /> Triggered By
+                                </h4>
                             </div>
-                        ))}
-                    </div>
-                )}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 text-xs">
+                                {tb.ip && <div><span className="text-slate-600 block">IP Address</span><span className="text-slate-300 font-mono">{tb.ip}</span></div>}
+                                {tb.user_agent && <div className="col-span-2"><span className="text-slate-600 block">User Agent</span><span className="text-slate-300 font-mono text-[10px] break-all">{tb.user_agent}</span></div>}
+                                {tb.host && <div><span className="text-slate-600 block">Host</span><span className="text-slate-300 font-mono">{tb.host}</span></div>}
+                                {tb.origin && <div><span className="text-slate-600 block">Origin</span><span className="text-slate-300 font-mono">{tb.origin}</span></div>}
+                                {tb.referer && <div><span className="text-slate-600 block">Referer</span><span className="text-slate-300 font-mono">{tb.referer}</span></div>}
+                                {tb.method && <div><span className="text-slate-600 block">Method</span><span className="text-slate-300 font-mono">{tb.method}</span></div>}
+                                {tb.timestamp_utc && <div><span className="text-slate-600 block">Timestamp (UTC)</span><span className="text-slate-300 font-mono">{tb.timestamp_utc}</span></div>}
+                                {tb.server_env && <div><span className="text-slate-600 block">Server Env</span><span className="text-slate-300 font-mono">{tb.server_env}</span></div>}
+                            </div>
+                        </div>
+                    )}
 
-                {/* Full log replay */}
-                <div>
-                    <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2 mb-2">
-                        <Terminal className="w-4 h-4 text-slate-400" /> Full Run Log ({selected.log.length} entries)
-                    </h4>
-                    <div className="bg-[#080810] rounded-xl font-mono text-xs p-3 h-64 overflow-y-auto space-y-0.5 border border-slate-800">
-                        {selected.log.map((e, i) => {
-                            const { color, prefix } = levelMeta(e.level);
-                            return (
-                                <div key={i} className="flex items-start gap-2 hover:bg-white/[0.02] px-1 py-[1px] rounded">
-                                    <span className="text-slate-700 flex-shrink-0 w-16 text-right">{e.ts}</span>
-                                    <span className={`flex-shrink-0 ${color} font-bold`}>{prefix}</span>
-                                    <span className="text-slate-400 break-all">
-                                        {e.msg}
-                                        {e.fingerprint && <span className={`ml-2 text-[10px] ${color} opacity-50`}>[{e.fingerprint.slice(0, 14)}…]</span>}
-                                        {e.file && <span className="ml-2 text-slate-600 text-[10px]">→ {e.file}</span>}
-                                        {e.confidence != null && <span className="ml-2 text-emerald-400 font-bold">{e.confidence.toFixed(0)}%</span>}
-                                    </span>
+                    {/* ── Incident Summary Table ────────────────────────── */}
+                    {selected.incidents && selected.incidents.length > 0 && (
+                        <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+                            <div className="bg-slate-900/50 px-4 py-2.5 border-b border-slate-700/30">
+                                <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2">
+                                    <Bug className="w-4 h-4 text-amber-400" /> Incidents Processed ({selected.incidents.length})
+                                </h4>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="text-slate-500 border-b border-slate-800">
+                                            <th className="text-left px-4 py-2 font-medium">#</th>
+                                            <th className="text-left px-4 py-2 font-medium">Endpoint</th>
+                                            <th className="text-left px-4 py-2 font-medium">Type</th>
+                                            <th className="text-center px-4 py-2 font-medium">Hits</th>
+                                            <th className="text-left px-4 py-2 font-medium">Action</th>
+                                            <th className="text-left px-4 py-2 font-medium">Reason / Patch</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selected.incidents.map(inc => (
+                                            <tr key={inc.fingerprint} className="border-b border-slate-800/50 hover:bg-white/[0.02]">
+                                                <td className="px-4 py-2 text-slate-600">{inc.index}</td>
+                                                <td className="px-4 py-2 font-mono text-slate-300 max-w-[200px] truncate" title={inc.endpoint}>{inc.endpoint}</td>
+                                                <td className="px-4 py-2 text-slate-400">{inc.error_type}</td>
+                                                <td className="px-4 py-2 text-center text-slate-400">{inc.occurrence_count}</td>
+                                                <td className="px-4 py-2">
+                                                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${actionColor(inc.action_taken)}`}>
+                                                        {inc.action_taken.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2 text-slate-500 max-w-[200px] truncate" title={inc.skip_reason || inc.patch_file || ''}>
+                                                    {inc.skip_reason || inc.patch_file || '—'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Patches ───────────────────────────────────────── */}
+                    {selected.patches.length > 0 && (
+                        <div className="space-y-3">
+                            <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2">
+                                <Code2 className="w-4 h-4 text-emerald-400" /> Generated Patches ({selected.patches.length})
+                            </h4>
+                            {selected.patches.map((p, i) => (
+                                <div key={i} className="border border-emerald-500/20 rounded-xl overflow-hidden">
+                                    <button
+                                        onClick={() => setExpandedPatch(expandedPatch === `${i}` ? null : `${i}`)}
+                                        className="w-full flex items-center justify-between px-4 py-3 bg-emerald-900/10 hover:bg-emerald-900/20 transition-colors text-left"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                            <div>
+                                                <div className="text-emerald-300 font-bold text-sm">{p.file_path}<span className="text-slate-500">:{p.line_start}-{p.line_end}</span></div>
+                                                <div className="text-slate-500 text-xs mt-0.5">{p.title} • {p.confidence?.toFixed(0)}% confidence</div>
+                                            </div>
+                                        </div>
+                                        {expandedPatch === `${i}` ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                    </button>
+                                    {expandedPatch === `${i}` && (
+                                        <div className="divide-y divide-slate-800">
+                                            <div className="p-4 bg-slate-900/50">
+                                                <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Explanation</div>
+                                                {renderExplanation(p.explanation)}
+                                            </div>
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800">
+                                                <div className="p-4">
+                                                    <div className="text-[10px] text-red-400 uppercase tracking-widest mb-2 font-bold">BEFORE (original)</div>
+                                                    <pre className="text-red-300/80 text-[11px] overflow-x-auto font-mono leading-relaxed bg-red-950/20 rounded p-3 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                                                        {p.original_code_full || '(no original code — new file or endpoint)'}
+                                                    </pre>
+                                                </div>
+                                                <div className="p-4">
+                                                    <div className="text-[10px] text-emerald-400 uppercase tracking-widest mb-2 font-bold">AFTER (patched)</div>
+                                                    <pre className="text-emerald-300/80 text-[11px] overflow-x-auto font-mono leading-relaxed bg-emerald-950/20 rounded p-3 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                                                        {p.fixed_code_full || '(not captured)'}
+                                                    </pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            );
-                        })}
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Full log replay ───────────────────────────────── */}
+                    <div>
+                        <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2 mb-2">
+                            <Terminal className="w-4 h-4 text-slate-400" /> Full Run Log ({selected.log.length} entries)
+                        </h4>
+                        <div className="bg-[#080810] rounded-xl font-mono text-xs p-3 max-h-80 overflow-y-auto space-y-0.5 border border-slate-800">
+                            {selected.log.map((e, i) => {
+                                const { color, prefix } = levelMeta(e.level);
+                                return (
+                                    <div key={i} className="flex items-start gap-2 hover:bg-white/[0.02] px-1 py-[1px] rounded">
+                                        <span className="text-slate-700 flex-shrink-0 w-16 text-right">{e.ts}</span>
+                                        <span className={`flex-shrink-0 ${color} font-bold`}>{prefix}</span>
+                                        <span className="text-slate-400 break-all">
+                                            {e.msg}
+                                            {e.fingerprint && <span className={`ml-2 text-[10px] ${color} opacity-50`}>[{e.fingerprint.slice(0, 14)}…]</span>}
+                                            {e.file && <span className="ml-2 text-slate-600 text-[10px]">→ {e.file}</span>}
+                                            {e.confidence != null && <span className="ml-2 text-emerald-400 font-bold">{e.confidence.toFixed(0)}%</span>}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
+
+                    {/* ── Environment ───────────────────────────────────── */}
+                    {env && (
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-[10px] text-slate-600 border-t border-slate-800 pt-3">
+                            {env.service && <span>Service: <span className="text-slate-400">{env.service}</span></span>}
+                            {env.revision && <span>Revision: <span className="text-slate-400">{env.revision}</span></span>}
+                            {env.region && <span>Region: <span className="text-slate-400">{env.region}</span></span>}
+                            {env.python_ver && <span>Python: <span className="text-slate-400">{env.python_ver}</span></span>}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -719,6 +858,7 @@ interface KBStatus {
     ttl_seconds?: number;
     module_count?: number;
     route_count?: number;
+    collection_count?: number;
     dep_count?: number;
     root?: string;
     error?: string;
@@ -772,8 +912,8 @@ function KnowledgeBaseStatus() {
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-slate-200 font-bold text-sm">Codebase Knowledge Base</span>
                         <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${hasError ? 'bg-red-500/20 text-red-300'
-                                : isStale ? 'bg-amber-500/20 text-amber-300'
-                                    : 'bg-emerald-500/20 text-emerald-300'
+                            : isStale ? 'bg-amber-500/20 text-amber-300'
+                                : 'bg-emerald-500/20 text-emerald-300'
                             }`}>
                             {hasError ? 'ERROR' : isStale ? 'STALE' : 'WARM'}
                         </span>
@@ -787,7 +927,10 @@ function KnowledgeBaseStatus() {
                                 <span className="text-slate-300 font-bold">{kb.route_count ?? 0}</span> routes mapped
                             </span>
                             <span className="text-slate-500 text-xs">
-                                <span className="text-slate-300 font-bold">{kb.dep_count ?? 0}</span> deps catalogued
+                                <span className="text-slate-300 font-bold">{kb.collection_count ?? 0}</span> collections
+                            </span>
+                            <span className="text-slate-500 text-xs">
+                                <span className="text-slate-300 font-bold">{kb.dep_count ?? 0}</span> deps
                             </span>
                             <span className="text-slate-500 text-xs">Built {ageFmt(kb.age_seconds)}</span>
                         </div>

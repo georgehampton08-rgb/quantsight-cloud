@@ -262,6 +262,65 @@ def _extract_error_patterns(root: Path) -> list[str]:
     return list(dict.fromkeys(patterns))[:15]   # deduplicate + cap
 
 
+# ── Firestore collection scanner ──────────────────────────────────────────────
+
+def _scan_firestore_collections(root: Path) -> list[str]:
+    """
+    Scan codebase for Firestore collection references:
+      db.collection("...")   .collection("...")
+    Returns deduplicated list of collection names found.
+    """
+    import re
+    collections = set()
+    pattern = re.compile(r'\.collection\(["\']([A-Za-z0-9_-]+)["\']\)')
+
+    search_dirs = [root / d for d in _BACKEND_DIRS if (root / d).is_dir()]
+    search_dirs.append(root)
+
+    for d in search_dirs:
+        py_files = d.glob("*.py") if d == root else d.rglob("*.py")
+        for f in py_files:
+            if any(skip in str(f) for skip in _SKIP_DIRS):
+                continue
+            try:
+                src = f.read_text(encoding="utf-8", errors="replace")
+                for m in pattern.finditer(src):
+                    collections.add(m.group(1))
+            except Exception:
+                pass
+
+    return sorted(collections)
+
+
+# ── Router mount scanner ─────────────────────────────────────────────────────
+
+def _scan_router_mounts(root: Path) -> list[str]:
+    """
+    Scan main.py / server.py for app.include_router() calls to map
+    which prefix each router is mounted under.
+    Returns lines like: 'vanguard_router → prefix=/vanguard/admin  [server.py]'
+    """
+    import re
+    mounts = []
+    mount_re = re.compile(
+        r'app\.include_router\(\s*([\w.]+)\s*.*?prefix\s*=\s*["\']([^"\']*)["\']",?',
+        re.DOTALL
+    )
+    for fname in ("server.py", "main.py"):
+        f = root / fname
+        if not f.exists():
+            continue
+        try:
+            src = f.read_text(encoding="utf-8", errors="replace")
+            for m in mount_re.finditer(src):
+                router_var = m.group(1).rsplit(".", 1)[-1]
+                prefix = m.group(2)
+                mounts.append(f"{router_var} → prefix={prefix}  [{fname}]")
+        except Exception:
+            pass
+    return mounts
+
+
 # ── Markdown formatter ────────────────────────────────────────────────────────
 
 def _format_context_markdown(kb: dict) -> str:
@@ -289,12 +348,31 @@ def _format_context_markdown(kb: dict) -> str:
     lines.extend(deps[:40])
     lines += ["```", ""]
 
+    # Router Mounts (prefix mapping)
+    mounts = kb.get("router_mounts", [])
+    if mounts:
+        lines.append("### Router Mount Points (from server.py / main.py)")
+        lines.append("```")
+        lines.extend(mounts)
+        lines.append("```")
+        lines.append("")
+
     # API Routes
     routes = kb.get("routes", [])
     if routes:
         lines.append("### Registered API Routes (subset)")
         lines.append("```")
         lines.extend(routes[:40])
+        lines.append("```")
+        lines.append("")
+
+    # Firestore Collections
+    collections = kb.get("firestore_collections", [])
+    if collections:
+        lines.append("### Firestore Collections (discovered in codebase)")
+        lines.append("These are the Firestore collections referenced in the code. Use ONLY these collection names.")
+        lines.append("```")
+        lines.extend(collections)
         lines.append("```")
         lines.append("")
 
@@ -352,9 +430,11 @@ async def build_kb() -> dict:
 
     # Run CPU-bound crawl in executor to avoid blocking event loop
     loop = asyncio.get_event_loop()
-    modules = await loop.run_in_executor(None, _crawl_backend, root)
-    routes  = await loop.run_in_executor(None, _build_route_index, modules)
-    errors  = await loop.run_in_executor(None, _extract_error_patterns, root)
+    modules      = await loop.run_in_executor(None, _crawl_backend, root)
+    routes       = await loop.run_in_executor(None, _build_route_index, modules)
+    errors       = await loop.run_in_executor(None, _extract_error_patterns, root)
+    collections  = await loop.run_in_executor(None, _scan_firestore_collections, root)
+    router_mounts = await loop.run_in_executor(None, _scan_router_mounts, root)
 
     # Read requirements.txt for dependency list
     deps = []
@@ -369,15 +449,18 @@ async def build_kb() -> dict:
 
     built_at = datetime.now(timezone.utc).isoformat()
     kb = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "built_at":       built_at,
         "root":           str(root),
         "module_count":   len(modules),
         "route_count":    len(routes),
+        "collection_count": len(collections),
         "modules":        modules,
         "routes":         routes,
         "error_patterns": errors,
         "dependencies":   deps,
+        "firestore_collections": collections,
+        "router_mounts":  router_mounts,
     }
 
     # Generate the formatted markdown context
@@ -399,7 +482,7 @@ async def build_kb() -> dict:
     except Exception as e:
         logger.debug(f"[QuantSight KB] Could not persist to disk: {e}")
 
-    logger.info(f"[QuantSight KB] Built: {len(modules)} modules, {len(routes)} routes, {len(deps)} deps")
+    logger.info(f"[QuantSight KB] Built: {len(modules)} modules, {len(routes)} routes, {len(collections)} collections, {len(deps)} deps")
     return kb
 
 

@@ -1955,6 +1955,8 @@ async def get_kb_status():
             "ttl_seconds":    _kb_mod._KB_TTL_SECONDS,
             "module_count":   kb.get("module_count", 0),
             "route_count":    kb.get("route_count", 0),
+            "collection_count": kb.get("collection_count", len(kb.get("firestore_collections", []))),
+            "router_mount_count": len(kb.get("router_mounts", [])),
             "dep_count":      len(kb.get("dependencies", [])),
             "root":           kb.get("root", "unknown"),
             "schema_version": kb.get("schema_version", "unknown"),
@@ -1981,6 +1983,8 @@ async def rebuild_kb():
             "built_at":     kb.get("built_at"),
             "module_count": kb.get("module_count", 0),
             "route_count":  kb.get("route_count", 0),
+            "collection_count": kb.get("collection_count", 0),
+            "router_mount_count": len(kb.get("router_mounts", [])),
             "dep_count":    len(kb.get("dependencies", [])),
         }
     except Exception as e:
