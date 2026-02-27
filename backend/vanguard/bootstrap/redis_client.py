@@ -29,7 +29,7 @@ _redis_pool: Optional[ConnectionPool] = None
 _CONNECT_MAX_RETRIES = 3
 _CONNECT_BACKOFF_BASE_S = 1.0  # 1s → 2s → 4s
 _failover_incident_posted = False
-_last_healthy = True
+_last_healthy = False  # Start False — avoids false healthy→unhealthy transition on boot
 
 
 async def get_redis() -> Redis:
@@ -145,6 +145,14 @@ async def ping_redis() -> bool:
     Posts Vanguard incidents on state transitions (healthy → unhealthy, unhealthy → healthy).
     """
     global _last_healthy
+
+    # ── Skip entirely when Redis is intentionally not provisioned ────────
+    # On Cloud Run with no REDIS_URL set, Redis is expected to be absent.
+    # Silently return False — do NOT post failover incidents.
+    config = get_vanguard_config()
+    if 'localhost' in config.redis_url and os.getenv('K_SERVICE'):
+        _last_healthy = False
+        return False
 
     try:
         client = await get_redis()

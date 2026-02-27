@@ -714,7 +714,7 @@ export default function VanguardControlRoom() {
                 <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-5 sm:space-y-8 min-h-0 pb-12">
                     {/* Toast */}
                     {toast && (
-                        <div className={`fixed bottom-6 right-6 z-[100] px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
+                        <div className={`fixed bottom-6 right-6 z-[9999] px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
                             {toast.msg}
                         </div>
                     )}
@@ -992,6 +992,61 @@ export default function VanguardControlRoom() {
                     {activeTab === 'ARCHIVES' && (
                         <div className="space-y-6">
                             <VanguardArchivesViewer />
+
+                            {/* ── Resolved Incidents Archive ─────────────────────────────── */}
+                            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/50 bg-slate-900/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-white font-bold text-base">Resolved Incidents</h3>
+                                            <p className="text-slate-500 text-xs">
+                                                {incidents.filter(i => i.status !== 'active').length} resolved incidents in archive
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-700/30">
+                                    {incidents.filter(i => i.status !== 'active').length === 0 ? (
+                                        <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                                            <CheckCircle2 className="w-10 h-10 mb-3 opacity-30" />
+                                            <p>No resolved incidents yet.</p>
+                                        </div>
+                                    ) : (
+                                        incidents
+                                            .filter(i => i.status !== 'active')
+                                            .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
+                                            .slice(0, 50)
+                                            .map(inc => (
+                                                <div key={inc.fingerprint} className="p-4 sm:p-5 hover:bg-slate-800/30 transition-colors">
+                                                    <div className="flex items-start gap-3">
+                                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="font-bold text-sm text-slate-300 truncate">{inc.error_type}</span>
+                                                                <span className="text-[9px] px-2 py-0.5 rounded border uppercase font-bold tracking-widest flex-shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
+                                                                    RESOLVED
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-xs flex-wrap">
+                                                                <span className="text-slate-500 font-mono">{inc.endpoint}</span>
+                                                                <span className="text-slate-600">•</span>
+                                                                <span className="text-slate-500 font-mono">
+                                                                    {new Date(inc.last_seen).toLocaleString()}
+                                                                </span>
+                                                                <span className="text-slate-600">•</span>
+                                                                <span className="text-slate-500">{inc.occurrence_count}× occurrences</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                    )}
+                                </div>
+                            </div>
+
                             <VaccinePanel />
                         </div>
                     )}

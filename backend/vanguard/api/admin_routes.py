@@ -232,6 +232,20 @@ async def get_vanguard_stats():
             "redis": redis_ok,
         }
 
+        # ── Debug logging for subsystem health diagnostics ──────────────
+        import os
+        logger.info(
+            "SUBSYSTEM_HEALTH_DEBUG | "
+            f"enabled={config.enabled} | "
+            f"llm_enabled={config.llm_enabled} | "
+            f"vaccine_enabled={config.vaccine_enabled} | "
+            f"mode={config.mode.value} | "
+            f"redis_ok={redis_ok} | "
+            f"storage_mb={storage_mb:.2f}/{storage_cap} | "
+            f"ENV_VANGUARD_MODE={os.getenv('VANGUARD_MODE', 'NOT_SET')} | "
+            f"health={subsystem_health}"
+        )
+
         # Weighted scoring: required subsystems matter more
         weights = {
             "inquisitor": 30,
