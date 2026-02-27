@@ -35,12 +35,14 @@ async def get_surgeon_actions(limit: int = 100) -> Dict[str, Any]:
         storage = get_incident_storage()
         actions = await storage.query_collection(
             collection="vanguard_surgeon_actions",
-            limit=limit,
-            order_by=[("logged_at", "desc")]
+            limit=limit
         )
         
+        # In-memory sort to bypass Firestore composite index requirement
+        actions.sort(key=lambda x: x.get("logged_at", ""), reverse=True)
+        
         return {
-            "actions": actions,
+            "actions": actions[:limit],
             "total": len(actions)
         }
     except Exception as e:

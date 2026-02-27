@@ -772,7 +772,17 @@ async def analyze_matchup(
         raise
     except Exception as e:
         logger.error(f"Error analyzing matchup {home_team} vs {away_team}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            'success': False,
+            'error': f'Analysis failed: {str(e)}',
+            'fallback': True,
+            'game_id': game_id,
+            'game': f"{away_team} @ {home_team}" if home_team and away_team else None,
+            'matchup_context': {},
+            'projections': [],
+            'insights': {'summary': 'Engine encountered an error. Try again later.', 'ai_powered': False},
+            'ai_powered': False
+        }
 
 
 @router.post("/analyze/crucible")

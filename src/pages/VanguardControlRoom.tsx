@@ -714,7 +714,7 @@ export default function VanguardControlRoom() {
                 <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-5 sm:space-y-8 min-h-0 pb-12">
                     {/* Toast */}
                     {toast && (
-                        <div className={`fixed top-4 right-4 z-50 px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
+                        <div className={`fixed bottom-6 right-6 z-[100] px-4 sm:px-5 py-3 rounded-xl border text-sm font-semibold shadow-lg backdrop-blur-md transition-all max-w-[90vw] ${toast.ok ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-300' : 'bg-red-900/80 border-red-500/50 text-red-300'}`}>
                             {toast.msg}
                         </div>
                     )}
