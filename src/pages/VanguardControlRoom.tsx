@@ -87,7 +87,7 @@ function DoughnutScore({ score = 0 }: { score: number }) {
     const offset = C - (score / 100) * C;
     const color = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#f43f5e';
     return (
-        <div className="relative w-36 h-36 sm:w-48 sm:h-48 flex items-center justify-center">
+        <div className="relative w-28 h-28 sm:w-48 sm:h-48 flex items-center justify-center">
             <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                 <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" strokeWidth="8" />
                 <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="8"
@@ -507,32 +507,34 @@ function IncidentCard({
             >
                 <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 relative z-10">
-                    {/* Checkbox */}
-                    <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={(e) => { e.stopPropagation(); onToggle(); }}
-                        className="w-5 h-5 bg-black/50 border-white/20 rounded text-amber-500 flex-shrink-0 cursor-pointer focus:ring-amber-500/50"
-                    />
+                    <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+                        {/* Checkbox */}
+                        <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(e) => { e.stopPropagation(); onToggle(); }}
+                            className="w-5 h-5 bg-black/50 border-white/20 rounded text-amber-500 flex-shrink-0 cursor-pointer focus:ring-amber-500/50 mt-1 sm:mt-0"
+                        />
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-3 mb-1.5">
-                            <AlertTriangle className="w-5 h-5 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] flex-shrink-0" />
-                            <span className="text-white font-black text-sm sm:text-base tracking-wide drop-shadow-md">{inc.error_type}</span>
-                            <span className={`text-[10px] px-2.5 py-0.5 rounded font-black tracking-widest border shadow-sm ${severityStyle}`}>
-                                {inc.severity?.toUpperCase()}
-                            </span>
-                        </div>
-                        <div className="text-slate-400 font-mono text-xs sm:text-sm ml-8 truncate">{inc.endpoint}</div>
-                        <div className="text-slate-500 text-xs ml-8 mt-2 flex flex-wrap gap-4 font-semibold">
-                            <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> {inc.occurrence_count} Occurrences</span>
-                            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(inc.last_seen).toLocaleString()}</span>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5">
+                                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] flex-shrink-0" />
+                                <span className="text-white font-black text-sm sm:text-base tracking-wide drop-shadow-md break-all">{inc.error_type}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded font-black tracking-widest border shadow-sm ${severityStyle}`}>
+                                    {inc.severity?.toUpperCase()}
+                                </span>
+                            </div>
+                            <div className="text-slate-400 font-mono text-xs sm:text-sm ml-6 sm:ml-8 truncate">{inc.endpoint}</div>
+                            <div className="text-slate-500 text-[10px] sm:text-xs ml-6 sm:ml-8 mt-2 flex flex-wrap gap-3 font-semibold">
+                                <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> {inc.occurrence_count} Occurrences</span>
+                                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(inc.last_seen).toLocaleString()}</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 ml-8 sm:ml-0 flex-shrink-0 mt-2 sm:mt-0">
+                    <div className="flex gap-2 sm:gap-3 ml-9 sm:ml-0 flex-shrink-0 mt-1 sm:mt-0">
                         <button
                             onClick={(e) => { e.stopPropagation(); setShowAnalysisModal(true); }}
                             className="px-4 py-2.5 rounded-xl border border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/60 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
