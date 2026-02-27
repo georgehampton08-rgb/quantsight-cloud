@@ -5,10 +5,13 @@ import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
 
 interface BoxScorePlayer {
     player_id: string;
-    player_name: string;
-    team_abbreviation: string;
-    start_position: string | null;
-    min: string | null;
+    player_name?: string;
+    name?: string;
+    team_abbreviation?: string;
+    team_tricode?: string;
+    start_position?: string | null;
+    min?: string | null;
+    minutes?: string | null;
     pts: number;
     reb: number;
     ast: number;
@@ -139,34 +142,36 @@ export function BoxScoreViewerContent() {
     }, [selectedGame]);
 
     const renderPlayerRow = (p: BoxScorePlayer) => {
-        const dnp = p.min === null || p.min === "0:00" || p.min === "";
+        const minVal = p.min || p.minutes || "";
+        const dnp = minVal === null || minVal === "0:00" || minVal === "" || minVal === "0";
         const efficiency = dnp ? 0 : (p.pts + p.reb + p.ast + p.stl + p.blk - (p.fga - p.fgm) - (p.fta - p.ftm) - p.tov);
         const getPtsColor = (pts: number) => pts >= 30 ? 'text-emerald-400 font-bold' : pts >= 20 ? 'text-emerald-500/80 font-bold' : 'text-slate-300';
+        const playerName = p.player_name || p.name || '';
 
         return (
             <tr key={p.player_id} className="bg-slate-900/40 hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 group">
-                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap sticky left-0 z-10 bg-slate-900/90 group-hover:bg-slate-800/90 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] transition-colors border-r border-slate-800/30">
+                <td className="px-2 py-2 sm:px-4 sm:py-3 whitespace-nowrap sticky left-0 z-10 bg-slate-900/90 group-hover:bg-slate-800/90 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] transition-colors border-r border-slate-800/30">
                     <div className="flex items-center gap-2">
                         {p.start_position && <span className="text-[10px] bg-slate-800 text-slate-400 px-1 py-0.5 rounded font-bold w-6 text-center">{p.start_position}</span>}
-                        <span className={`text-xs sm:text-sm font-bold ${dnp ? 'text-slate-500' : 'text-slate-200'}`}>{p.player_name}</span>
+                        <span className={`text-xs sm:text-sm font-bold ${dnp ? 'text-slate-500' : 'text-slate-200'} truncate max-w-[100px] sm:max-w-none`}>{playerName}</span>
                     </div>
                 </td>
                 {dnp ? (
-                    <td colSpan={8} className="px-4 py-3 text-xs text-slate-500 italic text-center uppercase tracking-widest">
-                        Did Not Play / Active
+                    <td colSpan={8} className="px-2 py-3 text-[10px] sm:text-xs text-slate-500 italic text-center uppercase tracking-widest whitespace-nowrap">
+                        Did Not Play
                     </td>
                 ) : (
                     <>
-                        <td className="px-3 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-400 font-mono">{p.min}</td>
-                        <td className={`px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm ${getPtsColor(p.pts)}`}>{p.pts}</td>
-                        <td className="px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.reb}</td>
-                        <td className="px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.ast}</td>
-                        <td className="px-3 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-400 font-mono hidden sm:table-cell">{p.fgm}/{p.fga}</td>
-                        <td className="px-3 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-400 font-mono hidden md:table-cell">{p.fg3m}/{p.fg3a}</td>
-                        <td className={`px-3 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm font-bold ${p.plus_minus > 0 ? 'text-emerald-400' : p.plus_minus < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono">{minVal}</td>
+                        <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm ${getPtsColor(p.pts)}`}>{p.pts}</td>
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.reb}</td>
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.ast}</td>
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden md:table-cell">{p.fgm}/{p.fga}</td>
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden lg:table-cell">{p.fg3m}/{p.fg3a}</td>
+                        <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs sm:text-sm font-bold ${p.plus_minus > 0 ? 'text-emerald-400' : p.plus_minus < 0 ? 'text-red-400' : 'text-slate-500'}`}>
                             {p.plus_minus > 0 ? `+${p.plus_minus}` : p.plus_minus}
                         </td>
-                        <td className="px-3 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-500 font-mono">{efficiency}</td>
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-500 font-mono hidden sm:table-cell">{efficiency}</td>
                     </>
                 )}
             </tr>
@@ -232,15 +237,15 @@ export function BoxScoreViewerContent() {
                             <table className="w-full text-left relative">
                                 <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
                                     <tr>
-                                        <th className="px-3 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">MIN</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center text-slate-200">PTS</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">REB</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">AST</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center hidden sm:table-cell">FG</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center hidden md:table-cell">3PT</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">+/-</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">EFF</th>
+                                        <th className="px-1 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">MIN</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center text-slate-200">PTS</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">REB</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">AST</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center hidden md:table-cell">FG</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center hidden lg:table-cell">3PT</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">+/-</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center hidden sm:table-cell">EFF</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -260,15 +265,15 @@ export function BoxScoreViewerContent() {
                             <table className="w-full text-left relative">
                                 <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
                                     <tr>
-                                        <th className="px-3 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">MIN</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center text-slate-200">PTS</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">REB</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">AST</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center hidden sm:table-cell">FG</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center hidden md:table-cell">3PT</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">+/-</th>
-                                        <th className="px-3 py-3 sm:px-4 text-center">EFF</th>
+                                        <th className="px-1 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">MIN</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center text-slate-200">PTS</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">REB</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">AST</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center hidden md:table-cell">FG</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center hidden lg:table-cell">3PT</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center">+/-</th>
+                                        <th className="px-1 py-3 sm:px-4 text-center hidden sm:table-cell">EFF</th>
                                     </tr>
                                 </thead>
                                 <tbody>

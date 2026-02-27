@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -68,7 +69,7 @@ export function Modal({
         if (e.target === overlayRef.current) onClose();
     };
 
-    return (
+    const modalContent = (
         <div
             ref={overlayRef}
             onClick={handleBackdropClick}
@@ -129,4 +130,6 @@ export function Modal({
             `}</style>
         </div>
     );
+
+    return ReactDOM.createPortal(modalContent, document.body);
 }

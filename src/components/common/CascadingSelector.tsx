@@ -117,39 +117,40 @@ export default function CascadingSelector() {
                 title="Select Context"
                 icon={<Map className="w-5 h-5 text-financial-accent" />}
                 maxWidth="4xl"
-                bodyClassName="p-0 h-[70vh] sm:h-[600px] flex flex-col sm:flex-row bg-slate-900/95"
+                bodyClassName="p-0 h-[85vh] sm:h-[600px] flex flex-col sm:flex-row bg-slate-900/95 overflow-hidden"
             >
                 {/* Column 1: Structure (Conference/Division) */}
-                <div className="w-full sm:w-1/4 border-b sm:border-b-0 sm:border-r border-slate-700/50 flex flex-col bg-slate-900/50 min-h-[150px] sm:min-h-0">
-                    <div className="p-3 text-xs uppercase font-bold text-slate-500 bg-black/20 tracking-wider sticky top-0 z-10">Divisions</div>
-                    <div className="overflow-y-auto flex-1 p-2 space-y-4">
+                <div className="w-full h-[30%] sm:h-full sm:w-1/4 border-b sm:border-b-0 sm:border-r border-slate-700/50 flex flex-col bg-slate-900/50">
+                    <div className="py-2 px-3 sm:p-3 text-[10px] sm:text-xs uppercase font-bold text-slate-500 bg-black/20 tracking-wider sticky top-0 z-10 flex-shrink-0">Divisions</div>
+                    <div className="overflow-y-auto flex-1 p-2 space-y-2 sm:space-y-4 text-xs sm:text-sm">
                         {conferences.map((conf) => (
                             <div key={conf.name}>
-                                <div className="text-[10px] text-slate-600 font-bold uppercase mb-1 px-2">{conf.name}</div>
-                                {conf.divisions.map((div) => (
-                                    <div key={div.name}>
+                                <div className="text-[9px] sm:text-[10px] text-slate-600 font-bold uppercase mb-1 px-2">{conf.name}</div>
+                                <div className="flex flex-row overflow-x-auto sm:flex-col gap-2 sm:gap-0 pb-1 sm:pb-0 hide-scrollbar">
+                                    {conf.divisions.map((div) => (
                                         <button
+                                            key={div.name}
                                             onClick={() => setActiveDivision(div.name)}
                                             className={`
-                                                    w-full text-left px-3 py-1.5 text-xs rounded transition-all
+                                                    flex-shrink-0 sm:w-full text-left px-3 py-1.5 text-xs rounded transition-all whitespace-nowrap
                                                     ${activeDivision === div.name
                                                     ? 'bg-financial-accent text-white font-medium'
-                                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 bg-slate-800/50 sm:bg-transparent'}
                                                 `}
                                         >
                                             {div.name}
                                         </button>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* Column 2: Teams */}
-                <div className="w-full sm:w-1/4 border-b sm:border-b-0 sm:border-r border-slate-700/50 flex flex-col bg-slate-900/30 min-h-[200px] sm:min-h-0">
-                    <div className="p-3 text-xs uppercase font-bold text-slate-500 bg-black/20 tracking-wider sticky top-0 z-10">Teams</div>
-                    <div className="overflow-y-auto flex-1 p-2">
+                <div className="w-full h-[30%] sm:h-full sm:w-1/4 border-b sm:border-b-0 sm:border-r border-slate-700/50 flex flex-col bg-slate-900/30">
+                    <div className="py-2 px-3 sm:p-3 text-[10px] sm:text-xs uppercase font-bold text-slate-500 bg-black/20 tracking-wider sticky top-0 z-10 flex-shrink-0">Teams</div>
+                    <div className="overflow-y-auto overflow-x-hidden flex-1 p-2 grid grid-cols-2 sm:grid-cols-1 gap-1">
                         {activeDivision && conferences.map((conf) =>
                             conf.divisions
                                 .filter((div) => div.name === activeDivision)
@@ -158,31 +159,37 @@ export default function CascadingSelector() {
                                         <button
                                             key={team.id}
                                             onMouseEnter={() => handleTeamHover(team)}
+                                            onClick={() => handleTeamHover(team)}
                                             className={`
-                                                    w-full flex items-center gap-2 px-3 py-2 rounded mb-1 text-left transition-all
+                                                    col-span-1 flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded mb-0 sm:mb-1 text-left transition-all
                                                     ${activeTeam?.id === team.id
                                                     ? 'bg-financial-accent/20 border border-financial-accent text-financial-accent'
-                                                    : 'hover:bg-slate-800 text-slate-300'}
+                                                    : 'hover:bg-slate-800 text-slate-300 bg-slate-800/30 sm:bg-transparent'}
                                                 `}
                                         >
-                                            <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs font-bold">
+                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded flex-shrink-0 bg-slate-800 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                                                 {team.abbreviation}
                                             </div>
-                                            <span className="text-sm">{team.name}</span>
+                                            <span className="text-xs sm:text-sm truncate">{team.name}</span>
                                         </button>
                                     ))
                                 )
+                        )}
+                        {!activeDivision && (
+                            <div className="col-span-2 sm:col-span-1 text-center text-slate-500 text-xs sm:text-sm mt-4 sm:mt-10">
+                                Select a division first
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {/* Column 3:Roster (Starters/Rotation/Bench) */}
-                <div className="w-full sm:w-1/2 flex flex-col bg-slate-900/10 flex-1 sm:flex-auto min-h-[300px] sm:min-h-0">
-                    <div className="p-3 text-xs uppercase font-bold text-slate-500 bg-black/20 tracking-wider flex items-center gap-2 sticky top-0 z-10">
+                <div className="w-full h-[40%] sm:h-full flex-1 sm:w-1/2 flex flex-col bg-slate-900/10">
+                    <div className="py-2 px-3 sm:p-3 text-[10px] sm:text-xs uppercase font-bold text-slate-500 bg-black/20 tracking-wider flex items-center gap-2 sticky top-0 z-10 flex-shrink-0">
                         <Users className="w-3.5 h-3.5" />
                         Roster
                     </div>
-                    <div className="overflow-y-auto flex-1 p-4">
+                    <div className="overflow-y-auto flex-1 p-2 sm:p-4">
                         {loading ? (
                             <div className="flex items-center justify-center h-full">
                                 <Loader2 className="w-6 h-6 animate-spin text-financial-accent" />

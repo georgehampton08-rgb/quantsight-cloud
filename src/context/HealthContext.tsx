@@ -43,15 +43,23 @@ export const HealthProvider = ({ children }: { children: ReactNode }) => {
 
             // Determine status based on latency and response
             const getLatencyStatus = (ms: number): SystemStatus => {
-                if (ms < 200) return 'healthy';      // Good: < 200ms
-                if (ms < 500) return 'warning';      // OK: 200-500ms
-                return 'critical';                    // Bad: > 500ms
+                if (ms < 1500) return 'healthy';      // Good: < 1500ms
+                if (ms < 3000) return 'warning';      // OK: 1500-3000ms
+                return 'critical';                    // Bad: > 3000ms
+            };
+
+            const getLatencyOverride = (backendStatus: SystemStatus, ms: number): SystemStatus => {
+                // If backend is already warning/critical, keep it
+                if (backendStatus !== 'healthy') return backendStatus;
+                // Otherwise only downgrade if latency is bad
+                if (ms > 3000) return 'warning';
+                return 'healthy';
             };
 
             setHealth({
-                nba: data.firebase?.enabled ? getLatencyStatus(latency) : 'warning',
-                gemini: data.gemini?.enabled ? 'healthy' : 'warning',
-                database: data.database_url_set ? getLatencyStatus(latency) : 'critical'
+                nba: getLatencyOverride(data.nba_api as SystemStatus || 'warning', latency),
+                gemini: data.gemini as SystemStatus || 'warning',
+                database: getLatencyOverride(data.database as SystemStatus || 'critical', latency)
             });
 
         } catch (error) {
