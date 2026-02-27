@@ -202,8 +202,8 @@ class CloudAsyncPulseProducer:
             live_game_ids = [g.game_id for g in games if g.status == 'LIVE']
             
             if not live_game_ids:
-                logger.debug("No live games currently")
-                return
+                logger.debug("No live games currently - will still broadcast scoreboard")
+                # Do NOT return here, we need to push UPCOMING and FINAL games to SSE
             
             # Step 3: Fetch all live boxscores concurrently
             boxscores: Dict[str, Optional[NormalizedBoxScore]] = {}
@@ -324,6 +324,8 @@ class CloudAsyncPulseProducer:
                         asyncio.create_task(bt.write_leaders(top_10_leaders))
                 except Exception:
                     pass  # Bigtable is optional
+            else:
+                self._latest_leaders = []
 
             # Step 6: Store in-memory SSE snapshot (games + leaders + meta)
             live_games_list = [
