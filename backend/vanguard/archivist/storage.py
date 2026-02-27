@@ -209,6 +209,8 @@ class IncidentStorage:
                 
                 if not is_new:
                     existing = doc.to_dict()
+                    was_resolved = existing.get("status") == "resolved"
+                    
                     # Increment occurrence count
                     existing["occurrence_count"] = existing.get("occurrence_count", 1) + 1
                     existing["last_seen"] = now
@@ -223,11 +225,48 @@ class IncidentStorage:
                     })
                     existing["occurrences"] = existing["occurrences"][-10:]
                     existing["labels"] = labels
-                    # Stay 'active' even if it was resolved but reappeared
+                    
+                    # Reactivate resolved incidents
+                    if was_resolved:
+                        # Preserve resolution history
+                        if "previous_resolutions" not in existing:
+                            existing["previous_resolutions"] = []
+                        existing["previous_resolutions"].append({
+                            "resolved_at": existing.get("resolved_at"),
+                            "resolution_notes": existing.get("resolution_notes"),
+                            "resolved_by": existing.get("resolved_by"),
+                            "pre_resolution_analysis": existing.get("pre_resolution_analysis"),
+                            "resolution_summary": existing.get("resolution_summary"),
+                        })
+                        existing["previous_resolutions"] = existing["previous_resolutions"][-5:]
+                        
+                        # Clear current resolution fields
+                        existing["resolved_at"] = None
+                        existing["resolution_notes"] = None
+                        existing["resolved_by"] = None
+                        existing["reactivated_at"] = now
+                        existing["reactivation_count"] = existing.get("reactivation_count", 0) + 1
+                    
                     existing["status"] = "active"
                     
                     incident_ref.set(existing)
-                    logger.info("incident_duplicate_detected_firestore", fingerprint=fingerprint)
+                    
+                    if was_resolved:
+                        # Adjust metadata: +1 active, -1 resolved
+                        try:
+                            meta_ref = db.collection('vanguard_metadata').document('global')
+                            snapshot = meta_ref.get()
+                            if snapshot.exists:
+                                meta = snapshot.to_dict()
+                                meta["active_count"] = meta.get("active_count", 0) + 1
+                                meta["resolved_count"] = max(0, meta.get("resolved_count", 0) - 1)
+                                meta_ref.set(meta)
+                        except Exception:
+                            pass
+                        logger.info("incident_reactivated_firestore", fingerprint=fingerprint,
+                                    reactivation_count=existing.get("reactivation_count", 1))
+                    else:
+                        logger.info("incident_duplicate_detected_firestore", fingerprint=fingerprint)
                 else:
                     # New incident
                     incident["stored_at"] = now
@@ -257,16 +296,38 @@ class IncidentStorage:
                 async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                     existing = json.loads(await f.read())
                 
+                was_resolved = existing.get("status") == "resolved"
+                
                 existing["occurrence_count"] = existing.get("occurrence_count", 1) + 1
                 existing["last_seen"] = now
                 if "occurrences" not in existing: existing["occurrences"] = []
                 existing["occurrences"].append({"timestamp": now, "request_id": incident.get("request_id")})
                 existing["occurrences"] = existing["occurrences"][-10:]
                 existing["labels"] = labels
+                
+                if was_resolved:
+                    if "previous_resolutions" not in existing:
+                        existing["previous_resolutions"] = []
+                    existing["previous_resolutions"].append({
+                        "resolved_at": existing.get("resolved_at"),
+                        "resolution_notes": existing.get("resolution_notes"),
+                        "resolved_by": existing.get("resolved_by"),
+                    })
+                    existing["previous_resolutions"] = existing["previous_resolutions"][-5:]
+                    existing["resolved_at"] = None
+                    existing["resolution_notes"] = None
+                    existing["resolved_by"] = None
+                    existing["reactivated_at"] = now
+                    existing["reactivation_count"] = existing.get("reactivation_count", 0) + 1
+                
                 existing["status"] = "active"
                 
                 async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
                     await f.write(json.dumps(existing, indent=2))
+                
+                if was_resolved:
+                    logger.info("incident_reactivated_file", fingerprint=fingerprint)
+                
                 return True
             except Exception as e:
                 logger.warning("file_merge_failed", error=str(e))
