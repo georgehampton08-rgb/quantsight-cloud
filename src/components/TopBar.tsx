@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import CascadingSelector from './common/CascadingSelector'
 import OmniSearchBar from './OmniSearchBar'
 import StatusLed from './common/StatusLed'
@@ -11,17 +11,28 @@ export default function TopBar() {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    useEffect(() => {
+        const checkSidebar = () => {
+            const sidebar = document.querySelector('.sidebar');
+            setMobileMenuOpen(sidebar?.classList.contains('open') || false);
+        };
+        // Initial check
+        checkSidebar();
+
+        window.addEventListener('sidebarToggled', checkSidebar);
+        return () => window.removeEventListener('sidebarToggled', checkSidebar);
+    }, []);
+
     const toggleMobileMenu = () => {
         const sidebar = document.querySelector('.sidebar');
         const isOpen = sidebar?.classList.contains('open');
 
         if (isOpen) {
             sidebar?.classList.remove('open');
-            setMobileMenuOpen(false);
         } else {
             sidebar?.classList.add('open');
-            setMobileMenuOpen(true);
         }
+        window.dispatchEvent(new Event('sidebarToggled'));
     };
 
     return (

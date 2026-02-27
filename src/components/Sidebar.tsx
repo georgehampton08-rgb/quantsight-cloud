@@ -21,6 +21,7 @@ export default function Sidebar() {
     const closeMobileSidebar = () => {
         const sidebar = document.querySelector('.sidebar');
         sidebar?.classList.remove('open');
+        window.dispatchEvent(new Event('sidebarToggled'));
     };
 
     return (
