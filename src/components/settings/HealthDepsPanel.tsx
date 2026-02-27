@@ -100,9 +100,9 @@ function HealthDepsPanelContent() {
                         Infrastructure
                     </h4>
                     <div className="space-y-1">
-                        <BooleanStatusRow name="OpenTelemetry" ok={data.otel_ok} />
-                        <BooleanStatusRow name="BigTable" ok={data.bigtable_ok} />
-                        <BooleanStatusRow name="ML Classifier" ok={data.ml_classifier_ok} />
+                        <BooleanStatusRow name="OpenTelemetry" ok={!!data.otel_ok} />
+                        <BooleanStatusRow name="BigTable" ok={!!data.bigtable_ok} />
+                        <BooleanStatusRow name="ML Classifier" ok={!!data.ml_classifier_ok} />
                     </div>
                 </div>
 
@@ -113,8 +113,8 @@ function HealthDepsPanelContent() {
                         Microservices
                     </h4>
                     <div className="space-y-1">
-                        {Object.entries(data.services).map(([name, status]) => (
-                            <ServiceStatusRow key={name} name={name} status={status} />
+                        {Object.entries(data.services || {}).map(([name, status]) => (
+                            <ServiceStatusRow key={name} name={name} status={status as string} />
                         ))}
                     </div>
                 </div>
@@ -129,15 +129,15 @@ function HealthDepsPanelContent() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Monitors</div>
-                            {Object.entries(data.scale_monitors).map(([name, status]) => (
-                                <ServiceStatusRow key={name} name={name} status={status} />
+                            {Object.entries(data.scale_monitors || {}).map(([name, status]) => (
+                                <ServiceStatusRow key={name} name={name} status={status as string} />
                             ))}
                         </div>
 
                         <div className="space-y-1">
                             <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Routing Strategy</div>
                             <div className="bg-slate-900/50 p-3 rounded border border-slate-700/30 text-emerald-400 font-mono text-sm">
-                                {data.routing_table}
+                                {data.routing_table || "LOCAL_EXECUTION"}
                             </div>
                         </div>
                     </div>

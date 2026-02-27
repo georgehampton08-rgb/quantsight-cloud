@@ -212,6 +212,7 @@ class CloudAsyncPulseProducer:
             
             # Step 4: Process each game and write to Firebase
             all_leaders = []
+            game_meta_map = {}
             
             for game_info in games:
                 game_id = game_info.game_id
@@ -267,7 +268,7 @@ class CloudAsyncPulseProducer:
                     away_score=game_info.away_score
                 )
                 
-                # Build game state for Firebase
+                # Build game state for Firebase and SSE
                 game_data = {
                     'game_id': game_id,
                     'home_team': game_info.home_team_tricode,
@@ -280,6 +281,8 @@ class CloudAsyncPulseProducer:
                     'is_garbage_time': garbage_time_active,
                     'leaders': leaders[:10]  # Top 10 for this game
                 }
+                
+                game_meta_map[game_id] = game_data
                 
                 # Write to Firebase (non-blocking)
                 asyncio.create_task(self._firebase.upsert_game_state(game_data))
@@ -328,19 +331,23 @@ class CloudAsyncPulseProducer:
                 self._latest_leaders = []
 
             # Step 6: Store in-memory SSE snapshot (games + leaders + meta)
-            live_games_list = [
-                {
-                    'game_id': g.game_id,
-                    'home_team': g.home_team_tricode,
-                    'away_team': g.away_team_tricode,
-                    'home_score': g.home_score,
-                    'away_score': g.away_score,
-                    'clock': g.status_text,
-                    'period': g.period,
-                    'status': g.status,
-                }
-                for g in games
-            ]
+            live_games_list = []
+            for g in games:
+                if g.game_id in game_meta_map:
+                    live_games_list.append(game_meta_map[g.game_id])
+                else:
+                    live_games_list.append({
+                        'game_id': g.game_id,
+                        'home_team': g.home_team_tricode,
+                        'away_team': g.away_team_tricode,
+                        'home_score': g.home_score,
+                        'away_score': g.away_score,
+                        'clock': g.status_text,
+                        'period': g.period,
+                        'status': g.status,
+                        'is_garbage_time': False,
+                        'leaders': []
+                    })
             self._latest_snapshot = {
                 'games': live_games_list,
                 'leaders': self._latest_leaders,
@@ -449,7 +456,7 @@ class CloudAsyncPulseProducer:
                 'ts_pct': ts_pct,
                 'efg_pct': efg_pct,
                 'opponent': opponent_team,
-                'minutes': player.minutes,
+                'min': player.minutes,
                 'is_garbage_time': player_is_garbage_time,
                 # Alpha metrics (placeholders until Cloud SQL)
                 'usage_rate': usage_rate,

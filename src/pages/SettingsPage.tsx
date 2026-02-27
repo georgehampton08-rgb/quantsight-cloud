@@ -26,8 +26,8 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="h-full flex flex-col items-center bg-slate-900 border-x border-slate-800">
-            <div className="w-full max-w-4xl p-4 sm:p-8 flex-1 min-h-0 overflow-y-auto space-y-6 sm:space-y-8">
+        <div className="h-full w-full overflow-y-auto bg-slate-900 border-x border-slate-800 flex flex-col items-center">
+            <div className="w-full max-w-4xl p-4 sm:p-8 flex-none space-y-6 sm:space-y-8">
 
                 {/* Header row with badge */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6 sm:mb-8 mt-2">
