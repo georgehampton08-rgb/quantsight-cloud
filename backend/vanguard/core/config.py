@@ -64,6 +64,15 @@ class VanguardConfig(BaseSettings):
     # Inquisitor Settings
     sampling_rate: float = Field(default=0.05, validation_alias="VANGUARD_SAMPLING_RATE")  # 5% default
     
+    def model_post_init(self, __context) -> None:
+        """Fix enum fields that pydantic-settings validation_alias doesn't resolve."""
+        env_mode = os.getenv("VANGUARD_MODE")
+        if env_mode and env_mode != self.mode.value:
+            try:
+                self.mode = VanguardMode(env_mode)
+            except ValueError:
+                pass  # Invalid value, keep default
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
