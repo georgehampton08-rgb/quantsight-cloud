@@ -78,17 +78,7 @@ export default function CascadingSelector() {
         }
     };
 
-    // Close on click outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
+    // Modal component natively handles backdrop clicks via onClose; custom native hook not needed
     const handlePlayerClick = (player: Player) => {
         setIsOpen(false);
         navigate(`/player/${player.player_id}`);
