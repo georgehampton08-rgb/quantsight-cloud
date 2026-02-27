@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Activity, ShieldCheck, XCircle, FileCode, CheckCircle2,
     Zap, Terminal, ChevronDown, AlertTriangle, Cpu, Bug,
@@ -315,7 +316,7 @@ function RunHistoryPanel() {
             return 'text-slate-400 bg-slate-500/10';
         };
 
-        return (
+        return createPortal(
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
                 {/* Sticky header */}
                 <div className="flex-shrink-0 bg-[#0a0e1a] border-b border-slate-700/50 px-6 py-4 flex items-center justify-between">
@@ -489,7 +490,8 @@ function RunHistoryPanel() {
                         </div>
                     )}
                 </div>
-            </div>
+            </div>,
+            document.body
         );
     }
 
