@@ -37,7 +37,7 @@ export default function TopBar() {
 
     return (
         <>
-            <div className="flex-shrink-0 h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 justify-between relative z-[1000] overflow-visible">
+            <div className="flex-shrink-0 h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 relative z-[1000] overflow-visible">
                 {/* Mobile Menu Button */}
                 <button
                     onClick={toggleMobileMenu}
@@ -47,8 +47,8 @@ export default function TopBar() {
                     {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </button>
 
-                {/* Desktop: Back Button + Full Layout */}
-                <div className="hidden md:flex items-center gap-6 flex-1 overflow-visible">
+                {/* Desktop: Back Button + Select Context */}
+                <div className="hidden md:flex items-center gap-6">
                     <button
                         onClick={() => navigate(-1)}
                         className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -57,7 +57,11 @@ export default function TopBar() {
                         <ChevronLeft className="w-5 h-5" />
                     </button>
                     <CascadingSelector />
-                    <div className="flex-1">
+                </div>
+
+                {/* Desktop: Centered Search Bar */}
+                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xl px-4 pointer-events-none">
+                    <div className="w-full pointer-events-auto">
                         <OmniSearchBar />
                     </div>
                 </div>
@@ -70,7 +74,7 @@ export default function TopBar() {
                 </div>
 
                 {/* Status LEDs - Always visible */}
-                <div className="flex items-center gap-2 md:gap-4">
+                <div className="flex items-center gap-2 md:gap-4 ml-auto">
                     <StatusLed label="NBA" status={health.nba} />
                     <StatusLed label="AI" status={health.gemini} />
                     <StatusLed label="DB" status={health.database} />
