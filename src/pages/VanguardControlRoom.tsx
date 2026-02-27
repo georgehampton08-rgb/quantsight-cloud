@@ -594,6 +594,7 @@ export default function VanguardControlRoom() {
     const [resolving, setResolving] = useState<Record<string, boolean>>({});
     const [analyzingAll, setAnalyzingAll] = useState(false);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+    const [sortOrder, setSortOrder] = useState<'NEWEST' | 'OLDEST' | 'IMPACT'>('IMPACT');
 
     // Pagination state
     const [incidentsPage, setIncidentsPage] = useState(1);
@@ -687,7 +688,20 @@ export default function VanguardControlRoom() {
         setAnalyzingAll(false);
     };
 
-    const activeIncidents = incidents.filter(i => i.status === 'active');
+    const activeIncidents = incidents.filter(i => i.status === 'active').sort((a, b) => {
+        if (sortOrder === 'NEWEST') return new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime();
+        if (sortOrder === 'OLDEST') return new Date(a.last_seen).getTime() - new Date(b.last_seen).getTime();
+        if (sortOrder === 'IMPACT') {
+            const getSeverityScore = (s: string) => s === 'RED' ? 10000 : s === 'YELLOW' ? 100 : 0;
+            const scoreA = getSeverityScore(a.severity) + a.occurrence_count;
+            const scoreB = getSeverityScore(b.severity) + b.occurrence_count;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+            // fallback to newest
+            return new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime();
+        }
+        return 0;
+    });
+
     const scoreColor = stats
         ? stats.health_score >= 80 ? 'text-emerald-400' : stats.health_score >= 50 ? 'text-amber-400' : 'text-red-500'
         : 'text-slate-500';
@@ -901,10 +915,17 @@ export default function VanguardControlRoom() {
                                         />
                                         Select All
                                     </label>
-                                    <select className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5">
-                                        <option>Newest First</option>
-                                        <option>Oldest First</option>
-                                        <option>Highest Impact</option>
+                                    <select
+                                        className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-amber-500/50 focus:outline-none"
+                                        value={sortOrder}
+                                        onChange={(e) => {
+                                            setSortOrder(e.target.value as any);
+                                            setIncidentsPage(1); // Reset to page 1 on sort change
+                                        }}
+                                    >
+                                        <option value="IMPACT">Highest Impact</option>
+                                        <option value="NEWEST">Newest First</option>
+                                        <option value="OLDEST">Oldest First</option>
                                     </select>
                                 </div>
                                 <div className="flex items-center gap-3 flex-wrap">
