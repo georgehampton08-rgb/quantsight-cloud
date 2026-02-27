@@ -23,6 +23,19 @@ interface Incident {
     status: string;
     labels?: Record<string, string | number | boolean>;
     ai_analysis?: Record<string, unknown>;
+    resolved_at?: string;
+    resolution_notes?: string;
+    resolved_by?: string;
+    pre_resolution_analysis?: Record<string, unknown>;
+    resolution_summary?: {
+        error_type?: string;
+        endpoint?: string;
+        occurrence_count?: number;
+        first_seen?: string;
+        last_seen?: string;
+        resolution_notes?: string;
+        duration_active?: string;
+    };
 }
 
 interface VanguardStats {
@@ -602,6 +615,11 @@ export default function VanguardControlRoom() {
     const [incidentsPage, setIncidentsPage] = useState(1);
     const incidentsPerPage = 40;
 
+    // Resolved incidents state
+    const [resolvedPage, setResolvedPage] = useState(1);
+    const resolvedPerPage = 60;
+    const [expandedResolved, setExpandedResolved] = useState<Set<string>>(new Set());
+
     const showToast = (msg: string, ok: boolean) => {
         setToast({ msg, ok });
         setTimeout(() => setToast(null), 3500);
@@ -994,58 +1012,181 @@ export default function VanguardControlRoom() {
                             <VanguardArchivesViewer />
 
                             {/* ── Resolved Incidents Archive ─────────────────────────────── */}
-                            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/50 bg-slate-900/50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            {(() => {
+                                const resolvedIncidents = incidents
+                                    .filter(i => i.status !== 'active')
+                                    .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime());
+                                const totalResolvedPages = Math.ceil(resolvedIncidents.length / resolvedPerPage);
+                                const pagedResolved = resolvedIncidents.slice(
+                                    (resolvedPage - 1) * resolvedPerPage,
+                                    resolvedPage * resolvedPerPage
+                                );
+                                return (
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                                        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/50 bg-slate-900/50">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-white font-bold text-base">Resolved Incidents</h3>
+                                                    <p className="text-slate-500 text-xs">
+                                                        {resolvedIncidents.length} resolved incidents in archive
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-white font-bold text-base">Resolved Incidents</h3>
-                                            <p className="text-slate-500 text-xs">
-                                                {incidents.filter(i => i.status !== 'active').length} resolved incidents in archive
-                                            </p>
+                                        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-700/30">
+                                            {resolvedIncidents.length === 0 ? (
+                                                <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                                                    <CheckCircle2 className="w-10 h-10 mb-3 opacity-30" />
+                                                    <p>No resolved incidents yet.</p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {pagedResolved.map(inc => {
+                                                        const isExpanded = expandedResolved.has(inc.fingerprint);
+                                                        const preAnalysis = inc.pre_resolution_analysis as Record<string, unknown> | undefined;
+                                                        const resSummary = inc.resolution_summary;
+                                                        return (
+                                                            <div key={inc.fingerprint}
+                                                                className="hover:bg-slate-800/30 transition-colors cursor-pointer"
+                                                                onClick={() => {
+                                                                    setExpandedResolved(prev => {
+                                                                        const next = new Set(prev);
+                                                                        if (next.has(inc.fingerprint)) next.delete(inc.fingerprint);
+                                                                        else next.add(inc.fingerprint);
+                                                                        return next;
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <div className="p-4 sm:p-5">
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className="mt-0.5 flex-shrink-0">
+                                                                            {isExpanded
+                                                                                ? <ChevronUp className="w-4 h-4 text-emerald-500" />
+                                                                                : <ChevronDown className="w-4 h-4 text-emerald-500" />}
+                                                                        </div>
+                                                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                <span className="font-bold text-sm text-slate-300 truncate">{inc.error_type}</span>
+                                                                                <span className="text-[9px] px-2 py-0.5 rounded border uppercase font-bold tracking-widest flex-shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
+                                                                                    RESOLVED
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-3 text-xs flex-wrap">
+                                                                                <span className="text-slate-500 font-mono">{inc.endpoint}</span>
+                                                                                <span className="text-slate-600">•</span>
+                                                                                <span className="text-slate-500 font-mono">
+                                                                                    {inc.resolved_at ? new Date(inc.resolved_at).toLocaleString() : new Date(inc.last_seen).toLocaleString()}
+                                                                                </span>
+                                                                                <span className="text-slate-600">•</span>
+                                                                                <span className="text-slate-500">{inc.occurrence_count}× occurrences</span>
+                                                                                {resSummary?.duration_active && (
+                                                                                    <><span className="text-slate-600">•</span>
+                                                                                        <span className="text-slate-500">Active for {resSummary.duration_active}</span></>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* ── Expanded Detail ──────────────────────── */}
+                                                                    {isExpanded && (
+                                                                        <div className="mt-4 ml-11 space-y-3" onClick={e => e.stopPropagation()}>
+                                                                            {/* Resolution Notes */}
+                                                                            {inc.resolution_notes && (
+                                                                                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
+                                                                                    <p className="text-xs font-bold text-emerald-400 mb-1">Resolution Notes</p>
+                                                                                    <p className="text-xs text-slate-300">{inc.resolution_notes}</p>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Pre-Resolution AI Analysis (Before) */}
+                                                                            {preAnalysis && Object.keys(preAnalysis).length > 0 && (
+                                                                                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                                                                                    <p className="text-xs font-bold text-amber-400 mb-2">🔍 Pre-Resolution Analysis</p>
+                                                                                    {(preAnalysis as any)?.summary && (
+                                                                                        <p className="text-xs text-slate-300 mb-1">{String((preAnalysis as any).summary)}</p>
+                                                                                    )}
+                                                                                    {(preAnalysis as any)?.root_cause && (
+                                                                                        <p className="text-xs text-slate-400"><span className="font-semibold text-slate-300">Root Cause:</span> {String((preAnalysis as any).root_cause)}</p>
+                                                                                    )}
+                                                                                    {(preAnalysis as any)?.recommendation && (
+                                                                                        <p className="text-xs text-slate-400 mt-1"><span className="font-semibold text-slate-300">Suggestion:</span> {String((preAnalysis as any).recommendation)}</p>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Post-Resolution Summary (After) */}
+                                                                            {resSummary && (
+                                                                                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+                                                                                    <p className="text-xs font-bold text-blue-400 mb-2">✅ Resolution Summary</p>
+                                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                                        <div><span className="text-slate-500">Error:</span> <span className="text-slate-300">{resSummary.error_type}</span></div>
+                                                                                        <div><span className="text-slate-500">Endpoint:</span> <span className="text-slate-300 font-mono">{resSummary.endpoint}</span></div>
+                                                                                        <div><span className="text-slate-500">Occurrences:</span> <span className="text-slate-300">{resSummary.occurrence_count}×</span></div>
+                                                                                        <div><span className="text-slate-500">Duration:</span> <span className="text-slate-300">{resSummary.duration_active || 'N/A'}</span></div>
+                                                                                        {resSummary.first_seen && (
+                                                                                            <div><span className="text-slate-500">First Seen:</span> <span className="text-slate-300">{new Date(resSummary.first_seen).toLocaleString()}</span></div>
+                                                                                        )}
+                                                                                        {resSummary.resolution_notes && resSummary.resolution_notes !== 'No notes provided' && (
+                                                                                            <div className="col-span-2"><span className="text-slate-500">Notes:</span> <span className="text-slate-300">{resSummary.resolution_notes}</span></div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Raw AI Analysis (if no structured data) */}
+                                                                            {!preAnalysis && !resSummary && inc.ai_analysis && Object.keys(inc.ai_analysis).length > 0 && (
+                                                                                <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
+                                                                                    <p className="text-xs font-bold text-slate-400 mb-1">Cached Analysis</p>
+                                                                                    <pre className="text-xs text-slate-400 overflow-x-auto whitespace-pre-wrap">
+                                                                                        {JSON.stringify(inc.ai_analysis, null, 2)}
+                                                                                    </pre>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Metadata */}
+                                                                            <div className="flex items-center gap-4 text-[10px] text-slate-600">
+                                                                                {inc.resolved_by && <span>Resolved by: {inc.resolved_by}</span>}
+                                                                                <span>Fingerprint: {inc.fingerprint.slice(0, 20)}…</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {/* Pagination */}
+                                                    {totalResolvedPages > 1 && (
+                                                        <div className="flex items-center justify-center gap-2 p-4 border-t border-slate-700/50">
+                                                            <button
+                                                                onClick={() => setResolvedPage(p => Math.max(1, p - 1))}
+                                                                disabled={resolvedPage === 1}
+                                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-sm font-semibold"
+                                                            >
+                                                                Previous
+                                                            </button>
+                                                            <span className="text-slate-400 text-sm font-medium px-4">
+                                                                Page {resolvedPage} of {totalResolvedPages}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => setResolvedPage(p => Math.min(totalResolvedPages, p + 1))}
+                                                                disabled={resolvedPage === totalResolvedPages}
+                                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg disabled:opacity-50 transition-colors text-sm font-semibold"
+                                                            >
+                                                                Next
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                                <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-700/30">
-                                    {incidents.filter(i => i.status !== 'active').length === 0 ? (
-                                        <div className="p-12 text-center text-slate-500 flex flex-col items-center">
-                                            <CheckCircle2 className="w-10 h-10 mb-3 opacity-30" />
-                                            <p>No resolved incidents yet.</p>
-                                        </div>
-                                    ) : (
-                                        incidents
-                                            .filter(i => i.status !== 'active')
-                                            .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
-                                            .slice(0, 50)
-                                            .map(inc => (
-                                                <div key={inc.fingerprint} className="p-4 sm:p-5 hover:bg-slate-800/30 transition-colors">
-                                                    <div className="flex items-start gap-3">
-                                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className="font-bold text-sm text-slate-300 truncate">{inc.error_type}</span>
-                                                                <span className="text-[9px] px-2 py-0.5 rounded border uppercase font-bold tracking-widest flex-shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
-                                                                    RESOLVED
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-3 text-xs flex-wrap">
-                                                                <span className="text-slate-500 font-mono">{inc.endpoint}</span>
-                                                                <span className="text-slate-600">•</span>
-                                                                <span className="text-slate-500 font-mono">
-                                                                    {new Date(inc.last_seen).toLocaleString()}
-                                                                </span>
-                                                                <span className="text-slate-600">•</span>
-                                                                <span className="text-slate-500">{inc.occurrence_count}× occurrences</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                    )}
-                                </div>
-                            </div>
+                                );
+                            })()}
 
                             <VaccinePanel />
                         </div>

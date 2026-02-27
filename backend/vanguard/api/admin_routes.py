@@ -322,7 +322,7 @@ async def get_vanguard_stats():
 
 @router.post("/vanguard/admin/incidents/{fingerprint}/resolve")
 async def resolve_incident(http_request: Request, fingerprint: str, request: ResolveRequest):
-    """Mark a single incident as resolved."""
+    """Mark a single incident as resolved with pre/post resolution analysis."""
     try:
         storage = get_incident_storage()
         
@@ -345,11 +345,53 @@ async def resolve_incident(http_request: Request, fingerprint: str, request: Res
                 "Resolution requires explicit approval. Send {'approved': true} in request body."
             )
         
-        # Resolve the incident
+        # ── Snapshot pre-resolution data ──────────────────────────────────
+        pre_resolution_analysis = incident.get("ai_analysis")
+        
+        # ── Resolve the incident ─────────────────────────────────────────
         success = await storage.resolve(fingerprint)
         
         if success:
-            logger.info(f"Incident resolved: {fingerprint}")
+            # ── Save enriched resolution metadata ────────────────────────
+            resolution_data = {
+                "resolution_notes": request.resolution_notes or "",
+                "resolved_by": "admin",
+                "resolution_timestamp": datetime.utcnow().isoformat() + "Z",
+            }
+            
+            # Preserve pre-resolution AI analysis snapshot
+            if pre_resolution_analysis:
+                resolution_data["pre_resolution_analysis"] = pre_resolution_analysis
+            
+            # Generate post-resolution AI summary (fire-and-forget, non-blocking)
+            try:
+                resolution_summary = {
+                    "error_type": incident.get("error_type", "Unknown"),
+                    "endpoint": incident.get("endpoint", "Unknown"),
+                    "occurrence_count": incident.get("occurrence_count", 1),
+                    "first_seen": incident.get("first_seen"),
+                    "last_seen": incident.get("last_seen"),
+                    "resolution_notes": request.resolution_notes or "No notes provided",
+                    "duration_active": None,
+                }
+                # Calculate how long the incident was active
+                if incident.get("first_seen") and incident.get("last_seen"):
+                    try:
+                        first = datetime.fromisoformat(incident["first_seen"].replace("Z", "+00:00"))
+                        last = datetime.fromisoformat(incident["last_seen"].replace("Z", "+00:00"))
+                        delta = last - first
+                        resolution_summary["duration_active"] = str(delta)
+                    except Exception:
+                        pass
+                
+                resolution_data["resolution_summary"] = resolution_summary
+            except Exception as e:
+                logger.warning(f"Resolution summary generation failed: {e}")
+            
+            # Save all resolution data to the incident document
+            await storage.update_incident(fingerprint, resolution_data)
+            
+            logger.info(f"Incident resolved with analysis: {fingerprint}")
             await audit.log(
                 action="RESOLVE_INCIDENT",
                 request_id=http_request.headers.get("X-Request-ID", "unknown"),
@@ -363,7 +405,8 @@ async def resolve_incident(http_request: Request, fingerprint: str, request: Res
                 "message": "Incident resolved",
                 "fingerprint": fingerprint,
                 "resolution_notes": request.resolution_notes,
-                "resolved_at": datetime.utcnow().isoformat() + "Z"
+                "resolved_at": datetime.utcnow().isoformat() + "Z",
+                "has_pre_analysis": pre_resolution_analysis is not None,
             }
         else:
             raise HTTPException(500, "Failed to resolve incident")
