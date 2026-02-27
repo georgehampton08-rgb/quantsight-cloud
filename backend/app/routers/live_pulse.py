@@ -52,6 +52,40 @@ async def get_live_pulse_status():
             "mobile_instructions": "Use Firebase listeners on collections: live_games, live_leaders"
         }
         
+        
     except Exception as e:
         logger.error(f"Live pulse status check failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/boxscore/{game_id}")
+async def get_live_boxscore(game_id: str):
+    """
+    Get live boxscore data for a specific game dynamically from the NBA CDN.
+    (This serves the BoxScoreViewer under the /pulse/boxscore prefix)
+    """
+    from shared_core.adapters.nba_api_adapter import get_nba_adapter
+    
+    adapter = get_nba_adapter()
+    try:
+        boxscore = await adapter.fetch_boxscore_async(game_id)
+        if not boxscore:
+            # Fallback to empty formatted to avoid frontend crashes
+            return {
+                "game_info": {},
+                "home": [],
+                "away": []
+            }
+            
+        box_dict = boxscore.to_dict()
+        
+        # Format response shape to exactly match frontend expectations
+        return {
+            "game_info": box_dict.get("game_info", {}),
+            "home": box_dict.get("home_players", []),
+            "away": box_dict.get("away_players", [])
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching live boxscore for {game_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching live boxscore data")
