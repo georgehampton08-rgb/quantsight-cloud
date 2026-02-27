@@ -98,7 +98,7 @@ const PulsePage: React.FC = () => {
                             } border text-xs whitespace-nowrap`}>
                             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
                                 }`} />
-                            {isConnected ? 'LIVE SSE' : isConnecting ? 'CONNECTING...' : 'DISCONNECTED'}
+                            {isConnected ? 'LIVE FEED' : isConnecting ? 'CONNECTING...' : 'DISCONNECTED'}
                         </span>
                     </div>
                     {lastUpdate && (
@@ -132,7 +132,7 @@ const PulsePage: React.FC = () => {
                                 </span>
                                 <span className="live-pill px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 flex items-center gap-2">
                                     <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                                    SSE ACTIVE
+                                    LIVE POLL
                                 </span>
                             </div>
 
@@ -180,7 +180,7 @@ const PulsePage: React.FC = () => {
                         {/* Connection Status Card */}
                         <div className="glass-card p-4 opacity-75">
                             <div className="text-xs text-gray-500 font-mono mb-2 uppercase border-b border-white/5 pb-2">
-                                SSE Connection Status
+                                Connection Status
                             </div>
                             <div className="text-sm space-y-1">
                                 <div className="flex justify-between">
@@ -241,7 +241,7 @@ const PulsePage: React.FC = () => {
                                                 <td colSpan={7} className="p-8 text-center text-gray-500">
                                                     {isConnected
                                                         ? 'Waiting for live game data...'
-                                                        : 'SSE stream not connected'}
+                                                        : 'Feed not connected'}
                                                 </td>
                                             </tr>
                                         )}

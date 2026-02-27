@@ -92,8 +92,8 @@ export function useLiveStats(): UseLiveStatsReturn {
     const fetchPulseData = async () => {
         if (!isMounted.current) return;
         try {
-            // 1. Fetch Schedule
-            const schedResponse = await ApiContract.pulse<any>({ path: 'schedule' });
+            // 1. Fetch Schedule (via main cloud API, which is CSP-whitelisted)
+            const schedResponse = await ApiContract.executeWeb<any>({ path: 'schedule' });
 
             if (!schedResponse || !schedResponse.games) {
                 throw new Error("Invalid schedule format");
@@ -109,8 +109,23 @@ export function useLiveStats(): UseLiveStatsReturn {
             const newStatsRef: Record<string, number> = {};
 
             for (const schedGame of scheduleGames) {
-                const isLive = schedGame.status === 2 || schedGame.status === 'LIVE' || schedGame.status === 'HALFTIME';
-                const isDone = schedGame.status === 3 || schedGame.status === 'FINAL';
+                // ── Normalize schedule shape ──
+                // Schedule API returns home_team/away_team as either:
+                //   FLAT:   { home: "PHX", away: "LAL", home_score: 49, away_score: 49 }
+                //   NESTED: { home_team: { tricode: "PHX", score: 49 }, away_team: { tricode: "LAL", score: 49 } }
+                const homeRaw = schedGame.home_team;
+                const awayRaw = schedGame.away_team;
+                const homeName: string = typeof homeRaw === 'object' ? (homeRaw?.tricode || homeRaw?.name || 'HOME') : (schedGame.home || homeRaw || 'HOME');
+                const awayName: string = typeof awayRaw === 'object' ? (awayRaw?.tricode || awayRaw?.name || 'AWAY') : (schedGame.away || awayRaw || 'AWAY');
+                const homeScore: number = typeof homeRaw === 'object' ? (homeRaw?.score ?? 0) : (schedGame.home_score ?? 0);
+                const awayScore: number = typeof awayRaw === 'object' ? (awayRaw?.score ?? 0) : (schedGame.away_score ?? 0);
+
+                const gameStatus: string = typeof schedGame.status === 'number'
+                    ? (schedGame.status === 2 ? 'LIVE' : schedGame.status === 3 ? 'FINAL' : 'UPCOMING')
+                    : (schedGame.status || 'UPCOMING');
+                const statusText = schedGame.statusText || schedGame.status_text || '';
+                const isLive = gameStatus === 'LIVE' || gameStatus === 'HALFTIME' || statusText === 'Half';
+                const isDone = gameStatus === 'FINAL';
                 const statusLabel = isLive ? 'LIVE' : (isDone ? 'FINAL' : 'UPCOMING');
                 if (isLive) currentLiveCount++;
 
@@ -120,7 +135,7 @@ export function useLiveStats(): UseLiveStatsReturn {
                 // 2. Fetch Boxscores for any active or final games
                 if (isLive || isDone) {
                     try {
-                        const boxRes = await ApiContract.pulse<any>({ path: `pulse/boxscore/${parsedGameId}` });
+                        const boxRes = await ApiContract.executeWeb<any>({ path: `pulse/boxscore/${parsedGameId}` });
                         if (boxRes && (boxRes.home || boxRes.away)) {
                             const homePlayers = boxRes.home || [];
                             const awayPlayers = boxRes.away || [];
@@ -153,7 +168,6 @@ export function useLiveStats(): UseLiveStatsReturn {
                                 const effScore = (pPts + pReb + pAst + pStl + pBlk - (pFga - pFgm) - (pFta - pFtm) - pTov);
                                 // A rough PIE equivalent based on proxy weight
                                 const calcPie = totalPts > 0 ? (effScore / (totalPts + totalAst + totalReb)) || 0 : 0;
-                                // Add 0.05 to pie to make the UI look similar to real PIE scale logic
                                 const adjPie = Math.max(0, calcPie * 1.5);
 
                                 const playerId = p.player_id || p.id;
@@ -164,10 +178,13 @@ export function useLiveStats(): UseLiveStatsReturn {
                                 }
                                 newStatsRef[playerId] = pPts;
 
+                                const playerTeam = homePlayers.includes(p) ? homeName : awayName;
+                                const opponentTeam = homePlayers.includes(p) ? awayName : homeName;
+
                                 const statObj: LivePlayerStat = {
                                     player_id: playerId,
                                     name: p.player_name || p.name,
-                                    team: homePlayers.includes(p) ? (schedGame.home || schedGame.home_team) : (schedGame.away || schedGame.away_team),
+                                    team: playerTeam,
                                     pie: adjPie,
                                     plus_minus: p.plus_minus || 0,
                                     ts_pct: pFga > 0 ? (pPts / (2 * (pFga + 0.44 * pFta))) : 0,
@@ -176,7 +193,7 @@ export function useLiveStats(): UseLiveStatsReturn {
                                     efficiency_trend: 'steady',
                                     season_ts_pct: null,
                                     season_efg_pct: null,
-                                    opponent_team: homePlayers.includes(p) ? (schedGame.away || schedGame.away_team) : (schedGame.home || schedGame.home_team),
+                                    opponent_team: opponentTeam,
                                     opponent_def_rating: null,
                                     matchup_difficulty: null,
                                     has_usage_vacuum: false,
@@ -203,11 +220,11 @@ export function useLiveStats(): UseLiveStatsReturn {
                 gameLeaders.sort((a, b) => b.pie - a.pie);
                 const gameObj: LiveGame = {
                     game_id: parsedGameId,
-                    home_team: schedGame.home || schedGame.home_team,
-                    away_team: schedGame.away || schedGame.away_team,
-                    home_score: schedGame.home_score || 0,
-                    away_score: schedGame.away_score || 0,
-                    clock: schedGame.clock || (isDone ? 'Final' : ''),
+                    home_team: homeName,
+                    away_team: awayName,
+                    home_score: homeScore,
+                    away_score: awayScore,
+                    clock: schedGame.clock || statusText || (isDone ? 'Final' : ''),
                     period: schedGame.period || 0,
                     status: statusLabel as any,
                     leaders: gameLeaders.slice(0, 5),
