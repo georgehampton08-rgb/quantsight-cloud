@@ -9,6 +9,7 @@ import { VanguardLearningExport } from '../components/vanguard/VanguardLearningE
 import { VanguardArchivesViewer } from '../components/vanguard/VanguardArchivesViewer';
 import { VaccinePanel } from '../components/vanguard/VaccinePanel';
 import { normalizeVanguardIncidentList } from '../api/normalizers';
+import { Modal } from '../components/common/Modal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Incident {
@@ -194,303 +195,285 @@ function AnalysisModal({
     // Use typed code_references from the response model directly
     const codeRefs: string[] = data?.code_references || [];
 
-    // Close on backdrop click
-    const handleBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (e.target === e.currentTarget) onClose();
-    };
-
     return (
-        <div
-            className="fixed inset-0 z-[2000] flex items-center justify-center p-4 transition-all duration-300"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
-            onClick={handleBackdrop}
-        >
-            <div className="relative w-full max-w-4xl bg-slate-900/90 border border-purple-500/30 rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] shadow-purple-900/20 flex flex-col max-h-[90vh] overflow-hidden backdrop-blur-xl">
-
-                {/* ── Header ── */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/50 flex-shrink-0">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                        <Brain className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-white font-bold text-base">AI Analysis</h2>
-                        <p className="text-slate-500 font-mono text-xs mt-0.5 truncate">{fingerprint.slice(0, 24)}...</p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-700/50"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+        <Modal
+            isOpen={true}
+            onClose={onClose}
+            title={
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-white font-bold text-base">AI Analysis</h2>
+                    <p className="text-slate-500 font-mono text-xs mt-0.5 truncate">{fingerprint.slice(0, 24)}...</p>
                 </div>
-
-                {/* ── Scrollable Body ── */}
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-16 gap-4">
-                            <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
-                            <p className="text-slate-400 text-sm">
-                                {regenerating ? 'Regenerating analysis…' : 'Fetching AI analysis…'}
-                            </p>
-                        </div>
-                    ) : error ? (
-                        <div className="rounded-xl bg-amber-950/30 border border-amber-500/30 p-4">
-                            <p className="text-amber-400 text-sm">{error}</p>
-                        </div>
-                    ) : data ? (
-                        <>
-                            {/* Incident Meta/Context Metrics Strip */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 shadow-inner">
-                                <div>
-                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Occurrences</div>
-                                    <div className="text-xl font-mono font-black text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                                        {incident.occurrence_count}
-                                    </div>
-                                </div>
-                                <div className="col-span-1 sm:col-span-2">
-                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Timeline</div>
-                                    <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">First</span> {incident.first_seen ? new Date(incident.first_seen).toLocaleString() : '—'}</div>
-                                    <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">Last</span> {incident.last_seen ? new Date(incident.last_seen).toLocaleString() : '—'}</div>
-                                </div>
-                                {/* Middleware tags — now fully typed via incident.labels */}
-                                <div className="col-span-2 sm:col-span-1 border-t border-slate-700/50 sm:border-0 pt-2 sm:pt-0">
-                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 shadow-sm">Middleware Tags</div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {Object.entries(incident.labels || {}).slice(0, 3).map(([k, v]) => (
-                                            <span key={k} className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/30 whitespace-nowrap font-bold tracking-wider">
-                                                {String(v)}
-                                            </span>
-                                        ))}
-                                        {(!incident.labels || Object.keys(incident.labels).length === 0) && (
-                                            <span className="text-xs text-slate-600 font-mono">None</span>
-                                        )}
-                                    </div>
+            }
+            icon={<Brain className="w-5 h-5 text-purple-400" />}
+            maxWidth="4xl"
+            bodyClassName="px-0 sm:px-0 py-0 flex flex-col h-full bg-slate-900"
+        >
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                        <p className="text-slate-400 text-sm">
+                            {regenerating ? 'Regenerating analysis…' : 'Fetching AI analysis…'}
+                        </p>
+                    </div>
+                ) : error ? (
+                    <div className="rounded-xl bg-amber-950/30 border border-amber-500/30 p-4">
+                        <p className="text-amber-400 text-sm">{error}</p>
+                    </div>
+                ) : data ? (
+                    <>
+                        {/* Incident Meta/Context Metrics Strip */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 shadow-inner">
+                            <div>
+                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Occurrences</div>
+                                <div className="text-xl font-mono font-black text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                    {incident.occurrence_count}
                                 </div>
                             </div>
-
-                            {/* Impact */}
-                            {summary && (
-                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <AlertTriangle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span className="text-emerald-400 font-bold text-sm">Impact</span>
-                                    </div>
-                                    <p className="text-slate-300 text-sm leading-relaxed">{summary}</p>
-                                </div>
-                            )}
-
-                            {/* Error Decoded */}
-                            {errorDecoded && (
-                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <Cpu className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                                        <span className="text-cyan-400 font-bold text-sm">Error Decoded</span>
-                                    </div>
-                                    <p className="text-slate-300 text-sm leading-relaxed">{errorDecoded}</p>
-                                </div>
-                            )}
-
-                            {/* Middleware Insight */}
-                            {middlewareInsight && (
-                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <Activity className="w-4 h-4 text-violet-400 flex-shrink-0" />
-                                        <span className="text-violet-400 font-bold text-sm">Middleware Insight</span>
-                                    </div>
-                                    <p className="text-slate-300 text-sm leading-relaxed">{middlewareInsight}</p>
-                                </div>
-                            )}
-
-                            {/* Timeline Analysis from AI */}
-                            {timelineAnalysis && (
-                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <Clock className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                        <span className="text-blue-400 font-bold text-sm">Timeline Analysis</span>
-                                    </div>
-                                    <p className="text-slate-300 text-sm leading-relaxed">{timelineAnalysis}</p>
-                                    {readyReasoning && (
-                                        <div className="mt-2 pt-2 border-t border-slate-700/30">
-                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full mr-2 ${data?.ready_to_resolve ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                {data?.ready_to_resolve ? '✓ Ready to Resolve' : '⌛ Not Yet Ready'}
-                                            </span>
-                                            <span className="text-slate-500 text-xs">{readyReasoning}</span>
-                                        </div>
+                            <div className="col-span-1 sm:col-span-2">
+                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Timeline</div>
+                                <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">First</span> {incident.first_seen ? new Date(incident.first_seen).toLocaleString() : '—'}</div>
+                                <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">Last</span> {incident.last_seen ? new Date(incident.last_seen).toLocaleString() : '—'}</div>
+                            </div>
+                            {/* Middleware tags — now fully typed via incident.labels */}
+                            <div className="col-span-2 sm:col-span-1 border-t border-slate-700/50 sm:border-0 pt-2 sm:pt-0">
+                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 shadow-sm">Middleware Tags</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {Object.entries(incident.labels || {}).slice(0, 3).map(([k, v]) => (
+                                        <span key={k} className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/30 whitespace-nowrap font-bold tracking-wider">
+                                            {String(v)}
+                                        </span>
+                                    ))}
+                                    {(!incident.labels || Object.keys(incident.labels).length === 0) && (
+                                        <span className="text-xs text-slate-600 font-mono">None</span>
                                     )}
                                 </div>
-                            )}
+                            </div>
+                        </div>
 
-                            {/* Root Cause */}
-                            {rootCause && (
-                                <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                        <Activity className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                                        <span className="text-amber-400 font-bold text-sm">Root Cause</span>
-                                    </div>
-                                    <p className="text-slate-300 text-sm leading-relaxed">{rootCause}</p>
+                        {/* Impact */}
+                        {summary && (
+                            <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                <div className="flex items-center gap-2 mb-2.5">
+                                    <AlertTriangle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                    <span className="text-emerald-400 font-bold text-sm">Impact</span>
                                 </div>
-                            )}
+                                <p className="text-slate-300 text-sm leading-relaxed">{summary}</p>
+                            </div>
+                        )}
 
-                            {/* Recommended Fix */}
-                            {recommendationList.length > 0 && (
-                                <div className="rounded-2xl bg-white/5 backdrop-blur-md border border-emerald-500/20 p-5 shadow-lg relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                                    <div className="flex items-center gap-3 mb-3 relative z-10">
-                                        <CheckCircle2 className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0" />
-                                        <span className="text-white font-black text-sm tracking-wide">Recommended Fixes</span>
-                                    </div>
-                                    <ul className="space-y-2 relative z-10">
-                                        {recommendationList.map((rec, i) => (
-                                            <li key={i} className="text-slate-300 text-sm leading-relaxed flex items-start gap-2">
-                                                <span className="text-emerald-500/50 text-xs mt-0.5 font-mono select-none">›</span>
-                                                <span className={rec.startsWith('IMMEDIATE:') ? 'text-amber-100 font-medium' : ''}>{rec}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                        {/* Error Decoded */}
+                        {errorDecoded && (
+                            <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                <div className="flex items-center gap-2 mb-2.5">
+                                    <Cpu className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                                    <span className="text-cyan-400 font-bold text-sm">Error Decoded</span>
                                 </div>
-                            )}
+                                <p className="text-slate-300 text-sm leading-relaxed">{errorDecoded}</p>
+                            </div>
+                        )}
 
-                            {/* ── Vaccine Recommendation ── */}
-                            {vaccineRec && (
-                                <div className={`rounded-2xl border p-5 relative overflow-hidden ${vaccineRec.feasible
-                                    ? 'bg-emerald-950/30 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
-                                    : 'bg-slate-800/40 border-slate-700/40'
-                                    }`}>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${vaccineRec.feasible ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-700/50 border border-slate-600/30'
-                                            }`}>
-                                            <ShieldCheck className={`w-4 h-4 ${vaccineRec.feasible ? 'text-emerald-400' : 'text-slate-500'}`} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <span className={`font-black text-sm tracking-wide ${vaccineRec.feasible ? 'text-emerald-300' : 'text-slate-400'}`}>
-                                                💉 Vaccine Recommendation
-                                            </span>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.feasible ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'
-                                                    }`}>
-                                                    {vaccineRec.feasible ? '✓ FEASIBLE' : '✗ NOT FEASIBLE'}
-                                                </span>
-                                                {vaccineRec.patch_risk && vaccineRec.feasible && (
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.patch_risk === 'low' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                        vaccineRec.patch_risk === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                                            'bg-red-500/20 text-red-400'
-                                                        }`}>
-                                                        {vaccineRec.patch_risk.toUpperCase()} RISK
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {vaccineRec.feasible ? (
-                                        <div className="space-y-3">
-                                            {vaccineRec.target_file && (
-                                                <div>
-                                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Target File</div>
-                                                    <code className="text-xs text-emerald-300 bg-black/30 px-2 py-1 rounded font-mono block">
-                                                        {vaccineRec.target_file}
-                                                        {vaccineRec.target_function ? ` :: ${vaccineRec.target_function}` : ''}
-                                                        {vaccineRec.target_line_hint ? ` (line ~${vaccineRec.target_line_hint})` : ''}
-                                                    </code>
-                                                </div>
-                                            )}
-                                            {vaccineRec.change_description && (
-                                                <div>
-                                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Proposed Change</div>
-                                                    <p className="text-slate-200 text-sm leading-relaxed bg-black/20 rounded-lg px-3 py-2">
-                                                        {vaccineRec.change_description}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <p className="text-slate-500 text-sm italic">
-                                            {vaccineRec.skip_reason || 'Automatic patching not possible for this incident type.'}
-                                        </p>
-                                    )}
+                        {/* Middleware Insight */}
+                        {middlewareInsight && (
+                            <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                <div className="flex items-center gap-2 mb-2.5">
+                                    <Activity className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                                    <span className="text-violet-400 font-bold text-sm">Middleware Insight</span>
                                 </div>
-                            )}
+                                <p className="text-slate-300 text-sm leading-relaxed">{middlewareInsight}</p>
+                            </div>
+                        )}
 
-                            {/* Confidence bar */}
-                            {confidence !== undefined && (
-                                <div className="flex items-center gap-3 px-1 mt-4">
-                                    <span className="text-xs font-bold text-slate-400 w-20 flex-shrink-0">Confidence</span>
-                                    <div className="flex-1 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
-                                        <div
-                                            className="h-full rounded-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-700 shadow-[0_0_12px_rgba(168,85,247,0.6)]"
-                                            style={{ width: `${Math.min(100, (confidence ?? 0) > 1 ? (confidence ?? 0) : ((confidence ?? 0) * 100))}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-xs font-black text-purple-300 w-10 text-right tracking-wider">
-                                        {((confidence ?? 0) > 1 ? (confidence ?? 0) : ((confidence ?? 0) * 100)).toFixed(0)}%
-                                    </span>
+                        {/* Timeline Analysis from AI */}
+                        {timelineAnalysis && (
+                            <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                <div className="flex items-center gap-2 mb-2.5">
+                                    <Clock className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                    <span className="text-blue-400 font-bold text-sm">Timeline Analysis</span>
                                 </div>
-                            )}
-
-                            {/* Code References — collapsible */}
-                            <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 overflow-hidden">
-                                <button
-                                    onClick={() => setCodeRefOpen(v => !v)}
-                                    className="w-full flex items-center gap-2 px-4 py-3 hover:bg-slate-700/30 transition-colors"
-                                >
-                                    <FileKey className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                    <span className="text-purple-400 font-bold text-sm flex-1 text-left">Code References</span>
-                                    {codeRefOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                                </button>
-                                {codeRefOpen && (
-                                    <div className="px-4 pb-4 border-t border-slate-700/30">
-                                        {codeRefs.length > 0 ? (
-                                            codeRefs.map((ref: any, i: number) => (
-                                                <div key={i} className="mt-3 font-mono text-xs text-slate-400 bg-slate-900/50 rounded-lg p-3">
-                                                    {typeof ref === 'string' ? ref : JSON.stringify(ref, null, 2)}
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-slate-600 text-xs mt-3 italic">No code references attached to this incident.</p>
-                                        )}
+                                <p className="text-slate-300 text-sm leading-relaxed">{timelineAnalysis}</p>
+                                {readyReasoning && (
+                                    <div className="mt-2 pt-2 border-t border-slate-700/30">
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full mr-2 ${data?.ready_to_resolve ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                            {data?.ready_to_resolve ? '✓ Ready to Resolve' : '⌛ Not Yet Ready'}
+                                        </span>
+                                        <span className="text-slate-500 text-xs">{readyReasoning}</span>
                                     </div>
                                 )}
                             </div>
+                        )}
 
-                            {/* No structured data fallback */}
-                            {!summary && !rootCause && recommendationList.length === 0 && (
-                                <div className="text-center py-10">
-                                    <Brain className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                                    <p className="text-slate-500 text-sm italic">Analysis is pending — Gemini AI is processing. Click Regenerate to check.</p>
+                        {/* Root Cause */}
+                        {rootCause && (
+                            <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
+                                <div className="flex items-center gap-2 mb-2.5">
+                                    <Activity className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                                    <span className="text-amber-400 font-bold text-sm">Root Cause</span>
+                                </div>
+                                <p className="text-slate-300 text-sm leading-relaxed">{rootCause}</p>
+                            </div>
+                        )}
+
+                        {/* Recommended Fix */}
+                        {recommendationList.length > 0 && (
+                            <div className="rounded-2xl bg-white/5 backdrop-blur-md border border-emerald-500/20 p-5 shadow-lg relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0" />
+                                    <span className="text-white font-black text-sm tracking-wide">Recommended Fixes</span>
+                                </div>
+                                <ul className="space-y-2 relative z-10">
+                                    {recommendationList.map((rec, i) => (
+                                        <li key={i} className="text-slate-300 text-sm leading-relaxed flex items-start gap-2">
+                                            <span className="text-emerald-500/50 text-xs mt-0.5 font-mono select-none">›</span>
+                                            <span className={rec.startsWith('IMMEDIATE:') ? 'text-amber-100 font-medium' : ''}>{rec}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* ── Vaccine Recommendation ── */}
+                        {vaccineRec && (
+                            <div className={`rounded-2xl border p-5 relative overflow-hidden ${vaccineRec.feasible
+                                ? 'bg-emerald-950/30 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                                : 'bg-slate-800/40 border-slate-700/40'
+                                }`}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${vaccineRec.feasible ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-700/50 border border-slate-600/30'
+                                        }`}>
+                                        <ShieldCheck className={`w-4 h-4 ${vaccineRec.feasible ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <span className={`font-black text-sm tracking-wide ${vaccineRec.feasible ? 'text-emerald-300' : 'text-slate-400'}`}>
+                                            💉 Vaccine Recommendation
+                                        </span>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.feasible ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'
+                                                }`}>
+                                                {vaccineRec.feasible ? '✓ FEASIBLE' : '✗ NOT FEASIBLE'}
+                                            </span>
+                                            {vaccineRec.patch_risk && vaccineRec.feasible && (
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.patch_risk === 'low' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                    vaccineRec.patch_risk === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                                        'bg-red-500/20 text-red-400'
+                                                    }`}>
+                                                    {vaccineRec.patch_risk.toUpperCase()} RISK
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {vaccineRec.feasible ? (
+                                    <div className="space-y-3">
+                                        {vaccineRec.target_file && (
+                                            <div>
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Target File</div>
+                                                <code className="text-xs text-emerald-300 bg-black/30 px-2 py-1 rounded font-mono block">
+                                                    {vaccineRec.target_file}
+                                                    {vaccineRec.target_function ? ` :: ${vaccineRec.target_function}` : ''}
+                                                    {vaccineRec.target_line_hint ? ` (line ~${vaccineRec.target_line_hint})` : ''}
+                                                </code>
+                                            </div>
+                                        )}
+                                        {vaccineRec.change_description && (
+                                            <div>
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Proposed Change</div>
+                                                <p className="text-slate-200 text-sm leading-relaxed bg-black/20 rounded-lg px-3 py-2">
+                                                    {vaccineRec.change_description}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500 text-sm italic">
+                                        {vaccineRec.skip_reason || 'Automatic patching not possible for this incident type.'}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Confidence bar */}
+                        {confidence !== undefined && (
+                            <div className="flex items-center gap-3 px-1 mt-4">
+                                <span className="text-xs font-bold text-slate-400 w-20 flex-shrink-0">Confidence</span>
+                                <div className="flex-1 bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-700 shadow-[0_0_12px_rgba(168,85,247,0.6)]"
+                                        style={{ width: `${Math.min(100, (confidence ?? 0) > 1 ? (confidence ?? 0) : ((confidence ?? 0) * 100))}%` }}
+                                    />
+                                </div>
+                                <span className="text-xs font-black text-purple-300 w-10 text-right tracking-wider">
+                                    {((confidence ?? 0) > 1 ? (confidence ?? 0) : ((confidence ?? 0) * 100)).toFixed(0)}%
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Code References — collapsible */}
+                        <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 overflow-hidden">
+                            <button
+                                onClick={() => setCodeRefOpen(v => !v)}
+                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-slate-700/30 transition-colors"
+                            >
+                                <FileKey className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                                <span className="text-purple-400 font-bold text-sm flex-1 text-left">Code References</span>
+                                {codeRefOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                            </button>
+                            {codeRefOpen && (
+                                <div className="px-4 pb-4 border-t border-slate-700/30">
+                                    {codeRefs.length > 0 ? (
+                                        codeRefs.map((ref: any, i: number) => (
+                                            <div key={i} className="mt-3 font-mono text-xs text-slate-400 bg-slate-900/50 rounded-lg p-3">
+                                                {typeof ref === 'string' ? ref : JSON.stringify(ref, null, 2)}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-slate-600 text-xs mt-3 italic">No code references attached to this incident.</p>
+                                    )}
                                 </div>
                             )}
-                        </>
-                    ) : null}
-                </div>
+                        </div>
 
-                {/* ── Footer ── */}
-                <div className="flex items-center gap-3 px-6 py-4 border-t border-slate-700/50 flex-shrink-0">
-                    <button
-                        onClick={handleRegenerate}
-                        disabled={loading}
-                        className="flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold transition-colors disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading && regenerating ? 'animate-spin' : ''}`} />
-                        Regenerate
-                    </button>
-                    <div className="flex-1" />
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                        Close
-                    </button>
-                    <button
-                        onClick={() => { onResolve(); onClose(); }}
-                        disabled={resolving}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg transition-colors"
-                    >
-                        {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                        Mark Resolved
-                    </button>
-                </div>
+                        {/* No structured data fallback */}
+                        {!summary && !rootCause && recommendationList.length === 0 && (
+                            <div className="text-center py-10">
+                                <Brain className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                                <p className="text-slate-500 text-sm italic">Analysis is pending — Gemini AI is processing. Click Regenerate to check.</p>
+                            </div>
+                        )}
+                    </>
+                ) : null}
             </div>
-        </div>
+
+            {/* ── Footer ── */}
+            <div className="flex items-center gap-3 px-6 py-4 border-t border-slate-700/50 flex-shrink-0 bg-slate-900/80">
+                <button
+                    onClick={handleRegenerate}
+                    disabled={loading}
+                    className="flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                    <RefreshCw className={`w-4 h-4 ${loading && regenerating ? 'animate-spin' : ''}`} />
+                    Regenerate
+                </button>
+                <div className="flex-1" />
+                <button
+                    onClick={onClose}
+                    className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                    Close
+                </button>
+                <button
+                    onClick={() => { onResolve(); onClose(); }}
+                    disabled={resolving}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg transition-colors"
+                >
+                    {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Mark Resolved
+                </button>
+            </div>
+        </Modal>
     );
 }
 

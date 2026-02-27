@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './WhyTooltip.css';
+import { Modal } from './Modal';
 
 interface StatComponent {
     name: string;
@@ -65,74 +66,67 @@ const WhyTooltip: React.FC<WhyTooltipProps> = ({
         }
     };
 
-    const handleMouseEnter = (e: React.MouseEvent) => {
-        setPosition({ x: e.clientX, y: e.clientY });
-        setIsVisible(true);
-        fetchExplanation();
-    };
-
-    const handleMouseLeave = () => {
-        setIsVisible(false);
+    const handleToggle = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const newState = !isVisible;
+        setIsVisible(newState);
+        if (newState) fetchExplanation();
     };
 
     return (
         <span
-            className="why-tooltip-trigger"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+            className="why-tooltip-trigger cursor-pointer"
+            onClick={handleToggle}
         >
             {children}
-            <span className="why-icon">ⓘ</span>
+            <span className="why-icon text-slate-400 hover:text-white transition-colors">ⓘ</span>
 
-            {isVisible && (
-                <div
-                    className="why-tooltip-popup"
-                    style={{
-                        '--tooltip-x': `${position.x}px`,
-                        '--tooltip-y': `${position.y}px`
-                    } as React.CSSProperties}
-                >
-                    <div className="tooltip-header">
-                        <span className="tooltip-title">
-                            Why {value.toFixed(1)} {stat?.toUpperCase() || 'STAT'}?
-                        </span>
-                        <span className="tooltip-player">{playerName}</span>
-                    </div>
+            <Modal
+                isOpen={isVisible}
+                onClose={() => setIsVisible(false)}
+                title={`Why ${value.toFixed(1)} ${stat?.toUpperCase() || 'STAT'}?`}
+                maxWidth="sm"
+            >
+                <div className="flex flex-col gap-4 text-left">
+                    <div className="tooltip-player text-slate-400 text-sm mb-2 font-medium">{playerName}</div>
 
                     {isLoading ? (
-                        <div className="tooltip-loading">
-                            <span className="loading-spinner" />
+                        <div className="tooltip-loading py-10 flex flex-col items-center justify-center text-slate-500 gap-3">
+                            <span className="loading-spinner w-6 h-6 border-2 border-slate-700 border-t-financial-accent rounded-full animate-spin" />
                             Analyzing...
                         </div>
                     ) : explanation ? (
                         <>
-                            <div className="tooltip-formula">
-                                <code>{explanation.formula}</code>
+                            <div className="tooltip-formula bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                <code className="text-xs text-purple-400 font-mono">{explanation.formula}</code>
                             </div>
-                            <div className="tooltip-components">
+                            <div className="tooltip-components space-y-2">
                                 {explanation.components.map((comp, i) => (
                                     <div
                                         key={i}
-                                        className={`component-row ${comp.isPositive ? 'positive' : 'negative'}`}
+                                        className={`component-row flex items-center justify-between p-2 rounded-lg text-sm ${comp.isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}
                                     >
-                                        <span className="component-name">{comp.name}</span>
-                                        <span className="component-value">
+                                        <div className="flex flex-col">
+                                            <span className="component-name text-slate-200 font-medium">{comp.name}</span>
+                                            <span className="component-reason text-[10px] text-slate-500">{comp.reason}</span>
+                                        </div>
+                                        <span className={`component-value font-mono font-bold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                                             {comp.isPositive ? '+' : ''}{comp.value.toFixed(1)}
                                         </span>
-                                        <span className="component-reason">{comp.reason}</span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="tooltip-total">
-                                <span>Final Projection</span>
-                                <span className="total-value">{value.toFixed(1)}</span>
+                            <div className="tooltip-total mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
+                                <span className="text-sm font-bold text-slate-400">Final Projection</span>
+                                <span className="total-value text-xl font-mono font-bold text-white">{value.toFixed(1)}</span>
                             </div>
                         </>
                     ) : (
-                        <div className="tooltip-error">Unable to load explanation</div>
+                        <div className="tooltip-error text-red-400 text-center py-4">Unable to load explanation</div>
                     )}
                 </div>
-            )}
+            </Modal>
         </span>
     );
 };

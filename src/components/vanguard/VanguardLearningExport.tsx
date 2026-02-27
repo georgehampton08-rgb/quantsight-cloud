@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Loader2, Download, ShieldCheck, Database, Calendar } from 'lucide-react';
 import { ApiContract } from '../../api/client';
 import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ExportLog {
     timestamp: string;
@@ -14,6 +15,7 @@ export function VanguardLearningExportContent() {
     const [loading, setLoading] = useState(false);
     const [logs, setLogs] = useState<ExportLog[]>([]);
     const [statusText, setStatusText] = useState<string | null>(null);
+    const [showExportConfirm, setShowExportConfirm] = useState(false);
 
     const loadHistory = useCallback(async () => {
         try {
@@ -30,9 +32,7 @@ export function VanguardLearningExportContent() {
         loadHistory();
     }, [loadHistory]);
 
-    const handleExport = async () => {
-        if (!confirm("Initiate Vanguard Learning Database Export?")) return;
-
+    const confirmExport = async () => {
         setLoading(true);
         setStatusText("Compiling RAG training dataset...");
 
@@ -93,7 +93,7 @@ export function VanguardLearningExportContent() {
                     </div>
 
                     <button
-                        onClick={handleExport}
+                        onClick={() => setShowExportConfirm(true)}
                         disabled={loading}
                         className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.3)] whitespace-nowrap"
                     >
@@ -140,6 +140,16 @@ export function VanguardLearningExportContent() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={showExportConfirm}
+                onClose={() => setShowExportConfirm(false)}
+                onConfirm={confirmExport}
+                title="Initiate Export?"
+                description="This will compile all Vanguard Learning data into a JSONL format suitable for model training."
+                confirmText="Start Export"
+                variant="info"
+            />
         </div>
     );
 }

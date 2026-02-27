@@ -9,6 +9,7 @@ import { Trash2, RefreshCw, Plus, User } from 'lucide-react';
 import { useOrbital } from '@/context/OrbitalContext';
 import { PlayerApi, PlayerProfile } from '@/services/playerApi';
 import { ApiContract } from '@/api/client';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 const NBA_TEAMS = [
     'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW',
@@ -46,6 +47,7 @@ export default function InjuryAdmin() {
     const [searchResults, setSearchResults] = useState<PlayerProfile[]>([]);
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [filterTeam, setFilterTeam] = useState<string>('ALL');
+    const [injuryToRemove, setInjuryToRemove] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<FormData>({
         player_id: '',
@@ -147,9 +149,7 @@ export default function InjuryAdmin() {
         }
     };
 
-    const removeInjury = async (playerId: string) => {
-        if (!confirm('Remove this injury?')) return;
-
+    const confirmRemoveInjury = async (playerId: string) => {
         try {
             const res = await ApiContract.execute<any>('removeInjury', {
                 path: `admin/injuries/remove/${playerId}`,
@@ -374,7 +374,7 @@ export default function InjuryAdmin() {
                                             </div>
                                         </div>
                                         <Button
-                                            onClick={() => removeInjury(inj.player_id)}
+                                            onClick={() => setInjuryToRemove(inj.player_id)}
                                             variant="destructive"
                                             size="sm"
                                         >
@@ -387,6 +387,16 @@ export default function InjuryAdmin() {
                     </CardContent>
                 </Card>
             </div>
+
+            <ConfirmDialog
+                isOpen={injuryToRemove !== null}
+                onClose={() => setInjuryToRemove(null)}
+                onConfirm={() => injuryToRemove && confirmRemoveInjury(injuryToRemove)}
+                title="Remove Injury?"
+                description="This will instantly remove the injury record from the player and system."
+                confirmText="Remove Injury"
+                variant="danger"
+            />
         </div>
     );
 }

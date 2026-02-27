@@ -4,19 +4,24 @@ import { useToast } from '../context/ToastContext';
 import { PlayerApi } from '../services/playerApi';
 import { VanguardHealthWidget } from '../components/vanguard/VanguardHealthWidget';
 import { HealthDepsPanel } from '../components/settings/HealthDepsPanel';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 
 export default function SettingsPage() {
     const { showToast } = useToast();
 
+    const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+
     const handlePurge = async () => {
-        if (confirm("WARNING: Start Database Purge Protocol? This cannot be undone.")) {
-            showToast("Purge Initiated...", "info");
-            try {
-                const res = await PlayerApi.purgeDb();
-                showToast(res.message, "success");
-            } catch (e) {
-                showToast("Purge Failed.", "error");
-            }
+        setShowPurgeConfirm(true);
+    };
+
+    const confirmPurge = async () => {
+        showToast("Purge Initiated...", "info");
+        try {
+            const res = await PlayerApi.purgeDb();
+            showToast(res.message, "success");
+        } catch (e) {
+            showToast("Purge Failed.", "error");
         }
     };
 
@@ -85,6 +90,16 @@ export default function SettingsPage() {
                         Reset Database Cache
                     </button>
                 </section>
+
+                <ConfirmDialog
+                    isOpen={showPurgeConfirm}
+                    onClose={() => setShowPurgeConfirm(false)}
+                    onConfirm={confirmPurge}
+                    title="Start Database Purge Protocol?"
+                    description="This action cannot be undone. All database cache will be permanently removed."
+                    confirmText="Purge Database"
+                    variant="danger"
+                />
 
             </div>
         </div>

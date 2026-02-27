@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { TrendingUp, Info, Activity, History, ChevronRight, Loader2 } from 'lucide-react';
+import { Modal } from '../common/Modal';
 
 interface HustleStats {
     contested_shots: number;
@@ -131,62 +132,53 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
                 </button>
             </div>
 
-            {/* Logic Trace Modal Overlay */}
-            {showTrace && (
-                <div className="absolute inset-0 z-50 bg-slate-900/95 backdrop-blur-xl p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center mb-6">
-                        <h4 className="font-bold text-slate-100 flex items-center gap-2 text-sm">
-                            <History size={18} className="text-financial-accent" />
-                            Aegis Logic Trace: {playerName}
-                        </h4>
-                        <button
-                            onClick={() => setShowTrace(false)}
-                            className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                        >
-                            ✕
-                        </button>
-                    </div>
+            {/* Logic Trace Modal */}
+            <Modal
+                isOpen={showTrace}
+                onClose={() => setShowTrace(false)}
+                title={<span className="flex items-center gap-2"><History size={18} className="text-financial-accent" /> Aegis Logic Trace: {playerName}</span>}
+                maxWidth="md"
+            >
 
-                    {loadingTrace ? (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                            <Loader2 size={32} className="text-financial-accent animate-spin" />
-                            <span className="text-xs text-slate-500 uppercase tracking-widest">Querying Learning Ledger...</span>
-                        </div>
-                    ) : (
-                        <div className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-                            <div className="space-y-3">
-                                <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Calculation Breakdown</div>
-                                {trace?.logic_trace.primary_factors.map((f, i) => (
-                                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                                        <div>
-                                            <div className="text-xs font-bold text-slate-200">{f.factor}</div>
-                                            <div className="text-[10px] text-slate-500">{f.impact}</div>
-                                        </div>
-                                        <div className={clsx("text-xs font-bold", f.is_positive ? "text-emerald-400" : "text-rose-400")}>
-                                            {f.is_positive ? <ChevronRight size={14} /> : <div className="rotate-90"><ChevronRight size={14} /></div>}
-                                        </div>
+                {loadingTrace ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                        <Loader2 size={32} className="text-financial-accent animate-spin" />
+                        <span className="text-xs text-slate-500 uppercase tracking-widest">Querying Learning Ledger...</span>
+                    </div>
+                ) : (
+                    <div className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-3">
+                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Calculation Breakdown</div>
+                            {trace?.logic_trace.primary_factors.map((f, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-200">{f.factor}</div>
+                                        <div className="text-[10px] text-slate-500">{f.impact}</div>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className={clsx("text-xs font-bold", f.is_positive ? "text-emerald-400" : "text-rose-400")}>
+                                        {f.is_positive ? <ChevronRight size={14} /> : <div className="rotate-90"><ChevronRight size={14} /></div>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
-                            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
-                                <div className="p-3 rounded-xl bg-slate-800/50">
-                                    <div className="text-[10px] text-slate-500 mb-1">Model Agreement</div>
-                                    <div className="text-lg font-bold text-financial-accent">{(trace?.logic_trace.confidence_metrics.model_agreement ?? 0 * 100).toFixed(0)}%</div>
-                                </div>
-                                <div className="p-3 rounded-xl bg-slate-800/50">
-                                    <div className="text-[10px] text-slate-500 mb-1">Historical Hit Rate</div>
-                                    <div className="text-lg font-bold text-emerald-400">{(trace?.logic_trace.confidence_metrics.historical_accuracy ?? 0 * 100).toFixed(0)}%</div>
-                                </div>
+                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
+                            <div className="p-3 rounded-xl bg-slate-800/50">
+                                <div className="text-[10px] text-slate-500 mb-1">Model Agreement</div>
+                                <div className="text-lg font-bold text-financial-accent">{(trace?.logic_trace.confidence_metrics.model_agreement ?? 0 * 100).toFixed(0)}%</div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-slate-800/50">
+                                <div className="text-[10px] text-slate-500 mb-1">Historical Hit Rate</div>
+                                <div className="text-lg font-bold text-emerald-400">{(trace?.logic_trace.confidence_metrics.historical_accuracy ?? 0 * 100).toFixed(0)}%</div>
                             </div>
                         </div>
-                    )}
-
-                    <div className="mt-4 pt-4 border-t border-white/5 text-[10px] text-slate-600 text-center italic">
-                        Ledger ID: AX-90210 | Verified via Sovereign-Router
                     </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t border-slate-700/50 text-[10px] text-slate-600 text-center italic">
+                    Ledger ID: AX-90210 | Verified via Sovereign-Router
                 </div>
-            )}
+            </Modal>
         </div>
     );
 }
