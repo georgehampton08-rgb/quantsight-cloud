@@ -133,7 +133,7 @@ export function H2HHistoryPanelContent({ playerId, opponentId }: { playerId: str
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs uppercase bg-slate-800/80 text-slate-400 border-b border-slate-700/50">
                             <tr>
-                                <th className="px-4 py-3 font-semibold tracking-wider">Date</th>
+                                <th className="px-4 py-3 font-semibold tracking-wider sticky left-0 z-20 bg-slate-800/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)]">Date</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">Result</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">PTS</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">REB</th>
@@ -143,8 +143,8 @@ export function H2HHistoryPanelContent({ playerId, opponentId }: { playerId: str
                         </thead>
                         <tbody className="divide-y divide-slate-800/60 font-mono">
                             {records.map((rec, i) => (
-                                <tr key={i} className="bg-slate-900/40 hover:bg-slate-800/40 transition-colors">
-                                    <td className="px-4 py-3">
+                                <tr key={i} className="bg-slate-900/40 hover:bg-slate-800/40 transition-colors group">
+                                    <td className="px-4 py-3 sticky left-0 z-10 bg-slate-900/90 group-hover:bg-slate-800/90 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] transition-colors border-r border-slate-800/30">
                                         <div className="text-slate-300">
                                             {new Date(rec.GAME_DATE).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                         </div>

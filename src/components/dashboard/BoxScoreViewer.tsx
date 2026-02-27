@@ -145,7 +145,7 @@ export function BoxScoreViewerContent() {
 
         return (
             <tr key={p.player_id} className="bg-slate-900/40 hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 group">
-                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
+                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap sticky left-0 z-10 bg-slate-900/90 group-hover:bg-slate-800/90 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] transition-colors border-r border-slate-800/30">
                     <div className="flex items-center gap-2">
                         {p.start_position && <span className="text-[10px] bg-slate-800 text-slate-400 px-1 py-0.5 rounded font-bold w-6 text-center">{p.start_position}</span>}
                         <span className={`text-xs sm:text-sm font-bold ${dnp ? 'text-slate-500' : 'text-slate-200'}`}>{p.player_name}</span>
@@ -230,9 +230,9 @@ export function BoxScoreViewerContent() {
                         </div>
                         <div className="overflow-x-auto flex-1 h-[400px] xl:h-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
                             <table className="w-full text-left relative">
-                                <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-10 shadow-sm backdrop-blur-md">
+                                <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
                                     <tr>
-                                        <th className="px-3 py-3 sm:px-4">Player</th>
+                                        <th className="px-3 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
                                         <th className="px-3 py-3 sm:px-4 text-center">MIN</th>
                                         <th className="px-3 py-3 sm:px-4 text-center text-slate-200">PTS</th>
                                         <th className="px-3 py-3 sm:px-4 text-center">REB</th>
@@ -258,9 +258,9 @@ export function BoxScoreViewerContent() {
                         </div>
                         <div className="overflow-x-auto flex-1 h-[400px] xl:h-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
                             <table className="w-full text-left relative">
-                                <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-10 shadow-sm backdrop-blur-md">
+                                <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
                                     <tr>
-                                        <th className="px-3 py-3 sm:px-4">Player</th>
+                                        <th className="px-3 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
                                         <th className="px-3 py-3 sm:px-4 text-center">MIN</th>
                                         <th className="px-3 py-3 sm:px-4 text-center text-slate-200">PTS</th>
                                         <th className="px-3 py-3 sm:px-4 text-center">REB</th>

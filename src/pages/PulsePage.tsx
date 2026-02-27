@@ -26,17 +26,17 @@ const PlayerRow: React.FC<PlayerRowProps> = ({ player, rank, changedPlayerIds })
                 backgroundColor: 'rgba(255, 215, 0, 0.1)'
             } : undefined}
         >
-            <td className="p-4 font-mono text-gray-500">#{rank}</td>
-            <td className="p-4 font-bold text-white flex items-center gap-3">
+            <td className="p-2 sm:p-4 font-mono text-gray-500 text-xs sm:text-sm">#{rank}</td>
+            <td className="p-2 sm:p-4 font-bold text-white flex items-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
                 {player.name}
-                {rank === 1 && <span className="text-yellow-400 animate-pulse">👑</span>}
-                {isPulsing && <span className="text-yellow-400">✨</span>}
+                {rank === 1 && <span className="text-yellow-400 animate-pulse text-sm">👑</span>}
+                {isPulsing && <span className="text-yellow-400 text-sm">✨</span>}
             </td>
-            <td className="p-4 text-gray-400">{player.team}</td>
-            <td className="p-4 text-right font-mono text-gray-300">{player.stats.pts}</td>
-            <td className="p-4 text-right font-mono text-gray-300">{player.stats.reb}</td>
-            <td className="p-4 text-right font-mono text-gray-300">{player.stats.ast}</td>
-            <td className="p-4 text-right font-mono font-bold text-yellow-400">
+            <td className="p-2 sm:p-4 text-gray-400 text-xs sm:text-sm hidden sm:table-cell">{player.team}</td>
+            <td className="p-2 sm:p-4 text-right font-mono text-gray-300 text-sm sm:text-base font-bold">{player.stats.pts}</td>
+            <td className="p-2 sm:p-4 text-right font-mono text-gray-300 text-xs sm:text-sm hidden md:table-cell">{player.stats.reb}</td>
+            <td className="p-2 sm:p-4 text-right font-mono text-gray-300 text-xs sm:text-sm hidden md:table-cell">{player.stats.ast}</td>
+            <td className="p-2 sm:p-4 text-right font-mono font-bold text-yellow-400 text-sm sm:text-base">
                 {(player.pie * 100).toFixed(1)}%
             </td>
         </tr>
@@ -214,17 +214,17 @@ const PulsePage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="p-0 overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                            <div className="p-0 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 w-full">
+                                <table className="w-full text-left border-collapse min-w-full">
                                     <thead>
-                                        <tr className="border-b border-white/5 text-gray-400 text-xs uppercase tracking-wider">
-                                            <th className="p-4 font-medium">Rank</th>
-                                            <th className="p-4 font-medium">Player</th>
-                                            <th className="p-4 font-medium">Team</th>
-                                            <th className="p-4 font-medium text-right">PTS</th>
-                                            <th className="p-4 font-medium text-right">REB</th>
-                                            <th className="p-4 font-medium text-right">AST</th>
-                                            <th className="p-4 font-medium text-right text-yellow-500">PIE %</th>
+                                        <tr className="border-b border-white/5 text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider">
+                                            <th className="p-2 sm:p-4 font-medium">Rank</th>
+                                            <th className="p-2 sm:p-4 font-medium sticky left-0 z-10 bg-slate-900/90 backdrop-blur shadow-[4px_0_8px_rgba(0,0,0,0.1)]">Player</th>
+                                            <th className="p-2 sm:p-4 font-medium hidden sm:table-cell">Team</th>
+                                            <th className="p-2 sm:p-4 font-medium text-right">PTS</th>
+                                            <th className="p-2 sm:p-4 font-medium text-right hidden md:table-cell">REB</th>
+                                            <th className="p-2 sm:p-4 font-medium text-right hidden md:table-cell">AST</th>
+                                            <th className="p-2 sm:p-4 font-medium text-right text-yellow-500">PIE %</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">

@@ -366,13 +366,36 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.projections-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #0f172a;
+    /* matches glass card header */
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.15);
+}
+
 .projections-table td {
     padding: 14px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.projections-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: #0f172a;
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.2s ease;
+}
+
 .projection-row:hover {
     background: rgba(255, 255, 255, 0.03);
+}
+
+.projection-row:hover td:first-child {
+    background: #1e293b;
+    /* slightly lighter to match row hover */
 }
 
 .player-name {
