@@ -37,7 +37,7 @@ export default function TopBar() {
 
     return (
         <>
-            <div className="h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 justify-between relative z-[1000] overflow-visible">
+            <div className="flex-shrink-0 h-16 border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm flex items-center px-4 md:px-6 justify-between relative z-[1000] overflow-visible">
                 {/* Mobile Menu Button */}
                 <button
                     onClick={toggleMobileMenu}
