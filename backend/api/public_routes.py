@@ -200,9 +200,9 @@ async def search_players_endpoint(q: Optional[str] = Query(None, min_length=0, m
                 'avatar': p.get('headshot_url') or ''
             }
         
-        # If no query or empty string, return first 100 active players
+        # If no query or empty string, return all active players for client-side Fuse.js index
         if not q or q.strip() == '':
-            normalized = [normalize_player(p) for p in all_players[:100]]
+            normalized = [normalize_player(p) for p in all_players]
             logger.info(f"✅ Returned {len(normalized)} active players (no query)")
             return normalized
         
@@ -243,6 +243,9 @@ async def get_player_by_id(player_id: str):
             "team": player.get("team") or player.get("team_id") or "",
             "position": player.get("position") or "",
             "avatar": player.get("headshot_url") or "",
+            "height": player.get("height") or "N/A",
+            "weight": player.get("weight") or "N/A",
+            "experience": player.get("experience") or "N/A",
             "stats": {
                 "ppg": player.get("ppg", 0),
                 "rpg": player.get("rpg", 0),
@@ -269,7 +272,7 @@ async def get_team_roster(team_id: str):
         players = get_players_by_team(team_id.upper())
         
         logger.info(f"✅ Returned {len(players)} players for team {team_id}")
-        return players
+        return {"roster": players}
         
     except Exception as e:
         logger.error(f"Error fetching roster for {team_id}: {e}")

@@ -56,6 +56,9 @@ class PlayerProfile(BaseModel):
     team: str = ""
     position: str = ""
     avatar: str = ""
+    height: Optional[str] = None
+    weight: Optional[str] = None
+    experience: Optional[str] = None
     stats: Optional[PlayerStats] = None
     narrative: Optional[str] = None
     hitProbability: Optional[float] = None
