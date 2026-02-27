@@ -92,9 +92,14 @@ export const PlayerApi = {
     },
     analyzeMatchup: async (playerId: string, opponent: string) => {
         // Defensive: extract ID if opponent is accidentally passed as an object
-        const opponentId = typeof opponent === 'object' ? (opponent as any).id || String(opponent) : opponent;
+        let opponentId: string;
+        if (typeof opponent === 'object' && opponent !== null) {
+            opponentId = (opponent as any).id || (opponent as any).team_id || (opponent as any).abbreviation || String(opponent);
+        } else {
+            opponentId = String(opponent);
+        }
         const res = await ApiContract.execute<MatchupResult>('analyzeMatchup', {
-            path: `matchup/${playerId}/${opponentId}`
+            path: `matchup/analyze-player?player_id=${encodeURIComponent(playerId)}&opponent=${encodeURIComponent(opponentId)}`
         }, [playerId, opponentId]);
         return normalizeMatchupResult(res.data) as MatchupResult;
     },

@@ -1828,13 +1828,32 @@ async def ensure_fresh(player_id: str, background_tasks: BackgroundTasks):
 async def get_player_hustle(player_id: str):
     """
     Get hustle stats for a player.
+    Falls back to empty stats object instead of 404 when data hasn't been seeded yet.
     """
-    from services.tracking_data_fetcher import TrackingDataFetcher
-    fetcher = TrackingDataFetcher()
-    data = fetcher.get_hustle_stats(player_id)
-    if not data:
-        raise HTTPException(status_code=404, detail="Hustle stats not found")
-    return data
+    try:
+        from services.tracking_data_fetcher import TrackingDataFetcher
+        fetcher = TrackingDataFetcher()
+        data = fetcher.get_player_hustle(player_id)  # Correct method name
+        if not data:
+            # Return empty hustle stats rather than 404 — component handles zeros gracefully
+            return {
+                "player_id": player_id,
+                "contested_shots": 0, "contested_shots_2pt": 0, "contested_shots_3pt": 0,
+                "deflections": 0, "charges_drawn": 0, "screen_assists": 0,
+                "loose_balls_recovered": 0, "off_boxouts": 0, "def_boxouts": 0,
+                "data_available": False,
+                "message": "Hustle stats not yet seeded for this player"
+            }
+        data["data_available"] = True
+        return data
+    except Exception as e:
+        logger.warning(f"[HUSTLE] Failed for {player_id}: {e}")
+        return {
+            "player_id": player_id,
+            "contested_shots": 0, "deflections": 0, "charges_drawn": 0,
+            "screen_assists": 0, "loose_balls_recovered": 0,
+            "data_available": False, "message": str(e)
+        }
 
 @app.get("/aegis/ledger/trace/{player_id}")
 async def get_ledger_trace(player_id: str):
