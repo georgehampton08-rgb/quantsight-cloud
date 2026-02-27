@@ -90,6 +90,25 @@ class PulseStatsArchiver:
         
         # Check for FINAL
         if game_status == "FINAL":
+            # ── Save the LAST quarter (Q4, OT1, etc.) explicitly ──
+            # The transition detector above only fires on Q→Q+1, but
+            # there is no Q5. So Q4 (or the last OT) would never be
+            # saved without this block. We use current_quarter to
+            # label it correctly (Q4, OT1=Q5, OT2=Q6, …).
+            if current_quarter >= 4:
+                quarter_label = f"Q{current_quarter}" if current_quarter == 4 else f"OT{current_quarter - 4}"
+                await self._save_quarter_stats(
+                    game_id=game_id,
+                    quarter_label=quarter_label,
+                    player_stats=player_stats,
+                    home_team=home_team,
+                    away_team=away_team,
+                    home_score=home_score,
+                    away_score=away_score
+                )
+                logger.info(f"📊 Archived {quarter_label} stats for game {game_id}")
+
+            # Save FINAL snapshot (full-game totals)
             await self._save_quarter_stats(
                 game_id=game_id,
                 quarter_label="FINAL",

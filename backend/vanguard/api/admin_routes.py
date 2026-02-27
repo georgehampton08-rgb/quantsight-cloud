@@ -110,7 +110,7 @@ async def ingest_ci_incident(request: CIIncidentRequest):
 
 
 @router.get("/vanguard/admin/incidents")
-async def list_all_incidents(status: Optional[str] = None, limit: int = 100):
+async def list_all_incidents(status: Optional[str] = None, limit: int = 2000):
     """
     List all incidents with optional status filter.
     

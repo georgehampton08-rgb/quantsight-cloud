@@ -198,17 +198,26 @@ class CloudAsyncPulseProducer:
                 logger.debug("No games found in scoreboard")
                 return
             
-            # Step 2: Identify live games
+            # Step 2: Identify live games + newly finished games
             live_game_ids = [g.game_id for g in games if g.status == 'LIVE']
+            
+            # Also fetch boxscores for games that JUST went FINAL so we can
+            # archive Q4 stats. Without this, the FINAL block has no data.
+            newly_final_ids = [
+                g.game_id for g in games
+                if g.status == 'FINAL'
+                and self._game_statuses.get(g.game_id) == 'LIVE'
+            ]
+            fetch_ids = list(set(live_game_ids + newly_final_ids))
             
             if not live_game_ids:
                 logger.debug("No live games currently - will still broadcast scoreboard")
                 # Do NOT return here, we need to push UPCOMING and FINAL games to SSE
             
-            # Step 3: Fetch all live boxscores concurrently
+            # Step 3: Fetch boxscores for live + newly-finished games
             boxscores: Dict[str, Optional[NormalizedBoxScore]] = {}
-            if live_game_ids:
-                boxscores = await self._adapter.fetch_all_live_boxscores_async(live_game_ids)
+            if fetch_ids:
+                boxscores = await self._adapter.fetch_all_live_boxscores_async(fetch_ids)
             
             # Step 4: Process each game and write to Firebase
             all_leaders = []
@@ -238,6 +247,31 @@ class CloudAsyncPulseProducer:
                         asyncio.create_task(
                             self._game_log_persister.save_game_log(game_data_for_log, boxscore)
                         )
+                        
+                        # ── Archive Q4 + FINAL via PulseStatsArchiver ──
+                        # Q4 was previously lost because the archiver was
+                        # only invoked inside the LIVE block. Now we call
+                        # it here with game_status="FINAL" so the archiver
+                        # detects the Q4→FINAL transition AND saves FINAL.
+                        if self._pulse_archiver:
+                            final_leaders = self._extract_leaders_from_normalized(
+                                boxscore,
+                                home_team=game_info.home_team_tricode,
+                                away_team=game_info.away_team_tricode
+                            )
+                            asyncio.create_task(
+                                self._pulse_archiver.check_and_archive(
+                                    game_id=game_id,
+                                    current_quarter=game_info.period,
+                                    game_status="FINAL",
+                                    player_stats=final_leaders,
+                                    home_team=game_info.home_team_tricode,
+                                    away_team=game_info.away_team_tricode,
+                                    home_score=game_info.home_score,
+                                    away_score=game_info.away_score
+                                )
+                            )
+                            logger.info(f"📊 Triggered Q4 + FINAL archival for game {game_id}")
                 
                 # Update status tracking
                 self._game_statuses[game_id] = current_status
@@ -296,13 +330,16 @@ class CloudAsyncPulseProducer:
                 except Exception:
                     pass  # Bigtable is optional, never block on it
                 
-                # Archive quarter-end stats (non-blocking)
+                # Archive quarter-end stats for LIVE transitions only
+                # (Q1→Q2, Q2→Q3, Q3→Q4). The Q4+FINAL save is handled
+                # above in the FINAL detection block so it fires even
+                # after the game leaves the LIVE state.
                 if self._pulse_archiver:
                     asyncio.create_task(
                         self._pulse_archiver.check_and_archive(
                             game_id=game_id,
                             current_quarter=game_info.period,
-                            game_status=game_info.status,
+                            game_status="LIVE",
                             player_stats=leaders,
                             home_team=game_info.home_team_tricode,
                             away_team=game_info.away_team_tricode,

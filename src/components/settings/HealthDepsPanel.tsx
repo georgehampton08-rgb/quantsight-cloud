@@ -4,9 +4,9 @@ import { ApiContract } from '../../api/client';
 import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
 
 interface HealthDepsData {
-    routing_table: string;
-    scale_monitors: Record<string, string>;
-    services: Record<string, string>;
+    routing_table: string | Record<string, unknown>;
+    scale_monitors: Record<string, string | object>;
+    services: Record<string, string | object>;
     otel_ok: boolean;
     bigtable_ok: boolean;
     ml_classifier_ok: boolean;
@@ -149,7 +149,11 @@ function HealthDepsPanelContent() {
                         <div className="space-y-1">
                             <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Routing Strategy</div>
                             <div className="bg-slate-900/50 p-3 rounded border border-slate-700/30 text-emerald-400 font-mono text-sm">
-                                {data.routing_table || "LOCAL_EXECUTION"}
+                                {typeof data.routing_table === 'string'
+                                    ? (data.routing_table || 'LOCAL_EXECUTION')
+                                    : typeof data.routing_table === 'object' && data.routing_table !== null
+                                        ? JSON.stringify(data.routing_table, null, 2)
+                                        : 'LOCAL_EXECUTION'}
                             </div>
                         </div>
                     </div>
