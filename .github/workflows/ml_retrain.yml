@@ -45,19 +45,7 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: |
-          pip install --quiet \
-            scikit-learn \
-            joblib \
-            imbalanced-learn \
-            google-cloud-bigquery \
-            google-cloud-storage \
-            google-cloud-firestore \
-            firebase-admin \
-            pydantic \
-            pydantic-settings \
-            pandas \
-            numpy \
-            pyarrow
+          pip install --quiet -r requirements.txt
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

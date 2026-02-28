@@ -43,15 +43,7 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: |
-          pip install --quiet \
-            google-cloud-bigquery \
-            google-cloud-storage \
-            firebase-admin \
-            pandas \
-            pyarrow \
-            "pydantic>=2.9.0" \
-            "pydantic-settings>=2.3.0" \
-            structlog
+          pip install --quiet -r requirements.txt
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
