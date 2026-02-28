@@ -1,4 +1,4 @@
-name: BigQuery Data Export
+﻿name: BigQuery Data Export
 
 on:
   schedule:
@@ -48,7 +48,10 @@ jobs:
             google-cloud-storage \
             firebase-admin \
             pandas \
-            pyarrow
+            pyarrow \
+            "pydantic>=2.9.0" \
+            "pydantic-settings>=2.3.0" \
+            structlog
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
