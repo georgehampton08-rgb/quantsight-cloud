@@ -332,8 +332,23 @@ Return ONLY valid JSON. No markdown fences, no extra prose.
         if oracle_snapshot:
             telemetry_text = oracle_snapshot.to_prompt_text()
 
+        # ── Inject enhanced KB context (modules, routes, collections) ──
+        kb_enhanced = ""
+        try:
+            from vanguard.vaccine.codebase_kb import get_codebase_context
+            kb_enhanced = await get_codebase_context()
+            if kb_enhanced:
+                logger.debug(f"[AI_DEBUG] Enhanced KB injected ({len(kb_enhanced)} chars)")
+        except Exception as kb_err:
+            logger.debug(f"[AI_DEBUG] Enhanced KB unavailable (non-fatal): {kb_err}")
+
+        # Combine basic endpoint context + full KB context
+        full_context = context
+        if kb_enhanced:
+            full_context += "\n\n" + kb_enhanced
+
         prompt = self.ANALYSIS_PROMPT_TEMPLATE.format(
-            context=context,
+            context=full_context,
             fingerprint=incident['fingerprint'][:16] + "...",
             error_type=incident['error_type'],
             error_message=incident.get('error_message', 'N/A'),

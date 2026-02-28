@@ -1597,18 +1597,32 @@ async def vaccine_run_stream(request: Request):
                                    fingerprint=fp, progress=base_progress + 2)
                     yield _emit("log", ev)
                     try:
-                        ai_result = await analyzer.analyze(incident)
+                        ai_result = await analyzer.analyze_incident(incident, storage)
                         if ai_result:
+                            # Map IncidentAnalysis fields → dict for storage
+                            # IncidentAnalysis has: root_cause, recommended_fix (list), impact,
+                            # code_references, vaccine_recommendation, etc.
+                            rec_fix = ai_result.recommended_fix
+                            recommendation_str = (
+                                "\n".join(rec_fix) if isinstance(rec_fix, list) else str(rec_fix)
+                            )
                             ai_analysis = {
-                                "summary":                ai_result.summary,
+                                "summary":                ai_result.root_cause,  # root_cause serves as summary
                                 "root_cause":             ai_result.root_cause,
-                                "recommendation":         ai_result.recommendation,
+                                "recommendation":         recommendation_str,
+                                "recommended_fix":        rec_fix,
                                 "confidence":             ai_result.confidence,
                                 "code_references":        [
                                     r.__dict__ if hasattr(r, "__dict__") else r
                                     for r in (ai_result.code_references or [])
                                 ],
                                 "vaccine_recommendation": ai_result.vaccine_recommendation,
+                                "impact":                 ai_result.impact,
+                                "error_message_decoded":  ai_result.error_message_decoded,
+                                "middleware_insight":      ai_result.middleware_insight,
+                                "timeline_analysis":      ai_result.timeline_analysis,
+                                "ready_to_resolve":       ai_result.ready_to_resolve,
+                                "ready_reasoning":        ai_result.ready_reasoning,
                                 "error_type":             incident.get("error_type", ""),
                                 "error_message":          incident.get("error_message", ""),
                             }
@@ -1623,7 +1637,7 @@ async def vaccine_run_stream(request: Request):
                                 fingerprint=fp,
                                 confidence=ai_result.confidence,
                                 progress=base_progress + 5,
-                                detail=f"recommendation: {ai_result.recommendation[:200]}"
+                                detail=f"recommendation: {recommendation_str[:200]}"
                             )
                             yield _emit("log", ev)
                         else:
