@@ -51,7 +51,10 @@ jobs:
             imbalanced-learn \
             google-cloud-bigquery \
             google-cloud-storage \
+            google-cloud-firestore \
             firebase-admin \
+            pydantic \
+            pydantic-settings \
             pandas \
             numpy \
             pyarrow
