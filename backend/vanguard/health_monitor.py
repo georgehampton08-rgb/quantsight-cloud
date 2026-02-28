@@ -71,7 +71,7 @@ class SystemHealthMonitor:
         cdn_error: Optional[str] = None
 
         try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
+            async with httpx.AsyncClient(timeout=4.0) as client:
                 start = datetime.now()
                 resp = await client.get(CDN_URL)
                 cdn_latency_ms = (datetime.now() - start).total_seconds() * 1000
@@ -83,7 +83,7 @@ class SystemHealthMonitor:
                     cdn_error = f"CDN HTTP {resp.status_code}"
         except httpx.TimeoutException:
             cdn_status = "critical"
-            cdn_error = "CDN timeout after 8s"
+            cdn_error = "CDN timeout after 4s"
         except Exception as e:
             cdn_status = "critical"
             cdn_error = f"CDN unreachable: {type(e).__name__}"

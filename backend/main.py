@@ -409,7 +409,7 @@ async def health_check():
         
         # Run all health checks
         monitor = get_health_monitor()
-        health_results = await monitor.run_all_checks()
+        health_results = await asyncio.wait_for(monitor.run_all_checks(), timeout=6.0)
         
         # Determine overall status
         statuses = [r.get('status') for r in health_results.values()]
@@ -489,10 +489,13 @@ async def health_deps():
         SYSTEM_SNAPSHOT["otel_ok"] = is_otel_ok()
         SYSTEM_SNAPSHOT["firestore_region"] = "nam5"
         
-        # Phase 8: WebSocket connection stats
+        # Phase 8: WebSocket connection stats (bounded — never block health)
         try:
             from services.ws_connection_manager import get_ws_manager
-            ws_stats = get_ws_manager().get_stats()
+            ws_stats = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, lambda: get_ws_manager().get_stats()),
+                timeout=1.0
+            )
             SYSTEM_SNAPSHOT.update(ws_stats)
         except Exception:
             SYSTEM_SNAPSHOT["websocket_connections_active"] = 0

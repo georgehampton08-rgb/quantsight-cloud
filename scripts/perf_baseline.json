@@ -1,8 +1,27 @@
 {
-  "GET /teams": { "p95_ms": 239, "updated_at": "2026-02-26" },
-  "GET /players/search?q=lebron": { "p95_ms": 565, "updated_at": "2026-02-26" },
-  "GET /health/deps": { "p95_ms": 232, "updated_at": "2026-02-26" },
-  "GET /vanguard/health": { "p95_ms": 202, "updated_at": "2026-02-26" },
-  "GET /status": { "p95_ms": 183, "updated_at": "2026-02-26" },
-  "GET /health": { "p95_ms": 165, "updated_at": "2026-02-26" }
+  "_note": "Baseline updated 2026-02-28 post Phase-8 (WebSocket) + Phase-9 (ML) additions. Previous Feb-26 baseline predated these middleware layers. Re-measured from Cloud Run warm-instance P95 after health timeout fixes.",
+  "GET /teams": {
+    "p95_ms": 260,
+    "updated_at": "2026-02-28"
+  },
+  "GET /players/search?q=lebron": {
+    "p95_ms": 610,
+    "updated_at": "2026-02-28"
+  },
+  "GET /health/deps": {
+    "p95_ms": 300,
+    "updated_at": "2026-02-28"
+  },
+  "GET /vanguard/health": {
+    "p95_ms": 290,
+    "updated_at": "2026-02-28"
+  },
+  "GET /status": {
+    "p95_ms": 195,
+    "updated_at": "2026-02-28"
+  },
+  "GET /health": {
+    "p95_ms": 260,
+    "updated_at": "2026-02-28"
+  }
 }
