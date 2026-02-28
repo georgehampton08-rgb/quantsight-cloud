@@ -3,7 +3,7 @@ Cloud Run Entry Point for QuantSight Live Pulse
 ================================================
 Headless FastAPI server for Cloud Run deployment.
 No SSE endpoints - purely writes to Firebase for mobile/web consumption.
-# ci: compute SA serviceusage+logging+ar+storage+run.admin granted — retest (2026-02-28)
+# ci: all 3 SAs fully provisioned for --source deploy — propagation retest (2026-02-28)
 
 Architecture:
   AsyncPulseProducer (Cloud) → FirebaseAdminService → Firestore
