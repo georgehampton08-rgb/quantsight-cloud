@@ -298,6 +298,159 @@ class FirebaseAdminService:
             return None
 
 
+    def get_game_dates(self) -> List[str]:
+        """
+        Return a sorted (descending) list of all date strings that have at
+        least one saved game log in Firestore.
+
+        Scans the top-level `game_logs` collection for document IDs, which
+        are YYYY-MM-DD strings written by GameLogPersister.
+
+        Returns:
+            List of date strings, e.g. ["2026-02-26", "2026-02-25", ...]
+            Empty list if no data or Firebase unavailable.
+        """
+        if not self.enabled or not self.db:
+            logger.warning("Firebase not enabled — get_game_dates returning []")
+            return []
+
+        try:
+            # Each top-level document in game_logs is a date (YYYY-MM-DD)
+            # We limit to 365 to avoid unbounded scans on large collections.
+            docs = self.db.collection('game_logs').limit(365).stream()
+            dates = [doc.id for doc in docs if doc.id]
+            # Sort descending so most-recent date is first
+            dates.sort(reverse=True)
+            logger.info(f"✅ get_game_dates: found {len(dates)} date(s)")
+            return dates
+        except Exception as e:
+            logger.error(f"❌ get_game_dates failed: {e}")
+            return []
+
+    def get_box_scores_for_date(self, date: str) -> List[Dict[str, Any]]:
+        """
+        Return final team score summaries for all games saved on `date`.
+
+        Only reads from persisted Firestore data (game_logs/{date}/games/*).
+        Never calls the live NBA API.
+
+        Score extraction priority:
+          1. metadata.home_score / metadata.away_score (written by persister)
+          2. Sum of pts across all players per team (fallback for older docs)
+
+        Args:
+            date: Game date string in YYYY-MM-DD format.
+
+        Returns:
+            List of game summary dicts, e.g.:
+            [
+                {
+                    "game_id": "0022500641",
+                    "matchup": "DEN @ DET",
+                    "home_team": "DET",
+                    "away_team": "DEN",
+                    "home_score": 112,
+                    "away_score": 98,
+                    "status": "FINAL",
+                    "winner": "DET"   # or "TIE" if scores equal
+                }
+            ]
+        """
+        if not self.enabled or not self.db:
+            logger.warning("Firebase not enabled — get_box_scores_for_date returning []")
+            return []
+
+        try:
+            game_refs = (
+                self.db
+                .collection('game_logs')
+                .document(date)
+                .collection('games')
+                .stream()
+            )
+
+            results: List[Dict[str, Any]] = []
+
+            for doc in game_refs:
+                data = doc.to_dict()
+                if not data:
+                    continue
+
+                game_id = doc.id
+
+                # ── Team tricodes ──────────────────────────────────────────
+                # Persister writes metadata.home_team / metadata.away_team
+                metadata = data.get('metadata', {}) or {}
+                home_team = metadata.get('home_team') or data.get('home_team', 'HOME')
+                away_team = metadata.get('away_team') or data.get('away_team', 'AWAY')
+                status    = metadata.get('status', 'FINAL')
+
+                # ── Score extraction ───────────────────────────────────────
+                # Priority 1: metadata fields written by the persister
+                home_score: Optional[int] = metadata.get('home_score')
+                away_score: Optional[int] = metadata.get('away_score')
+
+                # Priority 2: sum pts from player sub-maps (fallback)
+                if home_score is None or away_score is None:
+                    teams_data = data.get('teams', {}) or {}
+                    home_pts = 0
+                    away_pts = 0
+
+                    for team_code, team_data in teams_data.items():
+                        players = team_data.get('players', {}) or {}
+                        team_total = sum(
+                            int(p.get('pts', 0) or 0)
+                            for p in players.values()
+                            if isinstance(p, dict)
+                        )
+                        if team_code == home_team:
+                            home_pts = team_total
+                        elif team_code == away_team:
+                            away_pts = team_total
+
+                    # Only use fallback if at least one team had player data
+                    if home_pts > 0 or away_pts > 0:
+                        home_score = home_pts
+                        away_score = away_pts
+                    else:
+                        # No usable score data — skip this game
+                        logger.warning(
+                            f"No score data found for game_log {date}/{game_id} — skipping"
+                        )
+                        continue
+
+                home_score = int(home_score)
+                away_score = int(away_score)
+
+                # ── Winner ────────────────────────────────────────────────
+                if home_score > away_score:
+                    winner = home_team
+                elif away_score > home_score:
+                    winner = away_team
+                else:
+                    winner = 'TIE'
+
+                matchup = metadata.get('matchup') or f"{away_team} @ {home_team}"
+
+                results.append({
+                    "game_id":    game_id,
+                    "matchup":    matchup,
+                    "home_team":  home_team,
+                    "away_team":  away_team,
+                    "home_score": home_score,
+                    "away_score": away_score,
+                    "status":     status,
+                    "winner":     winner,
+                })
+
+            logger.info(f"✅ get_box_scores_for_date({date}): {len(results)} game(s)")
+            return results
+
+        except Exception as e:
+            logger.error(f"❌ get_box_scores_for_date({date}) failed: {e}")
+            return []
+
+
 def get_firebase_service() -> Optional[FirebaseAdminService]:
     """Get global Firebase service instance (singleton pattern)."""
     global _firebase_service_instance
