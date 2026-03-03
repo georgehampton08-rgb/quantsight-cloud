@@ -113,8 +113,8 @@
     gap: 20px;
     width: 100%;
     box-sizing: border-box;
-    /* Desktop: natural viewport fill */
-    min-height: calc(100vh - 240px);
+    /* Let content grow naturally — page scrolls on overflow */
+    min-height: 500px;
 }
 
 /* Left column: score header + court + legend */
@@ -153,7 +153,10 @@
     .feed-col {
         max-width: 100%;
         min-width: 0;
-        height: 480px;
+        /* min-height not fixed height — lets plays list render fully */
+        min-height: 360px;
+        height: auto;
+        overflow-y: auto;
     }
 }
 
@@ -164,7 +167,10 @@
     }
 
     .feed-col {
-        height: 400px;
+        /* Remove fixed height on mobile — let list grow and page scrolls */
+        height: auto;
+        min-height: 280px;
+        overflow-y: visible;
         border-radius: 8px;
     }
 
@@ -706,4 +712,82 @@
     background: #38bdf8;
     opacity: 0.5;
     animation: pulse-dot 2s infinite;
+}
+
+/* === SHOT CHART LEGEND === */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-top: 8px;
+    padding: 0 2px;
+    align-items: center;
+}
+
+.chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+/* Base legend dot */
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+/* 2PT Made — solid green fill + green border */
+.legend-dot.made {
+    background: #4ade80;
+    border-color: #22c55e;
+}
+
+/* 2PT Missed — solid red fill + red border */
+.legend-dot.missed {
+    background: #f87171;
+    border-color: #dc2626;
+}
+
+/* 3PT Made — green INSIDE, gold OUTLINE */
+.legend-dot.three-made {
+    background: #4ade80;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
+}
+
+/* 3PT Missed — red INSIDE, gold OUTLINE */
+.legend-dot.three-missed {
+    background: #f87171;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
+}
+
+/* Foul — red fill + purple border */
+.legend-dot.foul {
+    background: #f87171;
+    border-color: #a855f7;
+    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.4);
+}
+
+/* Compact on mobile */
+@media (max-width: 640px) {
+    .chart-legend {
+        gap: 8px 12px;
+    }
+
+    .chart-legend-item {
+        font-size: 10px;
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+    }
 }

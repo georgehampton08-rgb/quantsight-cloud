@@ -277,7 +277,7 @@ export default function CommandCenterPage() {
                         <BoxScoreViewer />
                     </div>
                 ) : (
-                    <div className="animate-in fade-in flex-1 min-h-0">
+                    <div className="animate-in fade-in w-full pb-8">
                         <PlayByPlayFeed />
                     </div>
                 )}

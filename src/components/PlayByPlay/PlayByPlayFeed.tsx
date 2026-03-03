@@ -66,7 +66,7 @@ export function PlayByPlayFeed() {
 
                         <InteractiveShotChart plays={plays} />
 
-                        {/* Shot type legend */}
+                        {/* Shot type legend — 5 distinct keys */}
                         <div className="chart-legend">
                             <div className="chart-legend-item">
                                 <span className="legend-dot made" />Made
@@ -75,10 +75,13 @@ export function PlayByPlayFeed() {
                                 <span className="legend-dot missed" />Missed
                             </div>
                             <div className="chart-legend-item">
-                                <span className="legend-dot three" />3-Pointer
+                                <span className="legend-dot three-made" />3PT Made
                             </div>
                             <div className="chart-legend-item">
-                                <span className="legend-dot foul" />Foul Play
+                                <span className="legend-dot three-missed" />3PT Missed
+                            </div>
+                            <div className="chart-legend-item">
+                                <span className="legend-dot foul" />Foul
                             </div>
                         </div>
 
