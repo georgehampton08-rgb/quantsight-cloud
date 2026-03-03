@@ -3,15 +3,19 @@ Cloud Admin Routes - Firestore Database Initialization & Data Seeding
 ====================================================================
 Protected endpoints for database management (call once per environment).
 
-Feature flags used:
-  FEATURE_SEED_ADMIN — gates /admin/seed/* endpoints (default: false in cloud)
+All routes require two-layer Firebase auth:
+  Layer 1: Valid Firebase ID token (Authorization: Bearer <token>)
+  Layer 2: Firestore admins/{uid} role document
 """
 import os
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+
+from api.auth_middleware import require_admin_role
+from api.validators import safe_collection
 
 from firestore_db import (
     get_firestore_db,
@@ -21,14 +25,18 @@ from firestore_db import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(require_admin_role)],
+)
 
 
 @router.get("/status")
 async def admin_status():
     """
-    Quick admin status check - works without Firestore.
-    Now surfaces feature flag states for observability.
+    Quick admin status check — confirms auth is working.
+    Returns feature flag states and available endpoints.
     """
     try:
         from vanguard.core.feature_flags import flag_defaults
@@ -41,12 +49,52 @@ async def admin_status():
         "feature_flags": flags,
         "endpoints_available": [
             "/admin/status",
+            "/admin/key-status",
+            "/admin/cache/purge",
             "/admin/init-collections",
             "/admin/collections/status",
             "/admin/seed/sample-data (requires FEATURE_SEED_ADMIN=true)",
             "/admin/seed/all-teams"
         ]
     }
+
+
+@router.get("/key-status")
+async def key_status():
+    """Return whether the Gemini API key is configured (bool only — never exposes the key)."""
+    return {
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "kaggle_managed": True,
+    }
+
+
+@router.post("/cache/purge")
+async def purge_cache():
+    """
+    Purge the in-process rate limiter buckets and any in-memory API caches.
+    Does NOT affect Firestore data.
+    """
+    try:
+        purged = 0
+        try:
+            from vanguard.middleware.rate_limiter import _MEMORY_BUCKETS
+            count_before = len(_MEMORY_BUCKETS)
+            _MEMORY_BUCKETS.clear()
+            purged = count_before
+            logger.info(f"[PURGE] Cleared {purged} rate limiter buckets")
+        except ImportError:
+            logger.warning("[PURGE] Rate limiter not available")
+
+        return {
+            "success": True,
+            "message": "In-memory caches purged",
+            "rate_limiter_buckets_cleared": purged,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Cache purge failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.post("/init-collections")
@@ -171,40 +219,41 @@ async def seed_sample_data(
 @router.delete("/collections/{collection_name}/clear")
 async def clear_collection(collection_name: str):
     """
-    Clear all documents from a collection
-    ⚠️ DANGEROUS - Use with caution
+    Clear all documents from a collection.
+    Validates collection name against allowlist before proceeding.
+    ⚠️ DANGEROUS — only whitelisted collections permitted.
     """
+    # Validate against allowlist — prevents path traversal / unauthorized access
+    safe_collection(collection_name)
+
     try:
         db = get_firestore_db()
         coll_ref = db.collection(collection_name)
-        
-        # Delete in batches
+
         batch_size = 500
         docs = coll_ref.limit(batch_size).stream()
         deleted = 0
-        
+
         while True:
             batch = db.batch()
             docs_list = list(docs)
-            
             if not docs_list:
                 break
-            
             for doc in docs_list:
                 batch.delete(doc.reference)
                 deleted += 1
-            
             batch.commit()
-            
-            # Get next batch
             docs = coll_ref.limit(batch_size).stream()
-        
+
+        logger.info(f"[ADMIN] Cleared {deleted} docs from {collection_name}")
         return {
             "status": "success",
             "collection": collection_name,
             "deleted": deleted
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error clearing collection {collection_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

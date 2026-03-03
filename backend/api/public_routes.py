@@ -660,18 +660,17 @@ async def get_player_by_id_endpoint(player_id: str):
 
 # ================== PWA COMPATIBILITY ENDPOINTS ==================
 
-@router.post("/settings/gemini-key")
-async def save_gemini_key(data: dict):
-    """Save Gemini API key to Cloud Secret Manager (placeholder)"""
-    # This would integrate with Google Secret Manager in production
+@router.get("/settings/key-status")
+async def key_status():
+    """Return whether the Gemini API key is configured (bool only — never exposes the key)."""
     return {
-        "success": True,
-        "message": "Gemini key saved (placeholder - not yet implemented)"
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "kaggle_managed": True,
     }
 
 
 @router.get("/matchup-lab/games")
-async def get_matchup_lab_games():
+async def get_matchup_lab_games_alias():
     """Get today's games for Matchup Lab - reuses schedule endpoint"""
     return await get_schedule()
 
