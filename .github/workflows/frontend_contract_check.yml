@@ -1,0 +1,33 @@
+name: Frontend Contract Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Verify Zod schemas compile
+      run: |
+        npx tsc --noEmit
+        echo "Zod schemas compile clean"
+        
+    - name: Run Web Smoke Tests
+      run: npx tsx scripts/smoke_web.ts
+      env:
+        VITE_API_URL: https://quantsight-cloud-458498663186.us-central1.run.app

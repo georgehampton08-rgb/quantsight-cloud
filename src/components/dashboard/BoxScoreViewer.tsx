@@ -15,21 +15,24 @@ interface BoxScorePlayer {
     team_abbreviation?: string;
     team_tricode?: string;
     start_position?: string | null;
-    min?: string | null;
+    min?: string | number | null;
     minutes?: string | null;
     pts: number;
     reb: number;
     ast: number;
     stl: number;
     blk: number;
-    tov: number;
+    tov?: number;
+    to?: number;
     fgm: number;
     fga: number;
     fg3m: number;
-    fg3a: number;
+    fg3a?: number;
     ftm: number;
     fta: number;
     plus_minus: number;
+    ts_pct?: number;
+    efg_pct?: number;
 }
 
 interface BoxScoreGame {
@@ -56,6 +59,19 @@ interface HistoricalGame {
     away_score: number;
     status: string;
     winner: string;
+    has_final?: boolean;
+}
+
+interface HistoricalBoxScore {
+    game_id: string;
+    home_team: string;
+    away_team: string;
+    home_score: number;
+    away_score: number;
+    status: string;
+    quarter_used: string;
+    home_players: BoxScorePlayer[];
+    away_players: BoxScorePlayer[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -65,11 +81,16 @@ const getTodayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD 
 // ─── Player row (shared between live and historical views) ────────────────────
 
 const renderPlayerRow = (p: BoxScorePlayer) => {
-    const minVal = p.min || p.minutes || '';
-    const dnp = minVal === null || minVal === '0:00' || minVal === '' || minVal === '0';
-    const efficiency = dnp ? 0 : (p.pts + p.reb + p.ast + p.stl + p.blk - (p.fga - p.fgm) - (p.fta - p.ftm) - p.tov);
+    // Support both live (string min like '32:15') and historical (numeric min)
+    const minRaw = p.min ?? p.minutes ?? 0;
+    const minStr = typeof minRaw === 'number' ? (minRaw > 0 ? String(minRaw) : '') : (minRaw ?? '');
+    const dnp = !minStr || minStr === '0:00' || minStr === '0';
+    const tov = p.tov ?? p.to ?? 0;
+    const fg3a = p.fg3a ?? 0;
+    const efficiency = dnp ? 0 : (p.pts + p.reb + p.ast + p.stl + p.blk - (p.fga - p.fgm) - (p.fta - p.ftm) - tov);
     const getPtsColor = (pts: number) => pts >= 30 ? 'text-emerald-400 font-bold' : pts >= 20 ? 'text-emerald-500/80 font-bold' : 'text-slate-300';
     const playerName = p.player_name || p.name || '';
+    const tsColor = p.ts_pct && p.ts_pct > 0.6 ? 'text-emerald-400' : p.ts_pct && p.ts_pct > 0.5 ? 'text-slate-300' : 'text-red-400/70';
 
     return (
         <tr key={p.player_id} className="bg-slate-900/40 hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 group">
@@ -80,28 +101,34 @@ const renderPlayerRow = (p: BoxScorePlayer) => {
                 </div>
             </td>
             {dnp ? (
-                <td colSpan={8} className="px-2 py-3 text-[10px] sm:text-xs text-slate-500 italic text-center uppercase tracking-widest whitespace-nowrap">
+                <td colSpan={9} className="px-2 py-3 text-[10px] sm:text-xs text-slate-500 italic text-center uppercase tracking-widest whitespace-nowrap">
                     Did Not Play
                 </td>
             ) : (
                 <>
-                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono">{minVal}</td>
+                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono">{minStr}</td>
                     <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm ${getPtsColor(p.pts)}`}>{p.pts}</td>
                     <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.reb}</td>
                     <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.ast}</td>
                     <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden md:table-cell">{p.fgm}/{p.fga}</td>
-                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden lg:table-cell">{p.fg3m}/{p.fg3a}</td>
+                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden lg:table-cell">{p.fg3m}/{fg3a}</td>
                     <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs font-bold ${p.plus_minus > 0 ? 'text-emerald-400' : p.plus_minus < 0 ? 'text-red-400' : 'text-slate-500'}`}>
                         {p.plus_minus > 0 ? `+${p.plus_minus}` : p.plus_minus}
                     </td>
-                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-500 font-mono hidden sm:table-cell">{efficiency}</td>
+                    {p.ts_pct !== undefined ? (
+                        <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs font-mono hidden sm:table-cell ${tsColor}`}>
+                            {(p.ts_pct * 100).toFixed(0)}%
+                        </td>
+                    ) : (
+                        <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs text-slate-500 font-mono hidden sm:table-cell">{efficiency}</td>
+                    )}
                 </>
             )}
         </tr>
     );
 };
 
-const TableHeader = () => (
+const TableHeader = ({ showTs = false }: { showTs?: boolean }) => (
     <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
         <tr>
             <th className="px-1 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
@@ -112,7 +139,7 @@ const TableHeader = () => (
             <th className="px-1 py-3 sm:px-4 text-center hidden md:table-cell">FG</th>
             <th className="px-1 py-3 sm:px-4 text-center hidden lg:table-cell">3PT</th>
             <th className="px-1 py-3 sm:px-4 text-center">+/-</th>
-            <th className="px-1 py-3 sm:px-4 text-center hidden sm:table-cell">EFF</th>
+            <th className="px-1 py-3 sm:px-4 text-center hidden sm:table-cell">{showTs ? 'TS%' : 'EFF'}</th>
         </tr>
     </thead>
 );
@@ -138,13 +165,10 @@ export function BoxScoreViewerContent() {
     // ── Historical state (past dates) ──────────────────────────────────────
     const [histGames, setHistGames] = useState<HistoricalGame[]>([]);
     const [selectedHistGame, setSelectedHistGame] = useState<string | null>(null);
-    const [histBoxScore, setHistBoxScore] = useState<{
-        home: BoxScorePlayer[];
-        away: BoxScorePlayer[];
-        game_info?: any;
-    } | null>(null);
+    const [histBoxScore, setHistBoxScore] = useState<HistoricalBoxScore | null>(null);
     const [histLoading, setHistLoading] = useState(false);
     const [histError, setHistError] = useState<string | null>(null);
+    const [histPlayersLoading, setHistPlayersLoading] = useState(false);
 
     // ── Fetch available dates for dot indicators ───────────────────────────
     useEffect(() => {
@@ -259,19 +283,22 @@ export function BoxScoreViewerContent() {
             .finally(() => setHistLoading(false));
     }, [selectedDate, isToday]);
 
-    // ── HISTORICAL: load player-level box score for selected past game ─────
+    // ── HISTORICAL: load player-level box score ────────────────────────────
     useEffect(() => {
         if (isToday || !selectedHistGame) return;
-        setHistLoading(true);
-        fetch(`${API_BASE}/api/box-scores/game/${selectedHistGame}?date=${selectedDate}`)
+        setHistPlayersLoading(true);
+        setHistBoxScore(null);
+        fetch(`${API_BASE}/api/box-scores/players?date=${selectedDate}&game_id=${selectedHistGame}`)
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d) setHistBoxScore(d); })
+            .then((d: HistoricalBoxScore | null) => { if (d) setHistBoxScore(d); })
             .catch(() => { })
-            .finally(() => setHistLoading(false));
+            .finally(() => setHistPlayersLoading(false));
     }, [selectedHistGame, selectedDate, isToday]);
 
     const selectedHistData = histGames.find(g => g.game_id === selectedHistGame);
     const hasData = availableDates.includes(selectedDate);
+    const hist = histBoxScore as HistoricalBoxScore | null;
+    const histIsFinal = hist?.quarter_used === 'FINAL';
 
     // ── Render ─────────────────────────────────────────────────────────────
     return (
@@ -431,23 +458,92 @@ export function BoxScoreViewerContent() {
                     </div>
                 )}
 
-                {/* Historical: show final scores only when no player-level data loaded */}
-                {!isToday && !histLoading && selectedHistData && !histBoxScore && (
-                    <div className="space-y-3 p-4 bg-slate-900/30 border border-slate-800 rounded-2xl">
-                        <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Final Score — {selectedHistData.matchup}</div>
-                        <div className="flex items-center justify-around py-6">
-                            <div className={`text-center ${selectedHistData.winner === selectedHistData.away_team ? 'opacity-100' : 'opacity-50'}`}>
-                                <div className={`text-4xl font-bold font-mono ${selectedHistData.winner === selectedHistData.away_team ? 'text-emerald-400' : 'text-white'}`}>{selectedHistData.away_score}</div>
-                                <div className="text-sm font-bold text-slate-300 mt-1">{selectedHistData.away_team}</div>
-                                {selectedHistData.winner === selectedHistData.away_team && <div className="text-[10px] text-emerald-500 mt-1 font-bold uppercase tracking-widest">WIN</div>}
+                {/* Historical: player stats — twin panels matching live view */}
+                {!isToday && !histLoading && selectedHistData && (
+                    <div className="space-y-4">
+                        {/* Score header */}
+                        <div className="flex items-center justify-between px-4 py-3 bg-slate-900/60 border border-slate-700/50 rounded-2xl">
+                            <div className="flex items-center gap-4">
+                                <div className="text-center">
+                                    <div className={`text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.away_team ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                        {selectedHistData.away_score}
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-widest">{selectedHistData.away_team}</div>
+                                    {selectedHistData.winner === selectedHistData.away_team && <div className="text-[9px] text-emerald-500 font-bold tracking-widest mt-0.5">WIN</div>}
+                                </div>
+                                <div className="text-slate-600 font-mono">@</div>
+                                <div className="text-center">
+                                    <div className={`text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.home_team ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                        {selectedHistData.home_score}
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-widest">{selectedHistData.home_team}</div>
+                                    {selectedHistData.winner === selectedHistData.home_team && <div className="text-[9px] text-emerald-500 font-bold tracking-widest mt-0.5">WIN</div>}
+                                </div>
                             </div>
-                            <div className="text-slate-600 font-mono text-xl">@</div>
-                            <div className={`text-center ${selectedHistData.winner === selectedHistData.home_team ? 'opacity-100' : 'opacity-50'}`}>
-                                <div className={`text-4xl font-bold font-mono ${selectedHistData.winner === selectedHistData.home_team ? 'text-emerald-400' : 'text-white'}`}>{selectedHistData.home_score}</div>
-                                <div className="text-sm font-bold text-slate-300 mt-1">{selectedHistData.home_team}</div>
-                                {selectedHistData.winner === selectedHistData.home_team && <div className="text-[10px] text-emerald-500 mt-1 font-bold uppercase tracking-widest">WIN</div>}
+                            <div className="flex items-center gap-2">
+                                {hist && !histIsFinal && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold uppercase tracking-wider">
+                                        THRU {hist.quarter_used}
+                                    </span>
+                                )}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${histIsFinal
+                                        ? 'bg-slate-700/60 text-slate-400'
+                                        : 'bg-slate-800/60 text-slate-500'
+                                    }`}>
+                                    {histIsFinal ? 'FINAL' : selectedHistData.status}
+                                </span>
                             </div>
                         </div>
+
+                        {/* Player stats loading */}
+                        {histPlayersLoading && (
+                            <div className="flex items-center justify-center gap-3 py-8 text-slate-500">
+                                <Activity className="w-5 h-5 animate-spin text-indigo-400" />
+                                <span className="text-sm">Loading player stats...</span>
+                            </div>
+                        )}
+
+                        {/* Twin player panels */}
+                        {!histPlayersLoading && hist && hist.home_players.length + hist.away_players.length > 0 && (
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 w-full">
+                                {/* AWAY */}
+                                <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
+                                    <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
+                                        <h3 className="text-base font-black text-white tracking-widest">{hist.away_team}</h3>
+                                        <span className={`text-2xl font-mono font-bold ${selectedHistData.winner === hist.away_team ? 'text-emerald-400' : 'text-slate-400'
+                                            }`}>{hist.away_score}</span>
+                                    </div>
+                                    <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
+                                        <table className="w-full min-w-full text-left">
+                                            <TableHeader showTs={true} />
+                                            <tbody>{hist.away_players.map(renderPlayerRow)}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                {/* HOME */}
+                                <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
+                                    <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
+                                        <h3 className="text-base font-black text-white tracking-widest">{hist.home_team}</h3>
+                                        <span className={`text-2xl font-mono font-bold ${selectedHistData.winner === hist.home_team ? 'text-emerald-400' : 'text-slate-400'
+                                            }`}>{hist.home_score}</span>
+                                    </div>
+                                    <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
+                                        <table className="w-full min-w-full text-left">
+                                            <TableHeader showTs={true} />
+                                            <tbody>{hist.home_players.map(renderPlayerRow)}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* No player data for this game (pre-2/28 games only have Q1-Q3) */}
+                        {!histPlayersLoading && (!hist || (hist.home_players.length + hist.away_players.length === 0)) && (
+                            <div className="flex items-center gap-3 py-4 px-4 bg-slate-800/30 border border-slate-700/30 rounded-xl text-slate-500 text-sm">
+                                <span className="text-base">📋</span>
+                                <span>Player-level stats not available for this game. Full stats begin from 2026-02-28.</span>
+                            </div>
+                        )}
                     </div>
                 )}
 

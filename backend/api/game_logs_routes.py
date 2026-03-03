@@ -193,6 +193,142 @@ def get_box_scores_for_date(
         )
 
 
+# ─── Box Score: Player Stats ──────────────────────────────────────────────────
+
+@router.get("/api/box-scores/players")
+def get_box_score_players(
+    date: str = Query(..., description="Game date YYYY-MM-DD"),
+    game_id: str = Query(..., description="NBA game ID e.g. 0022500858")
+):
+    """
+    Return player-level stats for a completed game from pulse_stats.
+
+    Path: pulse_stats/{date}/games/{game_id}/quarters/FINAL.players
+
+    Returns:
+        {
+          "date": "2026-02-28",
+          "game_id": "0022500858",
+          "home_team": "DET",
+          "away_team": "CLE",
+          "home_score": 122,
+          "away_score": 119,
+          "status": "FINAL",
+          "quarter_used": "FINAL",
+          "home_players": [ { player_id, name, team, pts, reb, ast, stl, blk,
+                               min, fgm, fga, fg3m, fta, ftm, plus_minus,
+                               ts_pct, efg_pct, usage_pct } ],
+          "away_players": [ ... ]
+        }
+    """
+    _validate_date(date)
+
+    svc = _get_firebase_service()
+    if svc is None:
+        raise HTTPException(status_code=503, detail="Database unavailable.")
+
+    try:
+        db = svc.db
+        quarters_ref = (
+            db.collection('pulse_stats')
+            .document(date)
+            .collection('games')
+            .document(game_id)
+            .collection('quarters')
+            .stream()
+        )
+        quarters = {q.id: q.to_dict() or {} for q in quarters_ref}
+
+        if not quarters:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No quarter data found for game {game_id} on {date}."
+            )
+
+        # Prefer FINAL; fallback to most recent quarter
+        def _q_sort_key(label: str) -> int:
+            if label == 'FINAL': return 99
+            if label.startswith('OT'): return 10 + int(label[2:] or 1)
+            if label.startswith('Q'):  return int(label[1:] or 0)
+            return 0
+
+        if 'FINAL' in quarters:
+            quarter_used = 'FINAL'
+        else:
+            quarter_used = max(quarters.keys(), key=_q_sort_key)
+
+        q_data = quarters[quarter_used]
+        home_team  = q_data.get('home_team', '')
+        away_team  = q_data.get('away_team', '')
+        home_score = int(q_data.get('home_score', 0) or 0)
+        away_score = int(q_data.get('away_score', 0) or 0)
+        players_map = q_data.get('players', {}) or {}
+
+        home_players: List[Dict[str, Any]] = []
+        away_players: List[Dict[str, Any]] = []
+
+        for pid, pdata in players_map.items():
+            if not isinstance(pdata, dict):
+                continue
+            player = {
+                "player_id":   pid,
+                "name":        pdata.get('name', f'Player {pid}'),
+                "team":        pdata.get('team', ''),
+                "pts":         int(pdata.get('pts', 0) or 0),
+                "reb":         int(pdata.get('reb', 0) or 0),
+                "ast":         int(pdata.get('ast', 0) or 0),
+                "stl":         int(pdata.get('stl', 0) or 0),
+                "blk":         int(pdata.get('blk', 0) or 0),
+                "to":          int(pdata.get('to', 0) or 0),
+                "min":         int(pdata.get('min', 0) or 0),
+                "fgm":         int(pdata.get('fgm', 0) or 0),
+                "fga":         int(pdata.get('fga', 0) or 0),
+                "fg3m":        int(pdata.get('fg3m', 0) or 0),
+                "ftm":         int(pdata.get('ftm', 0) or 0),
+                "fta":         int(pdata.get('fta', 0) or 0),
+                "plus_minus":  int(pdata.get('plus_minus', 0) or 0),
+                "ts_pct":      round(float(pdata.get('ts_pct', 0) or 0), 3),
+                "efg_pct":     round(float(pdata.get('efg_pct', 0) or 0), 3),
+                "usage_pct":   round(float(pdata.get('usage_pct', 0) or 0), 3),
+            }
+            team = player["team"]
+            if team == home_team:
+                home_players.append(player)
+            elif team == away_team:
+                away_players.append(player)
+            else:
+                # Assign by count fallback
+                if len(home_players) <= len(away_players):
+                    home_players.append(player)
+                else:
+                    away_players.append(player)
+
+        # Sort by pts desc within each team
+        home_players.sort(key=lambda p: p['pts'], reverse=True)
+        away_players.sort(key=lambda p: p['pts'], reverse=True)
+
+        return {
+            "date":         date,
+            "game_id":      game_id,
+            "home_team":    home_team,
+            "away_team":    away_team,
+            "home_score":   home_score,
+            "away_score":   away_score,
+            "status":       "FINAL" if quarter_used == 'FINAL' else f"THRU {quarter_used}",
+            "quarter_used": quarter_used,
+            "home_players": home_players,
+            "away_players": away_players,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_box_score_players({date}/{game_id}) failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+
+
 # ─── AI-Generated Daily Insights ─────────────────────────────────────────────
 
 @router.get("/api/insights/daily")

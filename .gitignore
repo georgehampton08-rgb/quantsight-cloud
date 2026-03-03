@@ -69,3 +69,5 @@ setup_redis_cloudshell.sh
 .venv/
 reports/
 
+# Antigravity Brain
+.antigravity/

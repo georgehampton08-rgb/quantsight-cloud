@@ -300,44 +300,23 @@ class FirebaseAdminService:
 
     def get_game_dates(self) -> List[str]:
         """
-        Return a sorted (descending) list of all date strings that have at
-        least one saved game log in Firestore.
+        Return sorted (descending) list of YYYY-MM-DD date strings that have
+        at least one saved game in pulse_stats.
 
-        Uses collection_group('games') because game_logs/{date} parent docs
-        are never explicitly written — only the subcollection games/{game_id}
-        is written by GameLogPersister. A top-level scan of game_logs returns
-        no results; we must walk the subcollection and extract the date from
-        the document reference path: game_logs/{DATE}/games/{game_id}
-
-        Returns:
-            List of YYYY-MM-DD date strings, e.g. ["2026-02-26", "2026-02-25", ...]
-            Empty list if no data or Firebase unavailable.
+        Source: pulse_stats/{YYYY-MM-DD}  (top-level docs are calendar dates)
         """
         import re as _re
-        _date_re = _re.compile(r'^\d{4}-\d{2}-\d{2}$')
+        _date_re = _re.compile(r'^20\d{2}-(0[1-9]|1[0-2])-\d{2}$')
 
         if not self.enabled or not self.db:
             logger.warning("Firebase not enabled — get_game_dates returning []")
             return []
 
         try:
-            # Walk ALL game docs across all dates via collection group query.
-            # Path structure: game_logs/{YYYY-MM-DD}/games/{game_id}
-            # doc.reference.parent       → CollectionReference for 'games'
-            # doc.reference.parent.parent → DocumentReference for the date doc
-            # doc.reference.parent.parent.id → the YYYY-MM-DD string
-            game_docs = self.db.collection_group('games').limit(1000).stream()
-            dates: set = set()
-            for doc in game_docs:
-                try:
-                    date_id = doc.reference.parent.parent.id
-                    if date_id and _date_re.match(date_id):
-                        dates.add(date_id)
-                except Exception:
-                    pass
-
+            top_docs = self.db.collection('pulse_stats').stream()
+            dates = [doc.id for doc in top_docs if _date_re.match(doc.id)]
             sorted_dates = sorted(dates, reverse=True)
-            logger.info(f"✅ get_game_dates: found {len(sorted_dates)} unique date(s)")
+            logger.info(f"✅ get_game_dates: {len(sorted_dates)} date(s) from pulse_stats")
             return sorted_dates
         except Exception as e:
             logger.error(f"❌ get_game_dates failed: {e}")
@@ -345,121 +324,82 @@ class FirebaseAdminService:
 
     def get_box_scores_for_date(self, date: str) -> List[Dict[str, Any]]:
         """
-        Return final team score summaries for all games saved on `date`.
+        Return final team score summaries for all games on `date`.
 
-        Only reads from persisted Firestore data (game_logs/{date}/games/*).
-        Never calls the live NBA API.
-
-        Score extraction priority:
-          1. metadata.home_score / metadata.away_score (written by persister)
-          2. Sum of pts across all players per team (fallback for older docs)
-
-        Args:
-            date: Game date string in YYYY-MM-DD format.
-
-        Returns:
-            List of game summary dicts, e.g.:
-            [
-                {
-                    "game_id": "0022500641",
-                    "matchup": "DEN @ DET",
-                    "home_team": "DET",
-                    "away_team": "DEN",
-                    "home_score": 112,
-                    "away_score": 98,
-                    "status": "FINAL",
-                    "winner": "DET"   # or "TIE" if scores equal
-                }
-            ]
+        Source: pulse_stats/{date}/games/{game_id}/quarters/
+          - Prefers FINAL quarter (cumulative game totals, home_score, away_score)
+          - Falls back to most recent quarter if FINAL not yet archived
+            (handles pre-2026-02-28 partial data gracefully)
         """
         if not self.enabled or not self.db:
             logger.warning("Firebase not enabled — get_box_scores_for_date returning []")
             return []
 
         try:
-            game_refs = (
-                self.db
-                .collection('game_logs')
-                .document(date)
-                .collection('games')
-                .stream()
-            )
-
+            games_ref = self.db.collection('pulse_stats').document(date).collection('games').stream()
             results: List[Dict[str, Any]] = []
 
-            for doc in game_refs:
-                data = doc.to_dict()
-                if not data:
+            for game_doc in games_ref:
+                gdata = game_doc.to_dict() or {}
+                game_id   = gdata.get('game_id', game_doc.id)
+                home_team = gdata.get('home_team', 'HOME')
+                away_team = gdata.get('away_team', 'AWAY')
+
+                # Fetch all quarter docs
+                quarters_ref = (
+                    self.db
+                    .collection('pulse_stats')
+                    .document(date)
+                    .collection('games')
+                    .document(game_doc.id)
+                    .collection('quarters')
+                    .stream()
+                )
+                quarters: Dict[str, Any] = {q.id: q.to_dict() or {} for q in quarters_ref}
+
+                if not quarters:
                     continue
 
-                game_id = doc.id
-
-                # ── Team tricodes ──────────────────────────────────────────
-                # Persister writes metadata.home_team / metadata.away_team
-                metadata = data.get('metadata', {}) or {}
-                home_team = metadata.get('home_team') or data.get('home_team', 'HOME')
-                away_team = metadata.get('away_team') or data.get('away_team', 'AWAY')
-                status    = metadata.get('status', 'FINAL')
-
-                # ── Score extraction ───────────────────────────────────────
-                # Priority 1: metadata fields written by the persister
-                home_score: Optional[int] = metadata.get('home_score')
-                away_score: Optional[int] = metadata.get('away_score')
-
-                # Priority 2: sum pts from player sub-maps (fallback)
-                if home_score is None or away_score is None:
-                    teams_data = data.get('teams', {}) or {}
-                    home_pts = 0
-                    away_pts = 0
-
-                    for team_code, team_data in teams_data.items():
-                        players = team_data.get('players', {}) or {}
-                        team_total = sum(
-                            int(p.get('pts', 0) or 0)
-                            for p in players.values()
-                            if isinstance(p, dict)
-                        )
-                        if team_code == home_team:
-                            home_pts = team_total
-                        elif team_code == away_team:
-                            away_pts = team_total
-
-                    # Only use fallback if at least one team had player data
-                    if home_pts > 0 or away_pts > 0:
-                        home_score = home_pts
-                        away_score = away_pts
-                    else:
-                        # No usable score data — skip this game
-                        logger.warning(
-                            f"No score data found for game_log {date}/{game_id} — skipping"
-                        )
-                        continue
-
-                home_score = int(home_score)
-                away_score = int(away_score)
-
-                # ── Winner ────────────────────────────────────────────────
-                if home_score > away_score:
-                    winner = home_team
-                elif away_score > home_score:
-                    winner = away_team
+                # Priority: FINAL > latest quarter by label sort
+                if 'FINAL' in quarters:
+                    best_q = quarters['FINAL']
                 else:
-                    winner = 'TIE'
+                    # Sort: Q1 < Q2 < Q3 < Q4 < OT1 < OT2 < FINAL
+                    def _q_sort_key(label: str) -> int:
+                        if label == 'FINAL':  return 99
+                        if label.startswith('OT'): return 10 + int(label[2:] or 1)
+                        if label.startswith('Q'):  return int(label[1:] or 0)
+                        return 0
+                    best_label = max(quarters.keys(), key=_q_sort_key)
+                    best_q = quarters[best_label]
 
-                matchup = metadata.get('matchup') or f"{away_team} @ {home_team}"
+                home_score = int(best_q.get('home_score', 0) or 0)
+                away_score = int(best_q.get('away_score', 0) or 0)
+
+                if home_score == 0 and away_score == 0:
+                    logger.warning(f"No score data for {date}/{game_id} — skipping")
+                    continue
+
+                is_final = 'FINAL' in quarters
+                winner = (
+                    home_team if home_score > away_score
+                    else away_team if away_score > home_score
+                    else 'TIE'
+                )
 
                 results.append({
                     "game_id":    game_id,
-                    "matchup":    matchup,
+                    "matchup":    f"{away_team} @ {home_team}",
                     "home_team":  home_team,
                     "away_team":  away_team,
                     "home_score": home_score,
                     "away_score": away_score,
-                    "status":     status,
-                    "winner":     winner,
+                    "status":     "FINAL" if is_final else "IN PROGRESS",
+                    "winner":     winner if is_final else "",
+                    "has_final":  is_final,
                 })
 
-            logger.info(f"✅ get_box_scores_for_date({date}): {len(results)} game(s)")
+            logger.info(f"✅ get_box_scores_for_date({date}): {len(results)} game(s) from pulse_stats")
             return results
 
         except Exception as e:
