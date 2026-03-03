@@ -284,6 +284,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ WebSocket routes not available: {e}")
 
+# Phase 3 (NBA Play-By-Play): Play-By-Play Pipeline routes
+try:
+    from api.play_by_play_routes import router as pbp_router
+    app.include_router(pbp_router)
+    logger.info("✅ Play-By-Play router registered at /v1/games/*")
+except ImportError as e:
+    logger.warning(f"⚠️ Play-By-Play router not available: {e}")
+
 
 # Include Vanguard health endpoint (MUST BE BEFORE MIDDLEWARE)
 if VANGUARD_AVAILABLE:

@@ -88,7 +88,12 @@ export const ApiContract = {
 
         // 3. Fallback to Web Protocol
         try {
-            const data = await ApiContract.executeWeb<T>(webSpec);
+            const cleanPath = webSpec.path.startsWith('/') ? webSpec.path.substring(1) : webSpec.path;
+            const requiresAdmin = cleanPath.startsWith('admin/') || cleanPath.startsWith('vanguard/admin/');
+            const data = requiresAdmin
+                ? await ApiContract.executeAdmin<T>(webSpec)
+                : await ApiContract.executeWeb<T>(webSpec);
+
             _meta.transport = 'web';
             return { data, _meta };
         } catch (error) {

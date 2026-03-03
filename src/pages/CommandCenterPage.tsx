@@ -2,16 +2,17 @@ import React from 'react'
 import { Activity, ShieldCheck, Zap, BarChart3, LayoutDashboard, TrendingUp, AlertTriangle, Star } from 'lucide-react'
 import { ApiContract } from '../api/client'
 import { BoxScoreViewer } from '../components/dashboard/BoxScoreViewer'
+import { PlayByPlayFeed } from '../components/PlayByPlay/PlayByPlayFeed'
 import { API_BASE } from '../config/apiConfig'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
-    <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 min-h-0 h-full hover:border-financial-accent/30 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 group">
+    <div className="glass-panel rounded-xl p-4 sm:p-6 flex flex-col gap-4 min-w-0 min-h-[280px] sm:min-h-[350px] lg:min-h-0 lg:h-full hover:border-financial-accent/30 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 group">
         <div className="flex items-center gap-2 text-slate-400 font-medium tracking-wider text-sm uppercase flex-shrink-0 group-hover:text-financial-accent transition-colors">
             <Icon className="w-4 h-4 text-financial-accent" />
             {title}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-500 scrollbar-track-transparent">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-500 scrollbar-track-transparent">
             {children}
         </div>
     </div>
@@ -83,23 +84,25 @@ const InsightsWidget = () => {
 
             {/* Top Watch */}
             {insight.top_watch && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                    <Star className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <Star className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                        <span className="text-emerald-400 text-xs font-bold">{insight.top_watch.player}</span>
-                        <span className="text-slate-400 text-xs ml-1">({insight.top_watch.team}) — {insight.top_watch.stat}</span>
-                        <div className="text-slate-500 text-[10px] truncate">{insight.top_watch.reason}</div>
+                        <div className="flex flex-wrap items-baseline gap-x-1">
+                            <span className="text-emerald-400 text-xs font-bold">{insight.top_watch.player}</span>
+                            <span className="text-slate-400 text-xs">({insight.top_watch.team}) — {insight.top_watch.stat}</span>
+                        </div>
+                        <div className="text-slate-400 text-[11px] leading-relaxed mt-0.5">{insight.top_watch.reason}</div>
                     </div>
                 </div>
             )}
 
             {/* Risk Flag */}
             {insight.risk_flag && (
-                <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border ${severityColor}`}>
+                <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${severityColor}`}>
                     <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
                         <span className="text-xs font-bold">{insight.risk_flag.player}</span>
-                        <div className="text-[10px] opacity-80 leading-relaxed">{insight.risk_flag.reason}</div>
+                        <div className="text-[11px] leading-relaxed mt-0.5 opacity-90">{insight.risk_flag.reason}</div>
                     </div>
                 </div>
             )}
@@ -195,7 +198,7 @@ const ScheduleWidget = () => {
 };
 
 export default function CommandCenterPage() {
-    const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'BOXSCORE'>('OVERVIEW');
+    const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'BOXSCORE' | 'PLAY_BY_PLAY'>('OVERVIEW');
 
     return (
         <div className="p-4 sm:p-8 h-full overflow-y-auto overflow-x-hidden w-full flex flex-col font-sans">
@@ -225,12 +228,19 @@ export default function CommandCenterPage() {
                         <BarChart3 className="w-4 h-4" />
                         <span className="hidden sm:inline">BOX SCORES</span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab('PLAY_BY_PLAY')}
+                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-wider transition-all flex items-center gap-2 ${activeTab === 'PLAY_BY_PLAY' ? 'bg-red-500/20 text-red-400 shadow-sm border border-red-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        <Zap className="w-4 h-4" />
+                        <span className="hidden sm:inline">PLAY-BY-PLAY</span>
+                    </button>
                 </div>
             </header>
 
             <div className="flex-1 min-h-0 flex flex-col min-w-0 w-full">
                 {activeTab === 'OVERVIEW' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:auto-rows-fr animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:auto-rows-fr animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                         {/* Dramatic glow hidden behind the card */}
                         <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -262,9 +272,13 @@ export default function CommandCenterPage() {
                             <InsightsWidget />
                         </DataCard>
                     </div>
-                ) : (
+                ) : activeTab === 'BOXSCORE' ? (
                     <div className="animate-in fade-in flex-1 min-h-0">
                         <BoxScoreViewer />
+                    </div>
+                ) : (
+                    <div className="animate-in fade-in flex-1 min-h-0">
+                        <PlayByPlayFeed />
                     </div>
                 )}
             </div>

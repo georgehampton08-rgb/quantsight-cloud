@@ -614,7 +614,7 @@ export function VaccinePanelContent() {
 
     useEffect(() => { loadVaccines(); }, [loadVaccines]);
 
-    const triggerVaccineRun = useCallback(() => {
+    const triggerVaccineRun = useCallback(async () => {
         setLogs([]);
         setSummary(null);
         setProgress(0);
@@ -627,51 +627,85 @@ export function VaccinePanelContent() {
 
         appendLog({ level: 'info', msg: `Connecting to Vanguard Vaccine Engine...`, detail: url });
 
-        const es = new EventSource(url);
-        eventSourceRef.current = es;
+        // Native EventSource cannot send Authorization headers.
+        // Use fetch-based SSE reader to attach the Firebase Bearer token.
+        let token: string | null = null;
+        try {
+            const { auth } = await import('../../services/firebaseAuth');
+            const user = auth.currentUser;
+            if (user) token = await user.getIdToken();
+        } catch { /* auth unavailable — will attempt unauthenticated */ }
 
-        es.onopen = () => {
+        const abortController = new AbortController();
+        eventSourceRef.current = { close: () => abortController.abort() } as any;
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Accept': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                },
+                signal: abortController.signal,
+            });
+
+            if (!response.ok) {
+                const errText = await response.text().catch(() => response.statusText);
+                appendLog({ level: 'error', msg: `HTTP ${response.status}: ${errText}` });
+                setRunning(false);
+                return;
+            }
+
             appendLog({ level: 'scan', msg: 'SSE stream connected — vaccine cycle initiating.' });
-        };
 
-        es.addEventListener('log', (e: MessageEvent) => {
-            try {
-                const data = JSON.parse(e.data);
-                if (data.progress !== undefined) setProgress(data.progress);
-                appendLog({
-                    level: data.level as LogLevel,
-                    msg: data.msg,
-                    detail: data.detail,
-                    fingerprint: data.fingerprint,
-                    file: data.file,
-                    confidence: data.confidence,
-                });
-            } catch { }
-        });
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('No response body');
 
-        es.addEventListener('summary', (e: MessageEvent) => {
-            try {
-                const s = JSON.parse(e.data) as RunSummary;
-                setSummary(s);
-                setProgress(100);
-                appendLog({
-                    level: 'done',
-                    msg: `✅ Cycle complete — ${s.patched} patch(es) in ${(s.duration_ms / 1000).toFixed(1)}s — audit saved as ${s.run_id}.json`,
-                });
-            } catch { }
-        });
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-        es.addEventListener('done', () => {
+            const processBuffer = () => {
+                const blocks = buffer.split('\n\n');
+                buffer = blocks.pop() ?? '';
+                for (const block of blocks) {
+                    let eventType = 'message';
+                    let data = '';
+                    for (const line of block.split('\n')) {
+                        if (line.startsWith('event:')) eventType = line.slice(6).trim();
+                        else if (line.startsWith('data:')) data += line.slice(5).trim();
+                    }
+                    if (!data) continue;
+                    try {
+                        if (eventType === 'log') {
+                            const d = JSON.parse(data);
+                            if (d.progress !== undefined) setProgress(d.progress);
+                            appendLog({ level: d.level as LogLevel, msg: d.msg, detail: d.detail, fingerprint: d.fingerprint, file: d.file, confidence: d.confidence });
+                        } else if (eventType === 'summary') {
+                            const s = JSON.parse(data) as RunSummary;
+                            setSummary(s);
+                            setProgress(100);
+                            appendLog({ level: 'done', msg: `✅ Cycle complete — ${s.patched} patch(es) in ${(s.duration_ms / 1000).toFixed(1)}s — audit saved as ${s.run_id}.json` });
+                        } else if (eventType === 'done') {
+                            setRunning(false);
+                            loadVaccines();
+                        }
+                    } catch { /* malformed SSE line */ }
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                processBuffer();
+            }
+        } catch (err: any) {
+            if (err?.name !== 'AbortError') {
+                appendLog({ level: 'error', msg: `Stream ended or connection lost: ${err?.message ?? err}` });
+            }
+        } finally {
             setRunning(false);
-            es.close();
-            loadVaccines();
-        });
-
-        es.onerror = () => {
-            appendLog({ level: 'error', msg: 'Stream ended or connection lost.' });
-            setRunning(false);
-            es.close();
-        };
+        }
     }, [appendLog, loadVaccines]);
 
     useEffect(() => () => { eventSourceRef.current?.close(); }, []);

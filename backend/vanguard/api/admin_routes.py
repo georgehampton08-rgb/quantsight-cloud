@@ -3,7 +3,7 @@ Vanguard Admin Routes
 ====================
 Admin endpoints for incident management and learning data verification.
 """
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, Depends
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime

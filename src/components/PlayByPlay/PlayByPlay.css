@@ -1,0 +1,391 @@
+.pbp-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+/* --- PlayItem --- */
+.play-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+}
+
+.play-item:hover {
+    background: rgba(30, 41, 59, 0.8);
+}
+
+.play-item.type-Made {
+    border-left: 4px solid #4ade80;
+}
+
+.play-item.type-Missed {
+    border-left: 4px solid #f87171;
+}
+
+.play-item.type-Foul {
+    border-left: 4px solid #facc15;
+}
+
+.play-item.type-Turnover {
+    border-left: 4px solid #fb923c;
+}
+
+.play-item.type-Neutral {
+    border-left: 4px solid #3b82f6;
+}
+
+.play-time {
+    min-width: 60px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+}
+
+.play-time .clock {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.play-time .period {
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+
+.play-avatar {
+    min-width: 60px;
+}
+
+.avatar-group {
+    position: relative;
+    width: 60px;
+    height: 44px;
+}
+
+.avatar-group .primary-img {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    object-fit: contain;
+    z-index: 2;
+}
+
+.avatar-group .secondary-img {
+    position: absolute;
+    right: 0;
+    bottom: -4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 2px solid rgba(255, 255, 255, 0.05);
+    object-fit: contain;
+    z-index: 1;
+    opacity: 0.9;
+}
+
+.avatar-group .placeholder {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.play-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.play-content .desc {
+    font-size: 14px;
+    color: #f1f5f9;
+    line-height: 1.4;
+}
+
+.play-content .desc .player-name.primary {
+    font-weight: 600;
+    color: #38bdf8;
+}
+
+.play-content .desc .player-name.secondary {
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.play-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+}
+
+.badge.type-3pt {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.badge.type-foul {
+    background: rgba(250, 204, 21, 0.2);
+    color: #facc15;
+}
+
+.badge.type-team {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.badge.type-assist {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+.play-score {
+    min-width: 80px;
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+}
+
+/* --- InteractiveShotChart --- */
+.chart-container {
+    position: relative;
+    width: 100%;
+    margin: 0 auto;
+    background: #1e2533;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px;
+}
+
+.svg-court path,
+.svg-court circle,
+.svg-court line,
+.svg-court rect {
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 2;
+    fill: none;
+}
+
+.shot-point {
+    stroke-width: 2;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.shot-point.made {
+    fill: #4ade80;
+    stroke: #22c55e;
+}
+
+.shot-point.missed {
+    fill: #f87171;
+    stroke: #dc2626;
+}
+
+.shot-point.made-3pt {
+    fill: #4ade80;
+    stroke: #fbbf24;
+    stroke-width: 3;
+}
+
+.shot-point.missed-3pt {
+    fill: #f87171;
+    stroke: #fbbf24;
+    stroke-width: 3;
+}
+
+.shot-point.foul {
+    fill: #f87171;
+    stroke: #a855f7;
+    stroke-width: 3;
+}
+
+.shot-point:hover {
+    r: 8;
+    stroke: white !important;
+}
+
+.shot-point.made:hover,
+.shot-point.made-3pt:hover {
+    filter: drop-shadow(0 0 6px #4ade80);
+}
+
+.shot-point.missed:hover,
+.shot-point.missed-3pt:hover,
+.shot-point.foul:hover {
+    filter: drop-shadow(0 0 6px #f87171);
+}
+
+/* --- TooltipCard --- */
+.tooltip-card {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    color: white;
+    width: 200px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.tooltip-card .headshot-group {
+    display: flex;
+    align-items: flex-end;
+    gap: -10px;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.tooltip-card .headshot {
+    border-radius: 50%;
+    background: #333;
+    object-fit: contain;
+    border: 2px solid #64748b;
+}
+
+.tooltip-card .headshot.primary {
+    width: 60px;
+    height: 60px;
+    z-index: 2;
+}
+
+.tooltip-card .headshot.secondary {
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    right: 70px;
+    /* Offset behind primary */
+    bottom: -5px;
+    z-index: 1;
+    border-color: #334155;
+    background: #1e293b;
+}
+
+.tooltip-card .player-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 2px;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+}
+
+.tooltip-card .secondary-name {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+    font-style: italic;
+}
+
+.tooltip-card .desc {
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.tooltip-card .meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+}
+
+/* --- App Layout Overrides --- */
+.pbp-feed-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 30px;
+    height: calc(100vh - 220px);
+    min-height: 500px;
+}
+
+.chart-col {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.feed-col {
+    flex: 1;
+    min-width: 320px;
+    max-width: 450px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 1024px) {
+    .pbp-feed-layout {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .chart-col {
+        width: 100%;
+    }
+
+    .feed-col {
+        max-width: 100%;
+        height: 600px;
+    }
+}
+
+.plays-list-container {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.plays-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.plays-list-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.plays-list-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}

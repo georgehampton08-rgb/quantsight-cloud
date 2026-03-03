@@ -215,9 +215,9 @@ TASK: Return a JSON object with EXACTLY these fields:
 {{
   "headline": "One punchy sentence (max 12 words) summarizing tonight's slate",
   "bullets": [
-    "Insight 1 with a specific number or stat",
-    "Insight 2 with a specific number or stat",
-    "Insight 3 with a specific number or stat"
+    "Insight for Game 1 (if any)",
+    "Insight for Game 2 (if any)",
+    "... provide EXACTLY one data-driven insight sentence per game on tonight's slate. If 5 games, provide 5 bullets."
   ],
   "top_watch": {{
     "player": "Player Name",
