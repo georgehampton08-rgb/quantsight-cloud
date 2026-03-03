@@ -102,13 +102,58 @@ export const ApiContract = {
     },
 
     /**
-     * Raw web fetcher.
+     * Raw web fetcher — no auth token.
      */
     async executeWeb<T>(spec: WebSpec): Promise<T> {
         const cleanPath = spec.path.startsWith('/') ? spec.path.substring(1) : spec.path;
         const res = await fetch(`${VITE_API_URL}/${cleanPath}`, spec.options);
         if (!res.ok) {
-            throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
+            const text = await res.text().catch(() => res.statusText);
+            const err: any = new Error(`HTTP ${res.status}: ${text}`);
+            err.status = res.status;
+            throw err;
+        }
+        return res.json();
+    },
+
+    /**
+     * Admin fetcher — automatically attaches the Firebase ID token as Bearer.
+     * Throws a clear error if the user is not signed in.
+     */
+    async executeAdmin<T>(spec: WebSpec): Promise<T> {
+        // Dynamically import to avoid crashing when Firebase is not configured
+        let token: string | null = null;
+        try {
+            const { auth } = await import('../services/firebaseAuth');
+            const user = auth.currentUser;
+            if (!user) {
+                const err: any = new Error('Not authenticated. Sign in first.');
+                err.status = 401;
+                throw err;
+            }
+            token = await user.getIdToken();
+        } catch (e: any) {
+            if (e.status === 401) throw e;
+            const err: any = new Error('Firebase auth not available.');
+            err.status = 401;
+            throw err;
+        }
+
+        const cleanPath = spec.path.startsWith('/') ? spec.path.substring(1) : spec.path;
+        const opts: RequestInit = {
+            ...spec.options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(spec.options?.headers || {}),
+                'Authorization': `Bearer ${token}`,
+            },
+        };
+        const res = await fetch(`${VITE_API_URL}/${cleanPath}`, opts);
+        if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText);
+            const err: any = new Error(`HTTP ${res.status}: ${text}`);
+            err.status = res.status;
+            throw err;
         }
         return res.json();
     },

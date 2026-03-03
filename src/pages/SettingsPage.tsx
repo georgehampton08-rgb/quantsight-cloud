@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Settings, Info, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Settings, Info, CheckCircle, XCircle, RefreshCw, Lock } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import { PlayerApi } from '../services/playerApi';
 import { VanguardHealthWidget } from '../components/vanguard/VanguardHealthWidget';
 import { HealthDepsPanel } from '../components/settings/HealthDepsPanel';
@@ -13,6 +14,7 @@ interface KeyStatus {
 
 export default function SettingsPage() {
     const { showToast } = useToast();
+    const { user } = useAuth();
 
     const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
     const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
@@ -142,22 +144,29 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
-                {/* Danger Zone */}
-                <section className="p-6 rounded-xl border border-red-900/30 bg-red-900/5 mt-10">
-                    <h3 className="text-xs uppercase tracking-wider text-red-500 font-bold mb-5">Danger Zone</h3>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-semibold text-white">Reset Database Cache</p>
-                            <p className="text-xs text-slate-500 mt-0.5">Clears in-memory rate limiter and API caches. Does not affect Firestore data.</p>
+                {/* Danger Zone — only shown to signed-in users (backend still enforces admin role) */}
+                {user ? (
+                    <section className="p-6 rounded-xl border border-red-900/30 bg-red-900/5 mt-10">
+                        <h3 className="text-xs uppercase tracking-wider text-red-500 font-bold mb-5">Danger Zone</h3>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-white">Reset Database Cache</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Clears in-memory rate limiter and API caches. Does not affect Firestore data.</p>
+                            </div>
+                            <button
+                                onClick={handlePurge}
+                                className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-500 rounded-md hover:bg-red-500/20 transition-colors text-xs font-bold uppercase tracking-wider whitespace-nowrap ml-4"
+                            >
+                                Purge Cache
+                            </button>
                         </div>
-                        <button
-                            onClick={handlePurge}
-                            className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-500 rounded-md hover:bg-red-500/20 transition-colors text-xs font-bold uppercase tracking-wider whitespace-nowrap ml-4"
-                        >
-                            Purge Cache
-                        </button>
-                    </div>
-                </section>
+                    </section>
+                ) : (
+                    <section className="p-6 rounded-xl border border-slate-700/30 bg-slate-800/20 mt-10 flex items-center gap-3 text-slate-500">
+                        <Lock className="w-4 h-4 flex-shrink-0" />
+                        <p className="text-xs">Administrative controls are hidden. Sign in via the Vanguard page to access them.</p>
+                    </section>
+                )}
 
                 <ConfirmDialog
                     isOpen={showPurgeConfirm}
