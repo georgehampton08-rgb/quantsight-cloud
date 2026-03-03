@@ -1,7 +1,8 @@
 import React from 'react'
-import { Activity, ShieldCheck, Zap, BarChart3, LayoutDashboard } from 'lucide-react'
+import { Activity, ShieldCheck, Zap, BarChart3, LayoutDashboard, TrendingUp, AlertTriangle, Star } from 'lucide-react'
 import { ApiContract } from '../api/client'
 import { BoxScoreViewer } from '../components/dashboard/BoxScoreViewer'
+import { API_BASE } from '../config/apiConfig'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
@@ -15,6 +16,105 @@ const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, c
         </div>
     </div>
 )
+
+// ─── AI Insights Widget ───────────────────────────────────────────────────────
+
+interface DailyInsight {
+    headline: string;
+    bullets: string[];
+    top_watch: { player: string; team: string; stat: string; reason: string } | null;
+    risk_flag: { player: string; reason: string; severity: string } | null;
+    ai_powered: boolean;
+    generated_at?: string;
+    games_tonight?: number;
+    cached?: boolean;
+}
+
+const InsightsWidget = () => {
+    const [insight, setInsight] = React.useState<DailyInsight | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        fetch(`${API_BASE}/api/insights/daily`)
+            .then(r => r.ok ? r.json() : Promise.reject(`Server error ${r.status}`))
+            .then(d => { setInsight(d); setLoading(false); })
+            .catch(err => { setError(String(err)); setLoading(false); });
+    }, []);
+
+    if (loading) return (
+        <div className="space-y-3 animate-pulse">
+            <div className="h-4 bg-slate-700/60 rounded-full w-3/4" />
+            <div className="h-3 bg-slate-700/60 rounded-full w-full" />
+            <div className="h-3 bg-slate-700/60 rounded-full w-5/6" />
+            <div className="h-3 bg-slate-700/60 rounded-full w-4/6" />
+        </div>
+    );
+
+    if (error || !insight) return (
+        <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2 text-center">
+            <AlertTriangle className="w-8 h-8 opacity-40 text-amber-500" />
+            <div className="text-xs">Insights offline — refreshes in 30 min</div>
+        </div>
+    );
+
+    const severityColor = insight.risk_flag?.severity === 'HIGH' ? 'text-red-400 bg-red-500/10 border-red-500/20'
+        : insight.risk_flag?.severity === 'MEDIUM' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+            : 'text-slate-400 bg-slate-700/30 border-slate-600/20';
+
+    return (
+        <div className="flex flex-col gap-3 h-full text-sm">
+            {/* Headline */}
+            <div className="text-indigo-300 font-semibold leading-snug drop-shadow-[0_0_8px_rgba(165,180,252,0.3)]">
+                {insight.headline}
+            </div>
+
+            {/* Bullets */}
+            <div className="space-y-1.5 flex-1">
+                {(insight.bullets || []).map((b, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                        <span className="text-[10px] font-black font-mono text-emerald-500 mt-0.5 flex-shrink-0">
+                            {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <span className="text-slate-300 text-xs leading-relaxed">{b}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Top Watch */}
+            {insight.top_watch && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <Star className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                        <span className="text-emerald-400 text-xs font-bold">{insight.top_watch.player}</span>
+                        <span className="text-slate-400 text-xs ml-1">({insight.top_watch.team}) — {insight.top_watch.stat}</span>
+                        <div className="text-slate-500 text-[10px] truncate">{insight.top_watch.reason}</div>
+                    </div>
+                </div>
+            )}
+
+            {/* Risk Flag */}
+            {insight.risk_flag && (
+                <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border ${severityColor}`}>
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                        <span className="text-xs font-bold">{insight.risk_flag.player}</span>
+                        <div className="text-[10px] opacity-80 leading-relaxed">{insight.risk_flag.reason}</div>
+                    </div>
+                </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between text-[10px] text-slate-600 border-t border-slate-800 pt-2 flex-shrink-0">
+                <span>{insight.ai_powered ? '⚡ Powered by Gemini 2.0' : '📊 Rule-based analysis'}</span>
+                {insight.generated_at && (
+                    <span>{new Date(insight.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 const ScheduleWidget = () => {
     const [games, setGames] = React.useState<any[]>([]);
@@ -159,11 +259,7 @@ export default function CommandCenterPage() {
 
                         {/* Pillar 3: Quick Insights */}
                         <DataCard title="Quick Insights" icon={Activity}>
-                            <div className="flex flex-col items-center justify-center p-12 h-full text-slate-500 bg-slate-900/30 rounded-xl border border-dashed border-slate-700/50">
-                                <Activity className="w-12 h-12 mb-4 opacity-30 text-indigo-400" />
-                                <div className="font-bold text-slate-400">AI-Generated Insights</div>
-                                <div className="text-xs mt-1 font-mono uppercase tracking-widest">Coming Soon</div>
-                            </div>
+                            <InsightsWidget />
                         </DataCard>
                     </div>
                 ) : (

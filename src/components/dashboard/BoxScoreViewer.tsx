@@ -150,7 +150,15 @@ export function BoxScoreViewerContent() {
     useEffect(() => {
         fetch(`${API_BASE}/api/box-scores/dates`)
             .then(r => r.ok ? r.json() : null)
-            .then(d => d?.dates && setAvailableDates(d.dates))
+            .then(d => {
+                if (d?.dates) {
+                    // Guard: only accept real YYYY-MM-DD strings.
+                    // The backend may return game IDs if Firestore parent docs
+                    // don't exist as explicit documents yet.
+                    const valid = (d.dates as string[]).filter(s => DATE_RE.test(s));
+                    setAvailableDates(valid);
+                }
+            })
             .catch(() => { });
     }, []);
 
@@ -187,10 +195,16 @@ export function BoxScoreViewerContent() {
         if (!isToday || !selectedGame) return;
         const loadBoxScore = async () => {
             setLoading(true);
+            setBoxScores(null);
             try {
                 const res = await ApiContract.execute<any>(null, { path: `pulse/boxscore/${selectedGame}` });
-                if (res.data) { setBoxScores(res.data); return; }
-            } catch { }
+                if (res.data) {
+                    setBoxScores(res.data);
+                    setLoading(false); // must clear before return — finally is on the 2nd block only
+                    return;
+                }
+            } catch { /* fall through to legacy endpoint */ }
+            // Fallback: legacy /boxscore/{game_id}
             try {
                 const fallback = await ApiContract.execute<any>(null, { path: `boxscore/${selectedGame}` });
                 if (fallback.data?.home_team) {
@@ -209,7 +223,7 @@ export function BoxScoreViewerContent() {
                         }
                     });
                 } else {
-                    setBoxScores(fallback.data);
+                    setBoxScores(fallback.data ?? null);
                 }
             } catch {
                 setBoxScores(null);

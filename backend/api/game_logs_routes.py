@@ -191,3 +191,123 @@ def get_box_scores_for_date(
             status_code=503,
             detail=f"Failed to retrieve box scores for {date}: {str(e)}"
         )
+
+
+# ─── AI-Generated Daily Insights ─────────────────────────────────────────────
+
+@router.get("/api/insights/daily")
+def get_daily_insights():
+    """
+    Returns AI-generated daily insights for the Command Center.
+
+    Flow:
+      1. Check Firestore cache (insights/daily/{today}) — return if < 30 min old
+      2. Fetch today's schedule from NBA public API
+      3. Fetch active injury data
+      4. Assemble DailyContext payload
+      5. Call GeminiInsights.generate_daily_insights()
+      6. Cache result, return JSON
+
+    Response shape:
+      {
+        "date": "YYYY-MM-DD",
+        "generated_at": "ISO string",
+        "headline": "...",
+        "bullets": ["...", "...", "..."],
+        "top_watch": { "player": ..., "stat": ..., "grade": ..., "reason": ... },
+        "risk_flag": { "player": ..., "reason": ..., "severity": ... },
+        "games_tonight": N,
+        "ai_powered": true/false,
+        "cached": true/false
+      }
+    """
+    import os, json, requests
+    from datetime import datetime, timezone, timedelta
+
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # ── 1. Check Firestore cache ───────────────────────────────────────────
+    cached_result = None
+    try:
+        from services.firebase_admin_service import FirebaseAdminService
+        firebase = FirebaseAdminService()
+        if firebase.enabled and firebase.db:
+            cache_doc = firebase.db.collection("insights").document("daily").collection("cache").document(today_str).get()
+            if cache_doc.exists:
+                data = cache_doc.to_dict()
+                generated_at_str = data.get("generated_at", "")
+                if generated_at_str:
+                    generated_at = datetime.fromisoformat(generated_at_str.replace("Z", "+00:00"))
+                    age_minutes = (datetime.now(timezone.utc) - generated_at).total_seconds() / 60
+                    if age_minutes < 30:
+                        data["cached"] = True
+                        logger.info(f"✅ Returning cached daily insights (age: {age_minutes:.1f}min)")
+                        return data
+    except Exception as e:
+        logger.warning(f"Cache read failed: {e}")
+
+    # ── 2. Fetch today's schedule ──────────────────────────────────────────
+    schedule_games = []
+    try:
+        CLOUD_API = os.getenv("CLOUD_API_BASE", "https://quantsight-cloud-458498663186.us-central1.run.app")
+        resp = requests.get(f"{CLOUD_API}/schedule", timeout=8)
+        if resp.ok:
+            schedule_data = resp.json()
+            schedule_games = schedule_data.get("games", [])
+    except Exception as e:
+        logger.warning(f"Schedule fetch failed: {e}")
+
+    # ── 3. Fetch injury data ───────────────────────────────────────────────
+    injuries = []
+    try:
+        inj_resp = requests.get(f"{CLOUD_API}/injuries", timeout=8)
+        if inj_resp.ok:
+            inj_data = inj_resp.json()
+            injuries = inj_data.get("injuries", inj_data) if isinstance(inj_data, dict) else inj_data
+            injuries = injuries[:10] if isinstance(injuries, list) else []
+    except Exception as e:
+        logger.warning(f"Injury fetch failed: {e}")
+
+    # ── 4. Assemble DailyContext ───────────────────────────────────────────
+    daily_context = {
+        "date": today_str,
+        "games": schedule_games,
+        "injuries": injuries,
+    }
+
+    # ── 5. Generate insights ───────────────────────────────────────────────
+    try:
+        from services.ai_insights import GeminiInsights
+        ai = GeminiInsights()
+        result = ai.generate_daily_insights(daily_context)
+    except Exception as e:
+        logger.error(f"GeminiInsights failed: {e}")
+        result = {
+            "headline": f"{len(schedule_games)} games on tonight's slate",
+            "bullets": [
+                "Live game data is syncing — check The Pulse for real-time stats.",
+                "Injury report loaded — monitor status changes before game time.",
+                "Use the Box Scores tab to view live player statistics.",
+            ],
+            "top_watch": None,
+            "risk_flag": None,
+            "ai_powered": False,
+        }
+
+    result["date"] = today_str
+    result["generated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    result["games_tonight"] = len(schedule_games)
+    result["cached"] = False
+
+    # ── 6. Save to Firestore cache ─────────────────────────────────────────
+    try:
+        from services.firebase_admin_service import FirebaseAdminService
+        firebase = FirebaseAdminService()
+        if firebase.enabled and firebase.db:
+            firebase.db.collection("insights").document("daily").collection("cache").document(today_str).set(result)
+            logger.info(f"✅ Cached daily insights for {today_str}")
+    except Exception as e:
+        logger.warning(f"Cache write failed (non-critical): {e}")
+
+    return result
+

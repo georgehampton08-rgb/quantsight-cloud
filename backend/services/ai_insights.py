@@ -159,3 +159,145 @@ Provide specific, actionable insights using the numbers provided. Mention pace i
             fade = fade_plays[0]
             parts.append(f"Caution on {fade['player']} - {fade['reason']}.")
         return ' '.join(parts) if parts else "Data synthesis complete. Review individual player cards for details."
+
+    def generate_daily_insights(self, daily_context: Dict) -> Dict:
+        """
+        Generate AI-powered daily insights card for the Command Center.
+
+        Args:
+            daily_context: {
+                "date": "YYYY-MM-DD",
+                "games": [ {home, away, status, home_score, away_score, time} ],
+                "injuries": [ {player, team, status, injury} ]
+            }
+
+        Returns structured dict matching the /api/insights/daily response shape.
+        """
+        games = daily_context.get("games", [])
+        injuries = daily_context.get("injuries", [])
+        date = daily_context.get("date", "today")
+
+        if self.client:
+            return self._gemini_daily_insights(date, games, injuries)
+        return self._rule_based_daily_insights(date, games, injuries)
+
+    def _gemini_daily_insights(self, date: str, games: List, injuries: List) -> Dict:
+        """Generate daily insights using Gemini with structured JSON output."""
+        try:
+            # Build game list string
+            game_lines = []
+            for g in games:
+                status = g.get("status", "UPCOMING")
+                score = ""
+                if g.get("home_score") or g.get("away_score"):
+                    score = f" | {g.get('away_score',0)}-{g.get('home_score',0)}"
+                game_lines.append(f"  - {g.get('away','?')} @ {g.get('home','?')} ({status}{score}) {g.get('time','')}")
+            game_str = "\n".join(game_lines) if game_lines else "  No games scheduled today."
+
+            injury_lines = []
+            for inj in injuries[:8]:
+                p = inj.get("player_name") or inj.get("player") or inj.get("name", "Unknown")
+                t = inj.get("team", "")
+                s = inj.get("status", "")
+                i = inj.get("injury") or inj.get("description", "")
+                injury_lines.append(f"  - {p} ({t}): {s} — {i}")
+            injury_str = "\n".join(injury_lines) if injury_lines else "  No injury data available."
+
+            prompt = f"""You are a senior NBA front-office analyst. Today is {date}.
+
+TONIGHT'S SLATE ({len(games)} games):
+{game_str}
+
+INJURY INTEL:
+{injury_str}
+
+TASK: Return a JSON object with EXACTLY these fields:
+{{
+  "headline": "One punchy sentence (max 12 words) summarizing tonight's slate",
+  "bullets": [
+    "Insight 1 with a specific number or stat",
+    "Insight 2 with a specific number or stat",
+    "Insight 3 with a specific number or stat"
+  ],
+  "top_watch": {{
+    "player": "Player Name",
+    "team": "TEAM",
+    "stat": "PTS or REB or AST",
+    "reason": "One sentence reason citing matchup or trend"
+  }},
+  "risk_flag": {{
+    "player": "Player Name",
+    "reason": "One sentence risk explanation",
+    "severity": "HIGH or MEDIUM or LOW"
+  }},
+  "ai_powered": true
+}}
+
+RULES:
+- Ground every claim in the data above — no hallucination
+- Use GM-Analyst vocabulary (avoid "In today's ever-changing...")
+- If no injury data, set risk_flag to null
+- If fewer than 2 games, set top_watch to null
+- Return ONLY valid JSON, no markdown, no explanation"""
+
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config={"response_mime_type": "application/json"}
+            )
+            text = response.text.strip()
+            # Strip markdown code fences if present
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            result = json.loads(text)
+            result["ai_powered"] = True
+            return result
+
+        except Exception as e:
+            logger.error(f"Gemini daily insights error: {e}")
+            return self._rule_based_daily_insights(
+                daily_context.get("date", "") if hasattr(self, "daily_context") else "",
+                games, injuries
+            )
+
+    def _rule_based_daily_insights(self, date: str, games: List, injuries: List) -> Dict:
+        """Rule-based fallback daily insights when Gemini is unavailable."""
+        live_games = [g for g in games if g.get("status") == "LIVE"]
+        final_games = [g for g in games if g.get("status") == "FINAL"]
+        upcoming = [g for g in games if g.get("status") not in ("LIVE", "FINAL")]
+
+        if live_games:
+            headline = f"{len(live_games)} game(s) live now — pulse sync active"
+        elif upcoming:
+            headline = f"{len(games)} games on tonight's slate — tipoff starting {upcoming[0].get('time','soon')}"
+        else:
+            headline = f"{len(games)} games completed today"
+
+        bullets = [
+            f"{len(games)} total game(s) on the slate for {date}.",
+            f"{len(injuries)} player(s) on the injury report — check status before lineups lock.",
+            "Use Box Scores tab for live player statistics and matchup data.",
+        ]
+
+        risk_flag = None
+        if injuries:
+            inj = injuries[0]
+            p = inj.get("player_name") or inj.get("player") or inj.get("name", "Unknown")
+            t = inj.get("team", "")
+            s = inj.get("status", "questionable")
+            risk_flag = {
+                "player": f"{p} ({t})",
+                "reason": f"Listed as {s} — monitor injury report before lineups finalize.",
+                "severity": "HIGH" if "out" in s.lower() else "MEDIUM"
+            }
+
+        return {
+            "headline": headline,
+            "bullets": bullets,
+            "top_watch": None,
+            "risk_flag": risk_flag,
+            "ai_powered": False,
+        }
+
