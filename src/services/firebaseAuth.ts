@@ -13,6 +13,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
     getAuth,
     GoogleAuthProvider,
+    signInWithPopup,
     signInWithRedirect,
     getRedirectResult,
     signOut,
@@ -62,8 +63,19 @@ export const withAuthHeaders = async (
     };
 };
 
-export const signInWithGoogle = (): Promise<void> =>
-    signInWithRedirect(auth, new GoogleAuthProvider());
+export const signInWithGoogle = async (): Promise<void> => {
+    const provider = new GoogleAuthProvider();
+    try {
+        // Popup is reliable when CSP allows identitytoolkit.googleapis.com
+        await signInWithPopup(auth, provider);
+    } catch (popupErr: any) {
+        // popup-blocked fallback: use redirect
+        if (popupErr?.code === 'auth/popup-blocked' || popupErr?.code === 'auth/popup-closed-by-user') {
+            return signInWithRedirect(auth, provider);
+        }
+        throw popupErr;
+    }
+};
 
 export const signOutUser = (): Promise<void> => signOut(auth);
 
