@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { AdminGuard } from './auth/AdminGuard'
 import CommandCenterPage from '../pages/CommandCenterPage'
 import PlayerProfilePage from '../pages/PlayerProfilePage'
 import MatchupEnginePage from '../pages/MatchupEnginePage'
@@ -25,10 +26,17 @@ export default function MainCanvas() {
                     <Route path="/matchup-lab" element={<MatchupLabPage />} />
                     <Route path="/team" element={<TeamCentralPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/injury-admin" element={<InjuryAdmin />} />
                     <Route path="/pulse" element={<PulsePage />} />
                     <Route path="/box-scores" element={<BoxScoresPage />} />
-                    <Route path="/vanguard" element={<VanguardControlRoom />} />
+
+                    {/* Admin-gated routes — show Sign In prompt when not authenticated */}
+                    <Route path="/vanguard" element={
+                        <AdminGuard><VanguardControlRoom /></AdminGuard>
+                    } />
+                    <Route path="/injury-admin" element={
+                        <AdminGuard><InjuryAdmin /></AdminGuard>
+                    } />
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>
