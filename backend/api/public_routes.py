@@ -793,6 +793,49 @@ async def crucible_simulation(data: dict = None):
     }
 
 
+@router.get("/api/insights/daily")
+async def get_daily_insights(force_refresh: bool = Query(False)):
+    """Generate AI-powered insights for today's slate."""
+    try:
+        from services.nba_schedule import get_schedule_service
+        service = get_schedule_service()
+        games_raw = service.get_todays_games(force_refresh=force_refresh)
+        
+        games = []
+        for g in games_raw:
+            games.append({
+                "home": g.get("home_team", ""),
+                "away": g.get("away_team", ""),
+                "status": g.get("status", ""),
+                "home_score": g.get("home_score", 0),
+                "away_score": g.get("away_score", 0),
+                "time": g.get("status_text", "")
+            })
+            
+        target_date = str(datetime.now().date())
+        daily_context = {
+            "date": target_date,
+            "games": games,
+            "injuries": [] # MVP: ignore injuries for now
+        }
+        
+        # ai_insights_engine is instantiated above at module level
+        if 'ai_insights_engine' in globals() and ai_insights_engine is not None:
+            result = ai_insights_engine.generate_daily_insights(daily_context)
+        else:
+            from services.ai_insights import GeminiInsights
+            fallback_engine = GeminiInsights()
+            result = fallback_engine.generate_daily_insights(daily_context)
+            
+        result["generated_at"] = datetime.utcnow().isoformat()
+        result["games_tonight"] = len(games)
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error generating daily insights: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate daily insights")
+
 
 @router.get("/game-dates")
 async def get_game_dates(
