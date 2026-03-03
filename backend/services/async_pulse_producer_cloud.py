@@ -509,8 +509,15 @@ class CloudAsyncPulseProducer:
                     'stl': player.stl,
                     'blk': player.blk,
                     'fg3m': player.fg3m,
+                    'fg3a': player.fg3a,
+                    'fgm': player.fgm,
+                    'fga': player.fga,
+                    'ftm': player.ftm,
+                    'fta': player.fta,
                     'pf': player.pf,
-                    'tov': player.tov
+                    'to': player.tov,
+                    'plus_minus': player.plus_minus,
+                    'min': player.minutes,
                 }
             })
 
