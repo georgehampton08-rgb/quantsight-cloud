@@ -1,53 +1,183 @@
 # NBA Play-by-Play Pipeline Architecture
 
-*Revision: 2026-03-03*
+Last Updated: 2026-03-03
+
+---
 
 ## Overview
 
-The QuantSight Play-by-Play (PBP) Pipeline is a robust, near real-time data ingestion and streaming service. It captures granular event-level actions from live NBA games, standardizes them into a unified schema, persists them idempotently in Firestore, and streams them downstream to frontend clients via Server-Sent Events (SSE).
+QuantSight's Play-by-Play (PBP) pipeline delivers real-time NBA play data from
+external sports APIs to the frontend with sub-second latency, using a
+**dual-source ingestion**, **Firestore persistence**, and **Server-Sent Events
+(SSE)** streaming approach.
 
-## Core Strategy
+---
 
-1. **Primary Source (ESPN)**
-   - Selected for high reliability, fast update cadence, and resistance to Cloud IP blocking.
-   - Provides rich participant details, clock values, scoring, and standardized event descriptions.
+## Architecture Diagram
 
-2. **Fallback Source (NBA Live CDN)**
-   - `cdn.nba.com` provides true play-by-play payloads and escapes the rigorous Datacenter IPS checks imposed on `stats.nba.com`.
-   - Used defensively if ESPN API encounters a prolonged outage.
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Cloud Run (Backend)                  │
+│                                                         │
+│  ┌─────────────────┐     ┌─────────────────────────┐   │
+│  │  ESPN Scoreboard│────▶│   NBAPlayByPlayClient    │   │
+│  │  (Primary)      │     │   fetch_espn_plays()     │   │
+│  └─────────────────┘     └──────────┬──────────────┘   │
+│  ┌─────────────────┐                │ fallback          │
+│  │  cdn.nba.com    │────────────────┘                   │
+│  │  (Fallback CDN) │     ┌──────────▼──────────────┐   │
+│  └─────────────────┘     │   PlayEvent (Pydantic)   │   │
+│                          │   Unified Data Model     │   │
+│                          └──────────┬──────────────┘   │
+│                                     │                   │
+│                          ┌──────────▼──────────────┐   │
+│                          │  PBPPollingService       │   │
+│                          │  asyncio task per game   │   │
+│                          │  poll every 10s          │   │
+│                          └──────────┬──────────────┘   │
+│                    ┌────────────────┼──────────┐        │
+│                    ▼                ▼          ▼        │
+│         ┌──────────────┐  ┌───────────┐  ┌─────────┐  │
+│         │  Firestore   │  │SSE Queues │  │  Cache  │  │
+│         │  live_games/ │  │per game_id│  │Snapshot │  │
+│         │  {game_id}/  │  └─────┬─────┘  └─────────┘  │
+│         │  plays/{id}  │        │                       │
+│         └──────────────┘        │                       │
+└─────────────────────────────────┼─────────────────────┘
+                                  │ SSE text/event-stream
+                    ┌─────────────▼──────────────────┐
+                    │     React Frontend              │
+                    │  useLivePlayByPlay hook         │
+                    │  - Hydrates from /plays         │
+                    │  - Streams from /stream SSE     │
+                    │  - Deduplicates by sequenceNum  │
+                    └────────────────────────────────┘
+```
 
-3. **Unified Schema (`PlayEvent`)**
-   - Both sources are mapped identically to a strict `PlayEvent` Pydantic model.
-   - Protects the frontend from upstream data source changes.
+---
 
-## Backend Infrastructure (FastAPI)
+## Firestore Document Structure
 
-1. **`nba_pbp_service.py`**
-   - **`NBAPlayByPlayClient`**: HTTP API Client logic parsing raw feeds.
-   - **Data Mappers**: `map_espn_to_unified()` & `map_nba_cdn_to_unified()`.
+```
+live_games/                        (collection)
+  {espn_game_id}/                  (document — game metadata)
+    plays/                         (subcollection)
+      {playId}/                    (document — one per play event)
+        playId: string
+        sequenceNumber: int        ← sort key, unique per game
+        eventType: string
+        description: string
+        period: int
+        clock: string
+        homeScore: int
+        awayScore: int
+        teamId: string | null
+        teamTricode: string | null
+        primaryPlayerId: string | null
+        primaryPlayerName: string | null
+        secondaryPlayerId: string | null   ← assist/block/steal player
+        secondaryPlayerName: string | null
+        involvedPlayers: string[]
+        isScoringPlay: bool
+        isShootingPlay: bool
+        pointsValue: int
+        shotDistance: float | null
+        shotArea: string | null    ← e.g. "Left Corner 3"
+        shotResult: "Made"|"Missed"|null
+        coordinateX: float | null  ← NBA court X (0-50 range)
+        coordinateY: float | null  ← NBA court Y (0-94 range)
+        rawData: {}                ← preserved original payload
+        source: "espn" | "nba_cdn"
 
-2. **`pbp_polling_service.py`**
-   - The heart of the async engine.
-   - Maintains an `asyncio.Task` loop per active game to poll the PBP APIs.
-   - Implements exponential backoff on HTTP/JSON errors.
-   - Acts as an in-memory Pub/Sub broker pushing JSON payloads directly to active SSE connections.
+game_cache/                        (collection)
+  {espn_game_id}/                  (document — fast-read snapshot)
+    playsCount: int
+    lastPolled: ISO timestamp
+```
 
-3. **`firebase_pbp_service.py`**
-   - **Idempotent Writes**: Uses `sequenceNumber` (from ESPN) or `actionNumber` (from CDN) directly as the Firestore Document ID using `merge=True`.
-   - Protects against duplicate inserts naturally via NoSQL architecture.
+**Key Design Decisions:**
 
-## Frontend Infrastructure (React/Vite)
+- `playId` is used as the Firestore document ID → guarantees idempotency on re-poll
+- `merge=True` on all writes → safe to re-run without duplicating
+- `sequenceNumber` is the sort index → consistent chronological order across sources
+- `rawData` stored for full backward compatibility and debugging
 
-1. **`useLivePlayByPlay.ts` (Custom Hook)**
-   - Orchestrates the full connection lifecycle.
-   - Fetches the initial monolithic historical block via standard REST.
-   - Immediately attaches an `EventSource` web-socket-like stream binding to `GET /v1/games/{id}/stream`.
-   - Deduplicates incoming SSE events via `sequenceNumber`.
+---
 
-2. **`InteractiveShotChart.tsx`**
-   - An interactive visual mapping leveraging `coordinateX` and `coordinateY` spatial telemetry to plot shots physically dynamically as they happen.
+## Dual-Source Strategy
 
-## Deployment Notes
+| Source | URL | Priority | Notes |
+|--------|-----|----------|-------|
+| ESPN Summary API | `site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={id}` | Primary | Full participants, coordinates, scoring flags |
+| NBA CDN | `cdn.nba.com/static/json/liveData/playbyplay/playbyplay_{id}.json` | Fallback | Shot area, assist IDs, free throw tracking |
 
-- Backend routes are registered securely in `main.py` under `/v1/games`.
-- Firestore Rules exclusively limit client writes to the `/live_games` ecosystem, delegating all mutation trust to the backend via the Admin SDK.
+Both sources pipe through their respective `map_*_to_unified()` functions and
+produce identical `PlayEvent` Pydantic objects — the frontend never knows which
+source provided the data.
+
+**ESPN coordinate validation:** Raw ESPN coordinates can be nonsense values
+(`-214748340`) for non-shot plays. The mapper nullifies any coordinate outside
+the range `[-100, 200]` on both axes.
+
+---
+
+## API Rate Limits & Backoff
+
+The poller runs every 10 seconds per game. On consecutive ESPN failures:
+
+```
+sleep_time = min(10 * (2 ** consecutive_errors), 60)
+```
+
+| Errors | Sleep |
+|--------|-------|
+| 0 | 10s |
+| 1 | 20s |
+| 2 | 40s |
+| 3+ | 60s (cap) |
+
+ESPN public endpoints do not publish rate limits. In practice, 10s polling of
+the summary endpoint has not triggered any throttling during testing.
+
+---
+
+## REST + SSE Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/games/live` | List all ESPN games (pre/in/post state) |
+| POST | `/v1/games/{id}/start-tracking` | Manually wake the poller for a game |
+| GET | `/v1/games/{id}/plays?limit=N` | Hydration: all Firestore-cached plays |
+| GET | `/v1/games/{id}/stream` | SSE stream: new plays pushed in real-time |
+
+**SSE Protocol:**
+
+- On connect: `data: {"type":"connection","status":"connected","gameId":"..."}`
+- On new plays: `data: {"type":"plays_update","plays":[...]}`
+- Every 15s with no plays: `: heartbeat` (SSE comment — keeps load balancer alive)
+
+---
+
+## Frontend Data Flow
+
+1. User selects a game from `LiveGameSelector`
+2. `useLivePlayByPlay(gameId)` triggers:
+   - REST call to `/plays` → sets initial state from Firestore cache
+   - Opens `EventSource` to `/stream`
+3. New plays arriving via SSE are merged into state:
+   - Deduplication: `Set` of existing `sequenceNumber`s
+   - Always re-sorted ascending by `sequenceNumber`
+4. `InteractiveShotChart` maps `coordinateX`/`coordinateY` → SVG court positions
+5. `PlayItem` renders color-coded rows with player headshots from NBA CDN
+
+---
+
+## Mobile Responsive Layout
+
+The PBP tab uses a **mobile-first** CSS approach:
+
+| Breakpoint | Layout |
+|-----------|--------|
+| `>1024px` | Side-by-side: court left `(flex:2)`, feed right `(flex:1)` |
+| `640–1024px` | Stacked: court on top, feed below (480px fixed height) |
+| `<640px` | Compact: reduced padding, smaller fonts, `clamp()` scaling, tooltip moves to bottom of screen |

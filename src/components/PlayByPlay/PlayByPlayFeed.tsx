@@ -19,7 +19,7 @@ export function PlayByPlayFeed() {
         }
     }, [plays]);
 
-    // Derive latest score and clock for header
+    // Derive latest score and clock from last play
     let homeScore = 0;
     let awayScore = 0;
     let clock = '12:00';
@@ -28,34 +28,27 @@ export function PlayByPlayFeed() {
     let awayTeam = 'AWAY';
 
     if (plays.length > 0) {
-        const last = plays[plays.length - 1]; // Already sorted by sequence number
+        const last = plays[plays.length - 1];
         homeScore = last.homeScore;
         awayScore = last.awayScore;
         clock = last.clock;
         period = last.period;
-
-        // Find team names (ESPN gives text "Dallas Mavericks", CDN gives Tricode "DAL")
-        // This is rough fallback logic, ideally we pull this from the LiveGame list or a /teams resource.
-        const hd = plays.find(p => p.homeScore > 0 || p.teamTricode);
-        if (hd?.teamTricode) {
-            // Quick extraction
-            homeTeam = "HOME"; // Requires mapping if not using CDN
-            awayTeam = "AWAY";
-        }
     }
 
     return (
         <div className="pbp-container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '24px' }}>Live Play-by-Play</h2>
+            {/* Header: title + connection pill */}
+            <div className="pbp-header-row">
+                <h2>Live Play-by-Play</h2>
                 <ConnectionStatus isConnected={isConnected} isReconnecting={isReconnecting} error={error} />
             </div>
 
+            {/* Horizontally scrolling game selector */}
             <LiveGameSelector activeGameId={activeGameId} onSelectGame={setActiveGameId} />
 
             {activeGameId ? (
                 <div className="pbp-feed-layout">
-                    {/* Left/Top Column: Court Visualizer */}
+                    {/* Left/Top Column: Score + Court + Legend */}
                     <div className="chart-col">
                         <GameScoreHeader
                             homeScore={homeScore}
@@ -64,23 +57,41 @@ export function PlayByPlayFeed() {
                             awayTeam={awayTeam}
                             clock={clock}
                             period={period}
-                            status={isConnected ? "live" : "offline"}
+                            status={isConnected ? 'live' : 'offline'}
                         />
 
-                        <div style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 'bold', color: '#f1f5f9' }}>
+                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#f1f5f9', letterSpacing: '0.3px' }}>
                             Action Map
                         </div>
+
                         <InteractiveShotChart plays={plays} />
-                        <div style={{ marginTop: '16px', fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>
-                            <strong>Real-Time Graphing:</strong> Shots are plotted as soon as the sequence reaches the frontend. Hover over points for player telemetry.
+
+                        {/* Shot type legend */}
+                        <div className="chart-legend">
+                            <div className="chart-legend-item">
+                                <span className="legend-dot made" />Made
+                            </div>
+                            <div className="chart-legend-item">
+                                <span className="legend-dot missed" />Missed
+                            </div>
+                            <div className="chart-legend-item">
+                                <span className="legend-dot three" />3-Pointer
+                            </div>
+                            <div className="chart-legend-item">
+                                <span className="legend-dot foul" />Foul Play
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.5' }}>
+                            Hover or tap a dot for player telemetry.
                         </div>
                     </div>
 
-                    {/* Right/Bottom Column: Plays Stream */}
+                    {/* Right/Bottom Column: Scrollable play feed */}
                     <div className="feed-col">
                         <div className="plays-list-container" ref={scrollRef}>
                             {plays.length === 0 ? (
-                                <div style={{ padding: '20px', color: '#64748b', textAlign: 'center' }}>
+                                <div className="awaiting-pulse">
                                     Awaiting pulse data...
                                 </div>
                             ) : (
@@ -90,11 +101,12 @@ export function PlayByPlayFeed() {
                     </div>
                 </div>
             ) : (
-                <div style={{
-                    padding: '40px', background: '#1e293b', borderRadius: '12px',
-                    color: '#cbd5e1', textAlign: 'center', border: '1px dashed #475569'
-                }}>
-                    Please select a live game from the selector above to stream the Play-by-Play dashboard.
+                <div className="pbp-empty-state">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8v4l3 3" />
+                    </svg>
+                    <p>Select a game above to stream<br />the live Play-by-Play dashboard.</p>
                 </div>
             )}
         </div>

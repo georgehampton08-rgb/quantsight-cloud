@@ -29,42 +29,51 @@ export function LiveGameSelector({ activeGameId, onSelectGame }: Props) {
                     setGames(res.games);
                 }
             } catch (e) {
-                console.error("Failed to fetch live games:", e);
+                console.error('Failed to fetch live games:', e);
             } finally {
                 setLoading(false);
             }
         };
         fetchGames();
 
-        // Refresh schedule every minute just in case
+        // Refresh every 60s in case a game goes live
         const interval = setInterval(fetchGames, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    if (loading) return <div style={{ color: '#94a3b8' }}>Loading schedule...</div>;
-    if (games.length === 0) return <div style={{ color: '#94a3b8' }}>No active games right now.</div>;
+    if (loading) {
+        return (
+            <div className="game-selector-row">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="game-selector-btn" style={{ opacity: 0.4, width: 160, background: '#1e293b' }}>
+                        &nbsp;
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (games.length === 0) {
+        return (
+            <div style={{ color: '#64748b', fontSize: '13px', padding: '8px 0' }}>
+                No games available right now.
+            </div>
+        );
+    }
 
     return (
-        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '10px 0', marginBottom: '20px' }}>
+        <div className="game-selector-row">
             {games.map(g => {
                 const isActive = g.game_id === activeGameId;
+                const isLive = g.state === 'in';
                 return (
                     <button
                         key={g.game_id}
+                        className={`game-selector-btn ${isActive ? 'active' : ''}`}
                         onClick={() => onSelectGame(g.game_id)}
-                        style={{
-                            padding: '10px 16px',
-                            borderRadius: '8px',
-                            background: isActive ? '#38bdf8' : '#1e293b',
-                            color: isActive ? '#0f172a' : '#f8fafc',
-                            border: isActive ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            flexShrink: 0
-                        }}
                     >
                         {g.name}
-                        {g.state === 'in' && <span style={{ marginLeft: '8px', color: isActive ? '#ef4444' : '#ef4444' }}>•</span>}
+                        {isLive && <span className="live-dot" />}
                     </button>
                 );
             })}

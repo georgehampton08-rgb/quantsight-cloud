@@ -19,6 +19,17 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;
       }
+      
+      match /plays/{play_id} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+    
+    // Game Cache: Fast read snapshot for Play-By-Play hydration
+    match /game_cache/{game_id} {
+      allow read: if true;
+      allow write: if false;
     }
     
     // Live Leaders: Top performers leaderboard
