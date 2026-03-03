@@ -461,34 +461,36 @@ export function BoxScoreViewerContent() {
                 {/* Historical: player stats — twin panels matching live view */}
                 {!isToday && !histLoading && selectedHistData && (
                     <div className="space-y-4">
-                        {/* Score header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-slate-900/60 border border-slate-700/50 rounded-2xl">
-                            <div className="flex items-center gap-4">
+                        {/* Score header — flex-col on mobile, flex-row sm+ */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-4 bg-slate-900/60 border border-slate-700/50 rounded-2xl">
+                            {/* Scores */}
+                            <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-6">
                                 <div className="text-center">
-                                    <div className={`text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.away_team ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                    <div className={`text-2xl sm:text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.away_team ? 'text-emerald-400' : 'text-slate-300'}`}>
                                         {selectedHistData.away_score}
                                     </div>
                                     <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-widest">{selectedHistData.away_team}</div>
                                     {selectedHistData.winner === selectedHistData.away_team && <div className="text-[9px] text-emerald-500 font-bold tracking-widest mt-0.5">WIN</div>}
                                 </div>
-                                <div className="text-slate-600 font-mono">@</div>
+                                <div className="text-slate-600 font-mono text-lg">@</div>
                                 <div className="text-center">
-                                    <div className={`text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.home_team ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                    <div className={`text-2xl sm:text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.home_team ? 'text-emerald-400' : 'text-slate-300'}`}>
                                         {selectedHistData.home_score}
                                     </div>
                                     <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-widest">{selectedHistData.home_team}</div>
                                     {selectedHistData.winner === selectedHistData.home_team && <div className="text-[9px] text-emerald-500 font-bold tracking-widest mt-0.5">WIN</div>}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            {/* Status badges — centered on mobile, right on sm+ */}
+                            <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
                                 {hist && !histIsFinal && (
                                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold uppercase tracking-wider">
                                         THRU {hist.quarter_used}
                                     </span>
                                 )}
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${histIsFinal
-                                        ? 'bg-slate-700/60 text-slate-400'
-                                        : 'bg-slate-800/60 text-slate-500'
+                                    ? 'bg-slate-700/60 text-slate-400'
+                                    : 'bg-slate-800/60 text-slate-500'
                                     }`}>
                                     {histIsFinal ? 'FINAL' : selectedHistData.status}
                                 </span>

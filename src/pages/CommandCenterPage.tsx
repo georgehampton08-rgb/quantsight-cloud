@@ -6,12 +6,12 @@ import { API_BASE } from '../config/apiConfig'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
-    <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 h-full hover:border-financial-accent/30 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 group">
+    <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 min-h-0 h-full hover:border-financial-accent/30 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 group">
         <div className="flex items-center gap-2 text-slate-400 font-medium tracking-wider text-sm uppercase flex-shrink-0 group-hover:text-financial-accent transition-colors">
             <Icon className="w-4 h-4 text-financial-accent" />
             {title}
         </div>
-        <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-500 scrollbar-track-transparent">
             {children}
         </div>
     </div>
@@ -230,7 +230,7 @@ export default function CommandCenterPage() {
 
             <div className="flex-1 min-h-0 flex flex-col min-w-0 w-full">
                 {activeTab === 'OVERVIEW' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:auto-rows-fr animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                         {/* Dramatic glow hidden behind the card */}
                         <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 

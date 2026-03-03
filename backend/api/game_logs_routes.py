@@ -270,6 +270,17 @@ def get_box_score_players(
         for pid, pdata in players_map.items():
             if not isinstance(pdata, dict):
                 continue
+            # min is stored as string "36:12" or int — do NOT cast to int()
+            # int("36:12") silently becomes 0, marking every player DNP in the UI
+            raw_min = pdata.get('min', None)
+            if raw_min is None:
+                min_val: Any = 0
+            elif isinstance(raw_min, (int, float)):
+                min_val = int(raw_min)
+            else:
+                # keep string form "36:12" — frontend renderPlayerRow handles it
+                min_val = str(raw_min)
+
             player = {
                 "player_id":   pid,
                 "name":        pdata.get('name', f'Player {pid}'),
@@ -280,7 +291,7 @@ def get_box_score_players(
                 "stl":         int(pdata.get('stl', 0) or 0),
                 "blk":         int(pdata.get('blk', 0) or 0),
                 "to":          int(pdata.get('to', 0) or 0),
-                "min":         int(pdata.get('min', 0) or 0),
+                "min":         min_val,
                 "fgm":         int(pdata.get('fgm', 0) or 0),
                 "fga":         int(pdata.get('fga', 0) or 0),
                 "fg3m":        int(pdata.get('fg3m', 0) or 0),
