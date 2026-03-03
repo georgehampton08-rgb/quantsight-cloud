@@ -58,11 +58,36 @@ async def require_admin_role(
     Layer 2: Verify the authenticated user is in the Firestore admins allowlist
     with role='admin'. A valid token alone is NOT sufficient.
 
+    Sanitization checks (all run before Firestore):
+      - uid must pass safe_id validation (alphanumeric, no path traversal)
+      - email must be present in claims
+      - email_verified must be True (rejects unverified accounts)
+
     Fail-closed: if Firestore is unavailable, access is DENIED (503).
     """
-    uid = decoded.get("uid", "")
+    uid = decoded.get("uid", "").strip()
     if not uid:
         raise HTTPException(status_code=401, detail="Token is missing uid claim")
+
+    # Sanitize uid — prevents Firestore path traversal / injection
+    try:
+        from api.validators import safe_id
+        uid = safe_id(uid, "uid")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Malformed uid in token")
+
+    # Require email present
+    email = decoded.get("email", "").strip()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=401, detail="Token is missing valid email claim")
+
+    # Require email verified (Google always verifies, but be explicit)
+    if not decoded.get("email_verified", False):
+        logger.warning(f"[AUTH] Unverified email blocked: uid={uid} email={email}")
+        raise HTTPException(
+            status_code=403,
+            detail="Email address must be verified before accessing admin features."
+        )
 
     now = time.monotonic()
 
@@ -94,12 +119,12 @@ async def require_admin_role(
 
     if not is_admin:
         logger.warning(
-            f"[AUTH] Access denied: uid={uid} email={decoded.get('email', 'unknown')} "
+            f"[AUTH] Access denied: uid={uid} email={email} "
             f"— not present in admins collection"
         )
         raise HTTPException(status_code=403, detail=_access_denied(decoded))
 
-    logger.info(f"[AUTH] Admin access granted: uid={uid} email={decoded.get('email', '')}")
+    logger.info(f"[AUTH] Admin access granted: uid={uid} email={email}")
     return decoded
 
 

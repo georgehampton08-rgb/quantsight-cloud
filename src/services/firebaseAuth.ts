@@ -13,7 +13,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
     getAuth,
     GoogleAuthProvider,
-    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     signOut,
     onAuthStateChanged,
     type User
@@ -62,9 +63,9 @@ export const withAuthHeaders = async (
 };
 
 export const signInWithGoogle = (): Promise<void> =>
-    signInWithPopup(auth, new GoogleAuthProvider()).then(() => undefined);
+    signInWithRedirect(auth, new GoogleAuthProvider());
 
 export const signOutUser = (): Promise<void> => signOut(auth);
 
-export { onAuthStateChanged };
+export { getRedirectResult, onAuthStateChanged };
 export type { User };

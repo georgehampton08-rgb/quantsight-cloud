@@ -1,54 +1,88 @@
 /**
- * Auth Context
- * ============
- * Provides global auth state without forcing sign-in.
- * Public app use is unaffected — user is null when not signed in.
- * Admin Vanguard pages use AdminGuard to conditionally gate access.
+ * Auth Context (Redirect Flow)
+ * ==============================
+ * Uses signInWithRedirect — no popups, works everywhere, never blocked.
  *
- * FAIL-SAFE: If Firebase is not configured (missing VITE_FIREBASE_API_KEY),
- * this provider still renders children with user=null. The app works normally —
- * admin features just require Firebase to be configured.
+ * Flow:
+ *   1. User clicks "Sign in with Google" → redirected to Google
+ *   2. Google redirects back to app
+ *   3. On mount, getRedirectResult() resolves with the user
+ *   4. onAuthStateChanged also fires after redirect completes
+ *
+ * FAIL-SAFE: If Firebase init errors, user=null and app still renders.
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import type { User } from 'firebase/auth';
 
 interface AuthContextType {
-    /** undefined = still loading, null = not signed in, User = signed in */
-    user: any | null | undefined;
-    /** true only during initial auth state resolution */
+    user: User | null | undefined;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({ user: undefined, loading: true });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<any | null | undefined>(undefined);
+    const [user, setUser] = useState<User | null | undefined>(undefined);
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
-        try {
-            // Dynamic import so Firebase config errors don't crash module evaluation
-            const { auth, onAuthStateChanged } = require('../services/firebaseAuth');
-            unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
-                setUser(firebaseUser);
+
+        (async () => {
+            try {
+                const { auth, onAuthStateChanged, getRedirectResult } = await import('../services/firebaseAuth');
+
+                // Handle post-redirect sign-in first
+                try {
+                    const result = await getRedirectResult(auth);
+                    if (result?.user) {
+                        console.log('[AuthContext] Redirect sign-in complete:', result.user.email);
+                    }
+                } catch (redirectErr) {
+                    console.warn('[AuthContext] getRedirectResult error (non-fatal):', redirectErr);
+                }
+
+                // Then subscribe to ongoing auth state
+                unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+                    if (firebaseUser) {
+                        // Sanitize: reject users without uid or unverified email
+                        if (!firebaseUser.uid || !firebaseUser.emailVerified) {
+                            console.warn('[AuthContext] User failed sanitization:', {
+                                hasUid: !!firebaseUser.uid,
+                                emailVerified: firebaseUser.emailVerified,
+                                email: firebaseUser.email,
+                            });
+                            // Sign them out — unverified accounts have no admin access
+                            import('../services/firebaseAuth').then(({ signOutUser }) => {
+                                signOutUser().catch(() => { });
+                            });
+                            setUser(null);
+                        } else {
+                            setUser(firebaseUser);
+                        }
+                    } else {
+                        setUser(null);
+                    }
+                    setReady(true);
+                });
+
+            } catch (err) {
+                console.warn('[AuthContext] Firebase not available, admin features disabled:', err);
+                setUser(null);
                 setReady(true);
-            });
-        } catch (err) {
-            // Firebase not configured — degrade gracefully, app still works
-            console.warn('[AuthProvider] Firebase auth not available, admin features disabled:', err);
-            setUser(null);
-            setReady(true);
-        }
+            }
+        })();
+
         return () => { unsubscribe?.(); };
     }, []);
 
-    // If we haven't heard from Firebase yet, but we've been waiting > 3s, assume no auth
+    // Safety: if Firebase never responds within 5s, fallback to null
     useEffect(() => {
         if (!ready) {
             const timeout = setTimeout(() => {
                 setUser(prev => prev === undefined ? null : prev);
                 setReady(true);
-            }, 3000);
+            }, 5000);
             return () => clearTimeout(timeout);
         }
     }, [ready]);
