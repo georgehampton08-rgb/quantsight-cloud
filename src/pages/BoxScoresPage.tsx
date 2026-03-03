@@ -12,6 +12,10 @@ import { useLiveStats, LiveGame } from '../hooks/useLiveStats';
 import { API_BASE } from '../config/apiConfig';
 import './MatchupLabPage.css';
 
+// Only accept YYYY-MM-DD strings — guards against game IDs returned by the API
+// when the backend Firestore parent docs don't exist as explicit documents.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface HistoricalGame {
@@ -191,9 +195,12 @@ const BoxScoresPage: React.FC = () => {
                 const res = await fetch(`${API_BASE}/api/box-scores/dates`);
                 if (res.ok) {
                     const data = await res.json();
-                    const dates: string[] = data.dates || [];
+                    // Filter to valid YYYY-MM-DD strings only.
+                    // The backend may return game IDs if Firestore parent docs
+                    // don't exist as explicit documents yet.
+                    const dates: string[] = (data.dates || []).filter((d: string) => DATE_RE.test(d));
                     setAvailableDates(dates);
-                    // Auto-select most recent date if it exists and is not today
+                    // Auto-select most recent valid date if not today
                     if (dates.length > 0 && dates[0] !== getTodayStr()) {
                         setSelectedDate(dates[0]);
                     }
@@ -248,10 +255,10 @@ const BoxScoresPage: React.FC = () => {
                         <h1 className="text-2xl sm:text-3xl">Box Scores</h1>
                         {activeTab === 'today' && (
                             <span className={`ai-badge text-xs border px-2.5 py-1 rounded-full whitespace-nowrap ${isConnected
-                                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                    : isConnecting
-                                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                                        : 'bg-red-500/20 text-red-400 border-red-500/30'
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : isConnecting
+                                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                                    : 'bg-red-500/20 text-red-400 border-red-500/30'
                                 }`}>
                                 <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${isConnected ? 'bg-green-500' : isConnecting ? 'bg-amber-500 animate-pulse' : 'bg-red-500'
                                     }`} />
@@ -274,8 +281,8 @@ const BoxScoresPage: React.FC = () => {
                         key={id}
                         onClick={() => setActiveTab(id)}
                         className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === id
-                                ? 'bg-financial-accent/20 text-financial-accent shadow'
-                                : 'text-slate-400 hover:text-slate-200'
+                            ? 'bg-financial-accent/20 text-financial-accent shadow'
+                            : 'text-slate-400 hover:text-slate-200'
                             }`}
                     >
                         {label}
@@ -313,8 +320,8 @@ const BoxScoresPage: React.FC = () => {
                                     key={d}
                                     onClick={() => setSelectedDate(d)}
                                     className={`text-xs px-2.5 py-1 rounded-lg border transition-all duration-150 ${selectedDate === d
-                                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                                            : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                        : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-500'
                                         }`}
                                 >
                                     {d.slice(5)} {/* MM-DD */}

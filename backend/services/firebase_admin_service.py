@@ -303,26 +303,42 @@ class FirebaseAdminService:
         Return a sorted (descending) list of all date strings that have at
         least one saved game log in Firestore.
 
-        Scans the top-level `game_logs` collection for document IDs, which
-        are YYYY-MM-DD strings written by GameLogPersister.
+        Uses collection_group('games') because game_logs/{date} parent docs
+        are never explicitly written — only the subcollection games/{game_id}
+        is written by GameLogPersister. A top-level scan of game_logs returns
+        no results; we must walk the subcollection and extract the date from
+        the document reference path: game_logs/{DATE}/games/{game_id}
 
         Returns:
-            List of date strings, e.g. ["2026-02-26", "2026-02-25", ...]
+            List of YYYY-MM-DD date strings, e.g. ["2026-02-26", "2026-02-25", ...]
             Empty list if no data or Firebase unavailable.
         """
+        import re as _re
+        _date_re = _re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
         if not self.enabled or not self.db:
             logger.warning("Firebase not enabled — get_game_dates returning []")
             return []
 
         try:
-            # Each top-level document in game_logs is a date (YYYY-MM-DD)
-            # We limit to 365 to avoid unbounded scans on large collections.
-            docs = self.db.collection('game_logs').limit(365).stream()
-            dates = [doc.id for doc in docs if doc.id]
-            # Sort descending so most-recent date is first
-            dates.sort(reverse=True)
-            logger.info(f"✅ get_game_dates: found {len(dates)} date(s)")
-            return dates
+            # Walk ALL game docs across all dates via collection group query.
+            # Path structure: game_logs/{YYYY-MM-DD}/games/{game_id}
+            # doc.reference.parent       → CollectionReference for 'games'
+            # doc.reference.parent.parent → DocumentReference for the date doc
+            # doc.reference.parent.parent.id → the YYYY-MM-DD string
+            game_docs = self.db.collection_group('games').limit(1000).stream()
+            dates: set = set()
+            for doc in game_docs:
+                try:
+                    date_id = doc.reference.parent.parent.id
+                    if date_id and _date_re.match(date_id):
+                        dates.add(date_id)
+                except Exception:
+                    pass
+
+            sorted_dates = sorted(dates, reverse=True)
+            logger.info(f"✅ get_game_dates: found {len(sorted_dates)} unique date(s)")
+            return sorted_dates
         except Exception as e:
             logger.error(f"❌ get_game_dates failed: {e}")
             return []

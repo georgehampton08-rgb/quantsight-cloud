@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Focus, Activity, Calendar } from 'lucide-react';
 import { ApiContract } from '../../api/client';
 import { API_BASE } from '../../config/apiConfig';
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -221,6 +223,11 @@ export function BoxScoreViewerContent() {
     // ── HISTORICAL: load final scores for selected past date ───────────────
     useEffect(() => {
         if (isToday) return;
+        // Validate the date before hitting the backend
+        if (!DATE_RE.test(selectedDate)) {
+            setHistError(`Invalid date selected. Please choose a valid date.`);
+            return;
+        }
         setHistLoading(true);
         setHistError(null);
         setHistGames([]);
@@ -228,7 +235,7 @@ export function BoxScoreViewerContent() {
         setSelectedHistGame(null);
 
         fetch(`${API_BASE}/api/box-scores?date=${selectedDate}`)
-            .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail || `Error ${r.status}`)))
+            .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail || `Server error ${r.status}`)))
             .then(d => {
                 const gs: HistoricalGame[] = d.games || [];
                 setHistGames(gs);
@@ -308,8 +315,8 @@ export function BoxScoreViewerContent() {
                                 key={d}
                                 onClick={() => setSelectedDate(d)}
                                 className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${selectedDate === d
-                                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                                        : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                    : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-500'
                                     }`}
                             >
                                 {d.slice(5)}
@@ -327,15 +334,15 @@ export function BoxScoreViewerContent() {
                             key={game.game_id || game.gameId}
                             onClick={() => setSelectedGame(game.game_id || game.gameId)}
                             className={`flex-shrink-0 px-4 py-3 border rounded-xl flex flex-col items-center gap-1 transition-all min-w-[140px] ${selectedGame === (game.game_id || game.gameId)
-                                    ? 'bg-indigo-900/30 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
-                                    : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
+                                ? 'bg-indigo-900/30 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
                                 }`}
                         >
                             <div className="flex items-center gap-3 w-full justify-between px-1">
                                 <span className={`font-black text-sm ${selectedGame === (game.game_id || game.gameId) ? 'text-white' : ''}`}>{game.away || game.away_team}</span>
                                 <span className={`text-[10px] px-1.5 py-[1px] rounded font-bold uppercase tracking-wider ${game.status === 'LIVE' ? 'bg-red-500/20 text-red-400 animate-pulse' :
-                                        game.status === 'FINAL' ? 'bg-slate-700/50 text-slate-400' :
-                                            'bg-emerald-500/10 text-emerald-500'
+                                    game.status === 'FINAL' ? 'bg-slate-700/50 text-slate-400' :
+                                        'bg-emerald-500/10 text-emerald-500'
                                     }`}>
                                     {game.status === 'LIVE' ? 'LIVE' : game.status === 'FINAL' ? 'FNL' : 'UP'}
                                 </span>
@@ -359,8 +366,8 @@ export function BoxScoreViewerContent() {
                             key={game.game_id}
                             onClick={() => setSelectedHistGame(game.game_id)}
                             className={`flex-shrink-0 px-4 py-3 border rounded-xl flex flex-col items-center gap-1 transition-all min-w-[140px] ${selectedHistGame === game.game_id
-                                    ? 'bg-emerald-900/20 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                                    : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
+                                ? 'bg-emerald-900/20 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
                                 }`}
                         >
                             <div className="flex items-center gap-3 w-full justify-between px-1">
@@ -381,8 +388,8 @@ export function BoxScoreViewerContent() {
             {/* ── Box score tables area (scrollable) ────────────────────── */}
             <div className="flex-1 min-h-0 overflow-y-auto">
 
-                {/* Loading */}
-                {(loading || histLoading) && (
+                {/* Loading — show only for relevant mode */}
+                {((isToday && loading) || (!isToday && histLoading)) && (
                     <div className="flex flex-col items-center justify-center p-12 bg-slate-900/30 border border-slate-800 rounded-2xl h-48">
                         <Activity className="w-8 h-8 text-indigo-400 animate-spin mb-4" />
                         <div className="text-sm font-mono text-slate-400 tracking-widest uppercase">Hydrating Telemetry...</div>
@@ -403,7 +410,9 @@ export function BoxScoreViewerContent() {
                         <Focus className="w-12 h-12 mb-4 opacity-50" />
                         <p className="font-medium text-lg text-slate-400">No records for {selectedDate}</p>
                         <p className="text-sm mt-2 text-center max-w-xs">
-                            {availableDates.length > 0 ? `Most recent saved date: ${availableDates[0]}` : 'This may be an NBA off day or data not yet saved.'}
+                            {availableDates.length > 0
+                                ? <>Try <span className="text-emerald-400 font-mono">{availableDates[0]}</span> — the most recent date with saved data.</>
+                                : 'This may be an NBA off day or game data has not been saved yet.'}
                         </p>
                     </div>
                 )}
@@ -439,27 +448,34 @@ export function BoxScoreViewerContent() {
                     </div>
                 )}
 
-                {/* Live: player tables */}
+                {/* Live: player tables — Away and Home remain SEPARATE panels, stack on mobile */}
                 {isToday && !loading && boxScores && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full overflow-x-hidden">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 w-full">
                         {/* AWAY */}
                         <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
-                            <div className="px-6 py-4 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
-                                <h3 className="text-lg font-black text-white tracking-widest">{boxScores.game_info?.away_team || 'AWAY'}</h3>
+                            <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
+                                <h3 className="text-base font-black text-white tracking-widest">{boxScores.game_info?.away_team || 'AWAY'}</h3>
                                 <span className="text-2xl font-mono text-emerald-400 font-bold">{boxScores.game_info?.away_score}</span>
                             </div>
-                            <div className="overflow-x-auto flex-1 h-[400px] xl:h-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
-                                <table className="w-full text-left relative"><TableHeader /><tbody>{boxScores.away.map(renderPlayerRow)}</tbody></table>
+                            {/* overflow-x-auto lets the table scroll horizontally on mobile; auto height fills content */}
+                            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
+                                <table className="w-full min-w-full text-left">
+                                    <TableHeader />
+                                    <tbody>{boxScores.away.map(renderPlayerRow)}</tbody>
+                                </table>
                             </div>
                         </div>
                         {/* HOME */}
                         <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
-                            <div className="px-6 py-4 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
-                                <h3 className="text-lg font-black text-white tracking-widest">{boxScores.game_info?.home_team || 'HOME'}</h3>
+                            <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
+                                <h3 className="text-base font-black text-white tracking-widest">{boxScores.game_info?.home_team || 'HOME'}</h3>
                                 <span className="text-2xl font-mono text-emerald-400 font-bold">{boxScores.game_info?.home_score}</span>
                             </div>
-                            <div className="overflow-x-auto flex-1 h-[400px] xl:h-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
-                                <table className="w-full text-left relative"><TableHeader /><tbody>{boxScores.home.map(renderPlayerRow)}</tbody></table>
+                            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
+                                <table className="w-full min-w-full text-left">
+                                    <TableHeader />
+                                    <tbody>{boxScores.home.map(renderPlayerRow)}</tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
