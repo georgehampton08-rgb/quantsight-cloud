@@ -3,12 +3,15 @@ Vanguard Admin Routes
 ====================
 Admin endpoints for incident management and learning data verification.
 """
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request, Query
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 import logging
 import os
+
+from api.validators import safe_vanguard_mode, safe_id, safe_text
+from api.auth_middleware import require_admin_role
 
 from vanguard.archivist.storage import get_incident_storage
 from vanguard.resolution_learner import VanguardResolutionLearner
@@ -16,7 +19,10 @@ from vanguard.ai.ai_analyzer import VanguardAIAnalyzer
 from vanguard.audit.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["vanguard-admin"])
+# Router-level dependency — require_admin_role applies to EVERY route on this router.
+# This covers all 20+ admin routes without requiring per-route Depends.
+# Individual route Depends are left where already added for documentation clarity.
+router = APIRouter(tags=["vanguard-admin"], dependencies=[Depends(require_admin_role)])
 audit = get_audit_logger()
 
 
@@ -43,13 +49,28 @@ class CIIncidentRequest(BaseModel):
     error_message: str
     metadata: Optional[dict] = None
 
+    @field_validator('fingerprint')
+    @classmethod
+    def validate_fingerprint(cls, v: str) -> str:
+        return safe_id(v, 'fingerprint')
+
+    @field_validator('error_message')
+    @classmethod
+    def validate_error_message(cls, v: str) -> str:
+        return safe_text(v, 'error_message', 1000)
+
 
 class ModeRequest(BaseModel):
     mode: str  # "SILENT_OBSERVER", "CIRCUIT_BREAKER", "FULL_SOVEREIGN"
 
+    @field_validator('mode')
+    @classmethod
+    def validate_mode(cls, v: str) -> str:
+        return safe_vanguard_mode(v)
+
 
 @router.post("/vanguard/admin/mode")
-async def toggle_vanguard_mode(http_request: Request, request: ModeRequest):
+async def toggle_vanguard_mode(http_request: Request, request: ModeRequest, admin: dict = Depends(require_admin_role)):
     """Manually toggle Vanguard operational mode."""
     from vanguard.core.config import get_vanguard_config, VanguardMode
     config = get_vanguard_config()
@@ -79,7 +100,7 @@ async def toggle_vanguard_mode(http_request: Request, request: ModeRequest):
 
 
 @router.post("/vanguard/admin/incidents/ingest")
-async def ingest_ci_incident(request: CIIncidentRequest):
+async def ingest_ci_incident(request: CIIncidentRequest, admin: dict = Depends(require_admin_role)):
     """Ingest an incident from CI/CD pipelines (drift oracle, perf monitor, dep audit)."""
     from vanguard.core.types import Incident
     storage = get_incident_storage()
@@ -110,7 +131,7 @@ async def ingest_ci_incident(request: CIIncidentRequest):
 
 
 @router.get("/vanguard/admin/incidents")
-async def list_all_incidents(status: Optional[str] = None, limit: int = 2000):
+async def list_all_incidents(status: Optional[str] = None, limit: int = Query(500, ge=1, le=2000), admin: dict = Depends(require_admin_role)):
     """
     List all incidents with optional status filter.
     
@@ -166,7 +187,7 @@ async def list_all_incidents(status: Optional[str] = None, limit: int = 2000):
 
 
 @router.get("/vanguard/admin/stats")
-async def get_vanguard_stats():
+async def get_vanguard_stats(admin: dict = Depends(require_admin_role)):
     """
     Composite health score for the Vanguard Control Room.
 
@@ -321,7 +342,7 @@ async def get_vanguard_stats():
 
 
 @router.post("/vanguard/admin/incidents/{fingerprint}/resolve")
-async def resolve_incident(http_request: Request, fingerprint: str, request: ResolveRequest):
+async def resolve_incident(http_request: Request, fingerprint: str, request: ResolveRequest, admin: dict = Depends(require_admin_role)):
     """Mark a single incident as resolved with pre/post resolution analysis."""
     try:
         storage = get_incident_storage()

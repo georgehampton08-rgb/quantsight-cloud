@@ -8,7 +8,9 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Request
+from api.validators import safe_collection
+from api.auth_middleware import require_admin_role
 
 from firestore_db import (
     get_firestore_db,
@@ -22,7 +24,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/status")
-async def admin_status():
+async def admin_status(admin: dict = Depends(require_admin_role)):
     """
     Quick admin status check - works without Firestore
     """
@@ -31,6 +33,7 @@ async def admin_status():
         "timestamp": datetime.utcnow().isoformat(),
         "endpoints_available": [
             "/admin/status",
+            "/admin/cache/purge",
             "/admin/init-collections",
             "/admin/collections/status",
             "/admin/seed/sample-data",
@@ -40,8 +43,46 @@ async def admin_status():
     }
 
 
+@router.post("/cache/purge")
+async def purge_cache(request: Request, admin: dict = Depends(require_admin_role)):
+    """
+    Purge server-side in-memory caches (rate limiter buckets, NBA API response cache).
+    Does NOT touch Firestore data. Safe to re-run — idempotent.
+    Auth guard (require_admin_role) added in Phase 3.
+    """
+    purged = []
+
+    # Clear in-process rate limiter sliding window buckets
+    try:
+        from vanguard.middleware.rate_limiter import _MEMORY_BUCKETS
+        count = len(_MEMORY_BUCKETS)
+        _MEMORY_BUCKETS.clear()
+        purged.append(f"rate_limiter_buckets: {count} IP buckets cleared")
+    except Exception as e:
+        purged.append(f"rate_limiter: skipped ({type(e).__name__}: {e})")
+
+    # Clear pulse producer cache if available
+    try:
+        from services.live_pulse_service_cloud import get_pulse_cache
+        cache = get_pulse_cache()
+        if cache and hasattr(cache, '_game_data'):
+            size = len(cache._game_data)
+            cache._game_data.clear()
+            purged.append(f"pulse_cache: {size} entries cleared")
+    except Exception as e:
+        purged.append(f"pulse_cache: skipped ({type(e).__name__})")
+
+    logger.info(f"[ADMIN] Cache purge executed. Results: {purged}")
+    return {
+        "status": "ok",
+        "message": f"Cache purged. {len(purged)} components processed.",
+        "detail": purged,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @router.post("/baselines/populate")
-async def populate_baselines():
+async def populate_baselines(admin: dict = Depends(require_admin_role)):
     """
     Populate season baselines from NBA API → Firestore.
     Fetches player season averages + team defense/pace.
@@ -59,7 +100,7 @@ async def populate_baselines():
 
 
 @router.get("/baselines/status")
-async def baselines_status():
+async def baselines_status(admin: dict = Depends(require_admin_role)):
     """
     Get current season baseline cache status.
     """
@@ -71,7 +112,7 @@ async def baselines_status():
 
 
 @router.post("/init-collections")
-async def initialize_collections():
+async def initialize_collections(admin: dict = Depends(require_admin_role)):
     """
     Initialize Firestore collections (idempotent operation)
     """
@@ -182,6 +223,8 @@ async def clear_collection(collection_name: str):
     Clear all documents from a collection
     ⚠️ DANGEROUS - Use with caution
     """
+    # Validate: only allowlisted collections can be cleared
+    safe_collection(collection_name)
     try:
         db = get_firestore_db()
         coll_ref = db.collection(collection_name)

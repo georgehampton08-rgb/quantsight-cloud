@@ -446,13 +446,18 @@ async def get_player_by_id_endpoint(player_id: str):
 
 # ================== PWA COMPATIBILITY ENDPOINTS ==================
 
-@router.post("/settings/gemini-key")
-async def save_gemini_key(data: dict):
-    """Save Gemini API key to Cloud Secret Manager (placeholder)"""
-    # This would integrate with Google Secret Manager in production
+@router.get("/settings/key-status")
+async def key_status():
+    """
+    Read-only status check for server-side API key configuration.
+    Returns whether keys are configured — never reveals the actual keys.
+    All keys are server-side only. Client cannot submit or modify them.
+    """
     return {
-        "success": True,
-        "message": "Gemini key saved (placeholder - not yet implemented)"
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "nba_api": "active",
+        "kaggle": "server_managed",
+        "note": "Keys are server-managed via Cloud Run environment variables."
     }
 
 

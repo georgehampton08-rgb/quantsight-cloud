@@ -352,13 +352,23 @@ if not VANGUARD_AVAILABLE:
 
 
 
-# CORS configuration for web/mobile clients
+# CORS configuration — explicitly allowlisted origins only, NO wildcard
+# Reads from ALLOWED_ORIGINS env var (comma-separated) set in Cloud Run env
+# Falls back to production origins if env var is not set
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()] or [
+    "https://quantsight-prod.web.app",
+    "https://quantsight.app",
+    "http://localhost:5173",   # Vite dev server
+    "http://localhost:5174",   # Vite dev server alternate port
+]
+logger.info(f"[CORS] Allowed origins: {_allowed_origins}")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
+    allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods including OPTIONS for preflight
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-Idempotency-Key"],
 )
 
 # Vanguard Middleware Stack

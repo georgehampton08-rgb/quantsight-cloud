@@ -69,9 +69,20 @@ service cloud.firestore {
     }
     
     // =========================================================================
+    // ADMIN ROLES - Two-Layer Auth (Firebase Token + Firestore Role)
+    // =========================================================================
+    // Users can read their own admin doc to check role status in UI.
+    // Write is DENIED from client — only Cloud Run Admin SDK can grant roles.
+    // Creating a Firebase account does NOT grant any access. Explicit grant required.
+    match /admins/{uid} {
+      allow read:  if request.auth != null && request.auth.uid == uid;
+      allow write: if false;  // Cloud Run Admin SDK only — no self-grant possible
+    }
+
+    // =========================================================================
     // DEFAULT DENY - Catch-all for undefined collections
     // =========================================================================
-    
+
     match /{document=**} {
       allow read, write: if false;
     }

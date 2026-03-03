@@ -4,16 +4,19 @@ Vanguard Surgeon Admin API Endpoints
 API endpoints for managing and monitoring Surgeon actions.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List, Dict, Any
 from datetime import datetime
 
 from ..surgeon.learning import get_learning_system
 from ..archivist.storage import get_incident_storage
 from ..utils.logger import get_logger
+from api.validators import safe_id
+from api.auth_middleware import require_admin_role
 
 logger = get_logger(__name__)
-router = APIRouter()
+# Router-level auth — covers all surgeon mutation and read routes
+router = APIRouter(dependencies=[Depends(require_admin_role)])
 
 # Phase 7: Audit logging
 try:
@@ -111,10 +114,11 @@ async def get_active_quarantines() -> Dict[str, Any]:
 async def release_quarantine(endpoint_id: str, http_request: Request) -> Dict[str, str]:
     """
     Manually release an endpoint from quarantine.
-    
+
     Args:
         endpoint_id: Document ID (endpoint with / replaced by _)
     """
+    safe_id(endpoint_id, 'endpoint_id')  # validate before touching Firestore
     try:
         storage = get_incident_storage()
         
@@ -154,10 +158,11 @@ async def release_quarantine(endpoint_id: str, http_request: Request) -> Dict[st
 async def remove_rate_limit(endpoint_id: str, http_request: Request) -> Dict[str, str]:
     """
     Remove rate limit from an endpoint.
-    
+
     Args:
         endpoint_id: Document ID (endpoint with / replaced by _)
     """
+    safe_id(endpoint_id, 'endpoint_id')  # validate before touching Firestore
     try:
         storage = get_incident_storage()
         

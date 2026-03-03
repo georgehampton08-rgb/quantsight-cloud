@@ -103,34 +103,19 @@ export const PlayerApi = {
         }, [playerId, opponentId]);
         return normalizeMatchupResult(res.data) as MatchupResult;
     },
-    saveKeys: async (apiKey: string) => {
-        const res = await ApiContract.execute<{ status: string, message: string }>('saveKeys', {
-            path: 'settings/keys',
-            options: {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ gemini_api_key: apiKey })
-            }
-        }, [apiKey]);
-        return res.data;
-    },
-    saveKaggleKeys: async (username: string, key: string) => {
-        if (window.electronAPI) {
-            return window.electronAPI.saveKaggleKeys(username, key);
-        }
-        throw new Error('Kaggle keys not supported in browser mode');
-    },
-    syncKaggle: async () => {
-        if (window.electronAPI) {
-            return window.electronAPI.syncKaggle();
-        }
-        throw new Error('Kaggle sync not supported in browser mode');
+    getKeyStatus: async () => {
+        // Read-only check: is the server-side Gemini key configured?
+        const res = await ApiContract.executeWeb<{ gemini_configured: boolean; kaggle: string }>(
+            { path: 'settings/key-status' }
+        );
+        return res;
     },
     purgeDb: async () => {
-        if (window.electronAPI) {
-            return window.electronAPI.purgeDb();
-        }
-        throw new Error('DB purge not supported in browser mode');
+        // Calls REST endpoint (auth-gated in Phase 3 via executeAdmin)
+        const res = await ApiContract.executeWeb<{ status: string; message: string; detail: string[] }>(
+            { path: 'admin/cache/purge', options: { method: 'POST' } }
+        );
+        return res;
     },
     forceRefresh: async (playerId: string, playerName: string, cachedLastGame: string) => {
         const res = await ApiContract.execute<any>('forceRefresh', {

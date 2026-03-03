@@ -18,9 +18,11 @@ import os
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from api.auth_middleware import require_admin_role
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["vanguard-vaccine"])
+# Router-level auth — require_admin_role + feature flag guard on every vaccine route
+router = APIRouter(tags=["vanguard-vaccine"], dependencies=[Depends(require_admin_role)])
 
 VACCINE_VERSION = "2.0.0"
 
