@@ -1,0 +1,129 @@
+{
+    "_comment": "Firestore Schema Examples — QuantSight v2.0 (6-Collection Hybrid)",
+    "_schema_version": "2.0",
+    "_last_updated": "2026-03-04",
+    "games_gameId": {
+        "_path": "games/0022500789",
+        "_description": "Canonical game record. All writes via FirebaseGameService.upsert_canonical_game()",
+        "gameId": "0022500789",
+        "gameDate": "2026-03-03",
+        "season": "2025-26",
+        "homeTeam": {
+            "teamId": "1610612747",
+            "tricode": "LAL",
+            "name": "Los Angeles Lakers"
+        },
+        "awayTeam": {
+            "teamId": "1610612738",
+            "tricode": "BOS",
+            "name": "Boston Celtics"
+        },
+        "status": "Final",
+        "startTime": "2026-03-03T19:30:00-05:00",
+        "createdAt": "2026-03-03T19:25:00Z",
+        "updatedAt": "2026-03-03T22:45:00Z"
+    },
+    "calendar_date_games_gameId": {
+        "_path": "calendar/2026-03-03/games/0022500789",
+        "_description": "Thin date index. Only fields needed for list/calendar view.",
+        "gameId": "0022500789",
+        "status": "Final",
+        "homeTeam": "LAL",
+        "awayTeam": "BOS",
+        "startTime": "2026-03-03T19:30:00-05:00",
+        "refPath": "games/0022500789",
+        "updatedAt": "2026-03-03T22:45:00Z"
+    },
+    "live_games_gameId": {
+        "_path": "live_games/0022500789",
+        "_description": "Hot live state doc. Updated at max 5s cadence. Stores cursor for crash recovery.",
+        "status": "In Progress",
+        "period": 3,
+        "clock": "8:42",
+        "homeScore": 78,
+        "awayScore": 72,
+        "lastSequenceNumber": 287,
+        "lastPlayId": "4019284891",
+        "ingestHeartbeat": "2026-03-03T21:42:00Z",
+        "updatedAt": "2026-03-03T21:42:00Z",
+        "trackingEnabled": true,
+        "gameDate": "2026-03-03",
+        "homeTeam": {
+            "tricode": "LAL"
+        },
+        "awayTeam": {
+            "tricode": "BOS"
+        },
+        "season": "2025-26",
+        "startTime": "2026-03-03T19:30:00-05:00"
+    },
+    "pbp_events_gameId_events_seq": {
+        "_path": "pbp_events/0022500789/events/000042",
+        "_description": "PBP event. Doc ID = zero-padded sequenceNumber for free lexicographic ordering.",
+        "playId": "4019284573",
+        "sequenceNumber": 42,
+        "eventType": "Three Point Jumper",
+        "description": "Curry makes 27-foot three point jumper (Green assists)",
+        "period": 2,
+        "clock": "5:32",
+        "homeScore": 54,
+        "awayScore": 48,
+        "teamId": "1610612744",
+        "teamTricode": "GSW",
+        "primaryPlayerId": "201939",
+        "primaryPlayerName": "Stephen Curry",
+        "secondaryPlayerId": "203110",
+        "secondaryPlayerName": "Draymond Green",
+        "isScoringPlay": true,
+        "isShootingPlay": true,
+        "pointsValue": 3,
+        "shotDistance": 27.0,
+        "shotResult": "Made",
+        "coordinateX": 23.5,
+        "coordinateY": 8.2,
+        "source": "espn"
+    },
+    "shots_gameId_attempts_seq": {
+        "_path": "shots/0022500789/attempts/000042",
+        "_description": "Lean shot doc. Same doc ID as pbp_events sibling. Only shot-relevant fields.",
+        "sequenceNumber": 42,
+        "playerId": "201939",
+        "playerName": "Stephen Curry",
+        "teamId": "1610612744",
+        "teamTricode": "GSW",
+        "shotType": "Three Point Jumper",
+        "distance": 27.0,
+        "made": true,
+        "period": 2,
+        "clock": "5:32",
+        "x": 23.5,
+        "y": 8.2,
+        "pointsValue": 3,
+        "ts": "2026-03-03T21:32:00Z"
+    },
+    "final_games_gameId": {
+        "_path": "final_games/0022500789",
+        "_description": "Final freeze. Written once at game end. Pointers to PBP + shot collections. createdAt never overwritten.",
+        "gameId": "0022500789",
+        "gameDate": "2026-03-03",
+        "season": "2025-26",
+        "homeTeam": {
+            "tricode": "LAL",
+            "name": "Los Angeles Lakers"
+        },
+        "awayTeam": {
+            "tricode": "BOS",
+            "name": "Boston Celtics"
+        },
+        "homeScore": 112,
+        "awayScore": 108,
+        "period": 4,
+        "status": "Final",
+        "totalPlays": 487,
+        "lastSequenceNumber": 487,
+        "pbpPath": "pbp_events/0022500789/events",
+        "shotsPath": "shots/0022500789/attempts",
+        "finalizedAt": "2026-03-03T22:45:00Z",
+        "createdAt": "2026-03-03T22:45:00Z"
+    }
+}

@@ -1,183 +1,291 @@
 # NBA Play-by-Play Pipeline Architecture
 
-Last Updated: 2026-03-03
+Last Updated: 2026-03-04
+Schema Version: v2.0 (6-Collection Hybrid)
 
 ---
 
 ## Overview
 
 QuantSight's Play-by-Play (PBP) pipeline delivers real-time NBA play data from
-external sports APIs to the frontend with sub-second latency, using a
-**dual-source ingestion**, **Firestore persistence**, and **Server-Sent Events
-(SSE)** streaming approach.
+external sports APIs to the frontend with sub-second latency, using
+**dual-source ingestion**, **Firestore persistence**, and **Server-Sent Events (SSE)**
+streaming.
+
+**Key v2.0 improvements:**
+
+- Date-first indexing for calendar view (`calendar/{date}/games/`)
+- Crash-recoverable cursor: polling service persists `lastSequenceNumber` to Firestore
+- Append-only PBP stream: ordered by zero-padded sequence number doc ID (no `.orderBy()` needed)
+- Shot chart extraction as an inline side-effect of PBP writes
+- Final freeze: `final_games/{gameId}` snapshot created at game-end
 
 ---
 
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Cloud Run (Backend)                  │
-│                                                         │
-│  ┌─────────────────┐     ┌─────────────────────────┐   │
-│  │  ESPN Scoreboard│────▶│   NBAPlayByPlayClient    │   │
-│  │  (Primary)      │     │   fetch_espn_plays()     │   │
-│  └─────────────────┘     └──────────┬──────────────┘   │
-│  ┌─────────────────┐                │ fallback          │
-│  │  cdn.nba.com    │────────────────┘                   │
-│  │  (Fallback CDN) │     ┌──────────▼──────────────┐   │
-│  └─────────────────┘     │   PlayEvent (Pydantic)   │   │
-│                          │   Unified Data Model     │   │
-│                          └──────────┬──────────────┘   │
-│                                     │                   │
-│                          ┌──────────▼──────────────┐   │
-│                          │  PBPPollingService       │   │
-│                          │  asyncio task per game   │   │
-│                          │  poll every 10s          │   │
-│                          └──────────┬──────────────┘   │
-│                    ┌────────────────┼──────────┐        │
-│                    ▼                ▼          ▼        │
-│         ┌──────────────┐  ┌───────────┐  ┌─────────┐  │
-│         │  Firestore   │  │SSE Queues │  │  Cache  │  │
-│         │  live_games/ │  │per game_id│  │Snapshot │  │
-│         │  {game_id}/  │  └─────┬─────┘  └─────────┘  │
-│         │  plays/{id}  │        │                       │
-│         └──────────────┘        │                       │
-└─────────────────────────────────┼─────────────────────┘
-                                  │ SSE text/event-stream
-                    ┌─────────────▼──────────────────┐
-                    │     React Frontend              │
-                    │  useLivePlayByPlay hook         │
-                    │  - Hydrates from /plays         │
-                    │  - Streams from /stream SSE     │
-                    │  - Deduplicates by sequenceNum  │
-                    └────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     Cloud Run (Backend)                      │
+│                                                             │
+│  ┌─────────────────┐     ┌─────────────────────────┐       │
+│  │  ESPN Scoreboard│────▶│   NBAPlayByPlayClient    │       │
+│  │  (Primary)      │     │   fetch_espn_plays()     │       │
+│  └─────────────────┘     └──────────┬──────────────┘       │
+│  ┌─────────────────┐                │ fallback              │
+│  │  cdn.nba.com    │────────────────┘                       │
+│  │  (Fallback CDN) │     ┌──────────▼──────────────┐       │
+│  └─────────────────┘     │   PlayEvent (Pydantic)   │       │
+│                          │   Unified Data Model     │       │
+│                          └──────────┬──────────────┘       │
+│                                     │                       │
+│                          ┌──────────▼──────────────┐       │
+│                          │  PBPPollingService       │       │
+│                          │  asyncio task per game   │       │
+│                          │  - reads cursor from FS  │       │
+│                          │  - throttle: 5s/write    │       │
+│                          │  - detects game end      │       │
+│                          └──────┬────────────┬──────┘       │
+│               ┌─────────────────┼────────────┼───────────┐  │
+│               ▼                 ▼            ▼           ▼  │
+│  ┌────────────────────┐  ┌──────────┐  ┌────────┐  ┌──────┐│
+│  │  FirebasePBPService│  │SSE Queue │  │ Game   │  │Final ││
+│  │  save_plays_v2()   │  │per gameId│  │Service │  │ize() ││
+│  │  extract_shot_doc()│  └────┬─────┘  └────────┘  └──────┘│
+│  └─────────┬──────────┘       │                             │
+│            │                  │ SSE text/event-stream       │
+└────────────┼──────────────────┼─────────────────────────────┘
+             │                  │
+             ▼                  ▼
+      ┌─────────────┐    ┌────────────────────────┐
+      │  Firestore  │    │  React Frontend         │
+      │  6 collections│  │  useLivePlayByPlay hook │
+      │  (see below)│    │  - Hydrates /plays      │
+      └─────────────┘    │  - Streams /stream SSE  │
+                         │  - Shot chart /shots    │
+                         │  - Calendar /by-date    │
+                         └────────────────────────┘
 ```
 
 ---
 
-## Firestore Document Structure
+## Firestore Document Structure (v2.0)
 
-```
-live_games/                        (collection)
-  {espn_game_id}/                  (document — game metadata)
-    plays/                         (subcollection)
-      {playId}/                    (document — one per play event)
-        playId: string
-        sequenceNumber: int        ← sort key, unique per game
-        eventType: string
-        description: string
-        period: int
-        clock: string
-        homeScore: int
-        awayScore: int
-        teamId: string | null
-        teamTricode: string | null
-        primaryPlayerId: string | null
-        primaryPlayerName: string | null
-        secondaryPlayerId: string | null   ← assist/block/steal player
-        secondaryPlayerName: string | null
-        involvedPlayers: string[]
-        isScoringPlay: bool
-        isShootingPlay: bool
-        pointsValue: int
-        shotDistance: float | null
-        shotArea: string | null    ← e.g. "Left Corner 3"
-        shotResult: "Made"|"Missed"|null
-        coordinateX: float | null  ← NBA court X (0-50 range)
-        coordinateY: float | null  ← NBA court Y (0-94 range)
-        rawData: {}                ← preserved original payload
-        source: "espn" | "nba_cdn"
+All collection path strings are defined in `services/firestore_collections.py`.
+Never use magic strings — always import from that module.
 
-game_cache/                        (collection)
-  {espn_game_id}/                  (document — fast-read snapshot)
-    playsCount: int
-    lastPolled: ISO timestamp
+### A) Canonical Game Record — `games/{gameId}`
+
+Complete game metadata. The single source of truth for a game.
+
+```json
+{
+  "gameId": "0022500789",
+  "gameDate": "2026-03-03",
+  "season": "2025-26",
+  "homeTeam": { "teamId": "1610612747", "tricode": "LAL", "name": "Los Angeles Lakers" },
+  "awayTeam": { "teamId": "1610612738", "tricode": "BOS", "name": "Boston Celtics" },
+  "status": "Final",
+  "startTime": "2026-03-03T19:30:00-05:00",
+  "createdAt": "2026-03-03T19:25:00Z",
+  "updatedAt": "2026-03-03T22:45:00Z"
+}
 ```
 
-**Key Design Decisions:**
+### B) Date Index — `calendar/{YYYY-MM-DD}/games/{gameId}`
 
-- `playId` is used as the Firestore document ID → guarantees idempotency on re-poll
-- `merge=True` on all writes → safe to re-run without duplicating
-- `sequenceNumber` is the sort index → consistent chronological order across sources
-- `rawData` stored for full backward compatibility and debugging
+Thin pointer used for calendar/date-browsing views. Intentionally lean.
+
+```json
+{
+  "gameId": "0022500789",
+  "status": "Final",
+  "homeTeam": "LAL",
+  "awayTeam": "BOS",
+  "startTime": "2026-03-03T19:30:00-05:00",
+  "refPath": "games/0022500789",
+  "updatedAt": "2026-03-03T22:45:00Z"
+}
+```
+
+### C) Live State Cache — `live_games/{gameId}`
+
+Hot doc updated at ≤5s cadence during live games. Stores current scoreboard + cursor.
+
+```json
+{
+  "status": "In Progress",
+  "period": 3,
+  "clock": "8:42",
+  "homeScore": 78,
+  "awayScore": 72,
+  "lastSequenceNumber": 287,
+  "lastPlayId": "4019284891",
+  "ingestHeartbeat": "2026-03-03T21:42:00Z",
+  "updatedAt": "2026-03-03T21:42:00Z",
+  "trackingEnabled": true,
+  "gameDate": "2026-03-03",
+  "homeTeam": { "tricode": "LAL" },
+  "awayTeam": { "tricode": "BOS" },
+  "season": "2025-26"
+}
+```
+
+### D) Play-by-Play Event Stream — `pbp_events/{gameId}/events/{sequenceNumber}`
+
+**Document ID = zero-padded sequenceNumber** (e.g., `"000042"`).
+Firestore sorts doc IDs lexicographically — padding makes that order == chronological order.
+Append-only: never update an existing event doc (idempotent via `merge=True`).
+
+```json
+{
+  "playId": "4019284573",
+  "sequenceNumber": 42,
+  "eventType": "Three Point Jumper",
+  "description": "Curry makes 27-foot three point jumper (Green assists)",
+  "period": 2,
+  "clock": "5:32",
+  "homeScore": 54,
+  "awayScore": 48,
+  "teamId": "1610612744",
+  "teamTricode": "GSW",
+  "primaryPlayerId": "201939",
+  "primaryPlayerName": "Stephen Curry",
+  "secondaryPlayerId": "203110",
+  "secondaryPlayerName": "Draymond Green",
+  "isScoringPlay": true,
+  "isShootingPlay": true,
+  "pointsValue": 3,
+  "shotDistance": 27.0,
+  "shotResult": "Made",
+  "coordinateX": 23.5,
+  "coordinateY": 8.2,
+  "source": "espn"
+}
+```
+
+### E) Shot Chart Attempts — `shots/{gameId}/attempts/{sequenceNumber}`
+
+Lean shot-only doc, same doc IDs as `pbp_events/`. Created only for `isShootingPlay == True`.
+
+```json
+{
+  "sequenceNumber": 42,
+  "playerId": "201939",
+  "playerName": "Stephen Curry",
+  "teamId": "1610612744",
+  "teamTricode": "GSW",
+  "shotType": "Three Point Jumper",
+  "distance": 27.0,
+  "made": true,
+  "period": 2,
+  "clock": "5:32",
+  "x": 23.5,
+  "y": 8.2,
+  "pointsValue": 3,
+  "ts": "2026-03-03T21:32:00Z"
+}
+```
+
+### F) Final Game Snapshot — `final_games/{gameId}`
+
+Written once at game end. Pointers to full PBP and shot collections.
+Safe to preserve across migrations (`createdAt` preserved, never overwritten).
+
+```json
+{
+  "gameId": "0022500789",
+  "gameDate": "2026-03-03",
+  "season": "2025-26",
+  "homeTeam": { "tricode": "LAL", "name": "Los Angeles Lakers" },
+  "awayTeam": { "tricode": "BOS", "name": "Boston Celtics" },
+  "homeScore": 112,
+  "awayScore": 108,
+  "period": 4,
+  "status": "Final",
+  "totalPlays": 487,
+  "lastSequenceNumber": 487,
+  "pbpPath": "pbp_events/0022500789/events",
+  "shotsPath": "shots/0022500789/attempts",
+  "finalizedAt": "2026-03-03T22:45:00Z",
+  "createdAt": "2026-03-03T22:45:00Z"
+}
+```
 
 ---
 
-## Dual-Source Strategy
-
-| Source | URL | Priority | Notes |
-|--------|-----|----------|-------|
-| ESPN Summary API | `site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={id}` | Primary | Full participants, coordinates, scoring flags |
-| NBA CDN | `cdn.nba.com/static/json/liveData/playbyplay/playbyplay_{id}.json` | Fallback | Shot area, assist IDs, free throw tracking |
-
-Both sources pipe through their respective `map_*_to_unified()` functions and
-produce identical `PlayEvent` Pydantic objects — the frontend never knows which
-source provided the data.
-
-**ESPN coordinate validation:** Raw ESPN coordinates can be nonsense values
-(`-214748340`) for non-shot plays. The mapper nullifies any coordinate outside
-the range `[-100, 200]` on both axes.
-
----
-
-## API Rate Limits & Backoff
-
-The poller runs every 10 seconds per game. On consecutive ESPN failures:
-
-```
-sleep_time = min(10 * (2 ** consecutive_errors), 60)
-```
-
-| Errors | Sleep |
-|--------|-------|
-| 0 | 10s |
-| 1 | 20s |
-| 2 | 40s |
-| 3+ | 60s (cap) |
-
-ESPN public endpoints do not publish rate limits. In practice, 10s polling of
-the summary endpoint has not triggered any throttling during testing.
-
----
-
-## REST + SSE Endpoints
+## REST API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/v1/games/live` | List all ESPN games (pre/in/post state) |
-| POST | `/v1/games/{id}/start-tracking` | Manually wake the poller for a game |
-| GET | `/v1/games/{id}/plays?limit=N` | Hydration: all Firestore-cached plays |
-| GET | `/v1/games/{id}/stream` | SSE stream: new plays pushed in real-time |
-
-**SSE Protocol:**
-
-- On connect: `data: {"type":"connection","status":"connected","gameId":"..."}`
-- On new plays: `data: {"type":"plays_update","plays":[...]}`
-- Every 15s with no plays: `: heartbeat` (SSE comment — keeps load balancer alive)
+| GET | `/v1/games/live` | Live game list from ESPN |
+| GET | `/v1/games/by-date/{date}` | **NEW** — Calendar view (YYYY-MM-DD) |
+| POST | `/v1/games/{id}/start-tracking` | Trigger PBP poller for a game |
+| GET | `/v1/games/{id}/plays` | PBP hydration (v2 path, legacy fallback) |
+| GET | `/v1/games/{id}/shots` | **NEW** — Shot chart data |
+| GET | `/v1/games/{id}/stream` | SSE real-time play stream |
 
 ---
 
-## Frontend Data Flow
+## Key Design Decisions
 
-1. User selects a game from `LiveGameSelector`
-2. `useLivePlayByPlay(gameId)` triggers:
-   - REST call to `/plays` → sets initial state from Firestore cache
-   - Opens `EventSource` to `/stream`
-3. New plays arriving via SSE are merged into state:
-   - Deduplication: `Set` of existing `sequenceNumber`s
-   - Always re-sorted ascending by `sequenceNumber`
-4. `InteractiveShotChart` maps `coordinateX`/`coordinateY` → SVG court positions
-5. `PlayItem` renders color-coded rows with player headshots from NBA CDN
+### 1. Sequence-Number Doc IDs (Zero-Padded)
+
+Using `pad_sequence(seq, width=6)` → `"000042"` as the Firestore document ID gives us:
+
+- Free chronological ordering (Firestore sorts doc IDs lexicographically)
+- No `.orderBy()` query needed → cheaper reads
+- Idempotency: writing the same play twice just merges, no duplicates
+
+### 2. Shot Chart as PBP Side-Effect
+
+Shot docs in `shots/` are written as part of `save_plays_batch_v2()`. This means:
+
+- No second pass over plays
+- Shot chart is always in sync with PBP
+- Adding a shot play adds to both `pbp_events/` and `shots/` in the same batch
+
+### 3. Throttled Live State Writes
+
+`live_games/{gameId}` is updated at most once every 5 seconds (`LIVE_STATE_CADENCE_SEC`).
+This prevents Firestore write hotspots during busy game periods (fast-break sequences).
+
+### 4. Crash-Recoverable Cursor
+
+`lastSequenceNumber` is persisted to `live_games/{gameId}` on every throttled write.
+When Cloud Run cold-starts mid-game, `_read_cursor()` reads it back and resumes without re-ingesting.
+
+### 5. Dual-Write During Transition
+
+`save_plays_batch()` (legacy) now also calls `save_plays_batch_v2()`. This means:
+
+- Old code continues to work unchanged
+- New schema gets populated automatically
+- After running the migration script, the legacy writes can be disabled
+
+### 6. Non-Destructive Migration
+
+The migration script (`scripts/migrate_firestore_schema.py`) never deletes anything by default.
+Run `--cleanup` only after `--verify` confirms counts match.
 
 ---
 
-## Mobile Responsive Layout
+## File Map
 
-The PBP tab uses a **mobile-first** CSS approach:
-
-| Breakpoint | Layout |
-|-----------|--------|
-| `>1024px` | Side-by-side: court left `(flex:2)`, feed right `(flex:1)` |
-| `640–1024px` | Stacked: court on top, feed below (480px fixed height) |
-| `<640px` | Compact: reduced padding, smaller fonts, `clamp()` scaling, tooltip moves to bottom of screen |
+| File | Role |
+|------|------|
+| `services/firestore_collections.py` | **Central constants** — all collection path strings |
+| `services/firebase_game_service.py` | Writes to `games/` + `calendar/` |
+| `services/firebase_pbp_service.py` | PBP + shot writes, finalization |
+| `services/pbp_polling_service.py` | Polling loop with cursor persistence + cadence |
+| `api/play_by_play_routes.py` | REST + SSE endpoints |
+| `scripts/migrate_firestore_schema.py` | One-time migration script |
+| `tests/test_phase0_foundation.py` | Constants + helpers |
+| `tests/test_phase1_game_service.py` | Game service + calendar |
+| `tests/test_phase2_pbp_refactor.py` | PBP v2 + shots |
+| `tests/test_phase3_polling.py` | Cursor + live state |
+| `tests/test_phase4_finalization.py` | finalize_game() |
+| `tests/test_phase5_routes.py` | API routes + compat |
+| `tests/test_phase6_migration.py` | Migration script |
+| `tests/test_phase7_integration.py` | End-to-end pipeline |
+| `tests/run_all_phases.py` | Full suite runner |

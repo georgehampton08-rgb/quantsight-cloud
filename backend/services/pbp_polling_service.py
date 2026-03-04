@@ -1,17 +1,47 @@
+"""
+PBP Polling Service — Refactored (Phase 3)
+==========================================
+Key changes from the original:
+
+1. CURSOR PERSISTENCE: On poller start, reads lastSequenceNumber from
+   live_games/{gameId} in Firestore. If Cloud Run cold-starts mid-game,
+   we resume from the correct position — no redundant re-ingestion.
+
+2. LIVE STATE CADENCE: live_games/{gameId} is written at most every
+   LIVE_STATE_CADENCE_SEC seconds (default 5). This prevents Firestore
+   write hotspots on busy games.
+
+3. NEW WRITE PATH: Uses save_plays_batch_v2() which writes to both
+   pbp_events/ (new) AND live_games/.../plays/ (legacy dual-write).
+
+4. FINALIZATION: When 'End Game' is detected, calls finalize_game()
+   which creates final_games/{gameId} and marks tracking disabled.
+
+5. GAME RECORD UPDATE: On every batch, upserts canonical games/ and
+   calendar/ records via FirebaseGameService.
+"""
 import asyncio
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from firestore_db import get_firestore_db
 from services.nba_pbp_service import pbp_client, PlayEvent
-from services.firebase_pbp_service import firebase_pbp_service
+from services.firebase_pbp_service import firebase_pbp_service, FirebasePBPService
+from services.firestore_collections import LIVE_GAMES
 
 logger = logging.getLogger(__name__)
 
+
 class PBPPollingService:
+    # Minimum seconds between live_games/{id} state writes
+    LIVE_STATE_CADENCE_SEC: float = 5.0
+
     def __init__(self):
         self.active_tasks: Dict[str, asyncio.Task] = {}
         self.game_metadata_cache: Dict[str, Dict[str, Any]] = {}
-        # In-memory broker for SSE routes. game_id -> asyncio.Queue
+        # In-memory broker for SSE routes. game_id -> list[asyncio.Queue]
         self.sse_queues: Dict[str, List[asyncio.Queue]] = {}
 
     def get_tracked_games(self) -> List[str]:
@@ -21,9 +51,10 @@ class PBPPollingService:
         if game_id in self.active_tasks:
             logger.info(f"Already tracking game {game_id}")
             return
-
         logger.info(f"Starting tracking for game {game_id}")
-        self.active_tasks[game_id] = asyncio.create_task(self._poll_loop(game_id))
+        self.active_tasks[game_id] = asyncio.create_task(
+            self._poll_loop(game_id)
+        )
 
     def stop_tracking(self, game_id: str):
         task = self.active_tasks.pop(game_id, None)
@@ -31,86 +62,201 @@ class PBPPollingService:
             task.cancel()
             logger.info(f"Stopped tracking game {game_id}")
 
+    # ── Core helpers (sync — called via asyncio.to_thread) ────────────────────
+
+    @staticmethod
+    def _read_cursor(game_id: str) -> int:
+        """
+        Read lastSequenceNumber from live_games/{gameId}.
+
+        Returns the stored cursor, or -1 if the doc doesn't exist yet
+        (first time tracking this game).
+        """
+        try:
+            db = get_firestore_db()
+            doc = db.collection(LIVE_GAMES).document(str(game_id)).get()
+            if doc.exists:
+                data = doc.to_dict()
+                val = data.get("lastSequenceNumber", -1)
+                return int(val) if val is not None else -1
+            return -1
+        except Exception as e:
+            logger.warning(f"[Polling] _read_cursor failed for {game_id}: {e}")
+            return -1
+
+    @staticmethod
+    def _write_live_state(game_id: str, last_seq: int, last_play: PlayEvent):
+        """
+        Atomically update live_games/{gameId} with current scoreboard + cursor.
+
+        Fields written:
+            status, period, clock, homeScore, awayScore,
+            lastSequenceNumber, lastPlayId, ingestHeartbeat, updatedAt,
+            trackingEnabled
+        """
+        try:
+            db = get_firestore_db()
+            now = datetime.now(timezone.utc).isoformat()
+            doc = {
+                "status": "In Progress",
+                "period": last_play.period,
+                "clock": last_play.clock,
+                "homeScore": last_play.homeScore,
+                "awayScore": last_play.awayScore,
+                "lastSequenceNumber": last_seq,
+                "lastPlayId": str(last_play.playId),
+                "ingestHeartbeat": now,
+                "updatedAt": now,
+                "trackingEnabled": True,
+            }
+            db.collection(LIVE_GAMES).document(str(game_id)).set(doc, merge=True)
+        except Exception as e:
+            logger.error(f"[Polling] _write_live_state failed for {game_id}: {e}")
+
+    @staticmethod
+    def _update_game_records(game_id: str, plays: List[PlayEvent]):
+        """
+        Upsert canonical games/ + calendar/ index from the latest play metadata.
+
+        Only has the game_id and score info from plays — we use the live_games
+        doc for any richer metadata (teams, date) if available.
+        """
+        try:
+            db = get_firestore_db()
+            live_doc = db.collection(LIVE_GAMES).document(str(game_id)).get()
+
+            if not live_doc.exists:
+                return  # No metadata yet — skip silently
+
+            live = live_doc.to_dict()
+            game_date = live.get("gameDate", "")
+            if not game_date:
+                return  # Can't build calendar index without a date
+
+            from services.firebase_game_service import FirebaseGameService
+            home_team = live.get("homeTeam", {})
+            away_team = live.get("awayTeam", {})
+
+            FirebaseGameService.upsert_canonical_game(
+                game_id=game_id,
+                game_date=game_date,
+                season=live.get("season", ""),
+                home_team=home_team,
+                away_team=away_team,
+                status=live.get("status", "In Progress"),
+                start_time=live.get("startTime", ""),
+            )
+            FirebaseGameService.upsert_calendar_index(
+                game_id=game_id,
+                game_date=game_date,
+                status=live.get("status", "In Progress"),
+                home_team=home_team.get("tricode", ""),
+                away_team=away_team.get("tricode", ""),
+                start_time=live.get("startTime", ""),
+            )
+        except Exception as e:
+            logger.error(f"[Polling] _update_game_records failed for {game_id}: {e}")
+
+    # ── Main polling loop ─────────────────────────────────────────────────────
+
     async def _poll_loop(self, game_id: str):
-        poll_interval = 10 # seconds
+        poll_interval = 10  # seconds
         consecutive_errors = 0
-        last_sequence_num = -1
+
+        # Phase 3 addition: bootstrap cursor from Firestore (crash-recovery)
+        last_sequence_num: int = await asyncio.to_thread(
+            self._read_cursor, game_id
+        )
+        logger.info(
+            f"[Polling] Starting game {game_id} with cursor={last_sequence_num}"
+        )
+
+        last_live_write: float = 0.0  # epoch time of last live_games write
 
         try:
             while True:
                 try:
-                    # 1. Fetch from primary ESPN
                     plays = pbp_client.fetch_espn_plays(game_id)
                     consecutive_errors = 0
-                    
                 except Exception as e:
                     logger.error(f"ESPN failed for {game_id}: {e}")
                     consecutive_errors += 1
                     plays = []
-                    
-                # NOTE: In a real failover, we'd need to map ESPN game_id to NBA game_id, 
-                # but they are physically different IDs. If ESPN fails continuously,
-                # we'd rely on a manual or lookup mapping to switch to CDN.
-                # For this MVP phase, we retry ESPN with backoff.
-                
-                if not plays and consecutive_errors > 0:
-                    try:
-                        # Optional: attempt CDN fallback if we knew the NBA ID
-                        # plays = pbp_client.fetch_nba_cdn_plays(nba_game_id)
-                        pass
-                    except:
-                        pass
 
-                # Filter newly unseen plays
-                new_plays = []
-                for p in plays:
-                    if p.sequenceNumber > last_sequence_num:
-                        new_plays.append(p)
+                # Filter to only plays newer than cursor
+                new_plays = [
+                    p for p in plays if p.sequenceNumber > last_sequence_num
+                ]
 
                 if new_plays:
-                    # Async push to Firebase (run in threadpool since Firebase Admin is sync)
-                    await asyncio.to_thread(firebase_pbp_service.save_plays_batch, game_id, new_plays)
-                    
-                    # Update local state
-                    last_sequence_num = max([p.sequenceNumber for p in new_plays])
-                    
-                    # Async update metadata/snapshot
+                    # Phase 3: use v2 write (writes to pbp_events/ + dual-writes legacy)
                     await asyncio.to_thread(
-                        firebase_pbp_service.update_cache_snapshot,
-                        game_id,
-                        len(plays),
-                        datetime.utcnow().isoformat() + "Z"
+                        firebase_pbp_service.save_plays_batch_v2, game_id, new_plays
                     )
 
-                    # Push to any active SSE listeners
+                    last_sequence_num = max(p.sequenceNumber for p in new_plays)
+
+                    # Cadence-throttled live state write
+                    now = time.monotonic()
+                    if now - last_live_write >= self.LIVE_STATE_CADENCE_SEC:
+                        await asyncio.to_thread(
+                            self._write_live_state,
+                            game_id,
+                            last_sequence_num,
+                            new_plays[-1],
+                        )
+                        last_live_write = now
+
+                    # Update canonical game records (non-blocking best-effort)
+                    await asyncio.to_thread(
+                        self._update_game_records, game_id, new_plays
+                    )
+
+                    # Push new plays to SSE listeners
                     if game_id in self.sse_queues:
+                        payload = [p.model_dump() for p in new_plays]
                         for q in self.sse_queues[game_id]:
-                            # Push the list of new plays as JSON to the queue
-                            json_payload = [p.model_dump() for p in new_plays]
                             try:
-                                q.put_nowait(json_payload)
+                                q.put_nowait(payload)
                             except asyncio.QueueFull:
                                 pass
 
-                    logger.info(f"Polled {len(new_plays)} new plays for game {game_id}. Last Seq: {last_sequence_num}")
+                    logger.info(
+                        f"[Polling] {len(new_plays)} new plays for {game_id}. "
+                        f"Cursor={last_sequence_num}"
+                    )
 
-                # If game reached 'End Game' sequence, stop polling
-                if plays and any((p.eventType.lower() == "end game" or p.description.lower() == "end of game") for p in plays):
-                    logger.info(f"Game {game_id} has ended. Stopping poller.")
+                # Game-end detection → finalize
+                if plays and any(
+                    (
+                        p.eventType.lower() in ("end game", "game end")
+                        or p.description.lower() in ("end of game", "game over")
+                    )
+                    for p in plays
+                ):
+                    logger.info(f"[Polling] Game {game_id} ended. Finalizing.")
+                    await asyncio.to_thread(
+                        FirebasePBPService.finalize_game, game_id
+                    )
                     self.active_tasks.pop(game_id, None)
                     break
 
-                # Backoff if errors
-                sleep_time = min(poll_interval * (2 ** consecutive_errors), 60) if consecutive_errors > 0 else poll_interval
+                # Exponential backoff on consecutive errors
+                sleep_time = (
+                    min(poll_interval * (2 ** consecutive_errors), 60)
+                    if consecutive_errors > 0
+                    else poll_interval
+                )
                 await asyncio.sleep(sleep_time)
 
         except asyncio.CancelledError:
-            logger.info(f"Poller for {game_id} was cancelled.")
+            logger.info(f"[Polling] Poller for {game_id} was cancelled.")
         except Exception as e:
-            logger.error(f"Fatal error in poller loop for {game_id}: {e}")
+            logger.error(f"[Polling] Fatal error in loop for {game_id}: {e}")
             self.active_tasks.pop(game_id, None)
 
-    # --- SSE Broker Methods ---
+    # ── SSE Broker ────────────────────────────────────────────────────────────
+
     def subscribe_sse(self, game_id: str) -> asyncio.Queue:
         if game_id not in self.sse_queues:
             self.sse_queues[game_id] = []
@@ -124,4 +270,6 @@ class PBPPollingService:
             if not self.sse_queues[game_id]:
                 del self.sse_queues[game_id]
 
+
+# Module-level singleton (unchanged API for callers)
 pbp_polling_manager = PBPPollingService()
