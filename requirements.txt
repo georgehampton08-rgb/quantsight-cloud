@@ -12,6 +12,7 @@ pydantic-settings==2.3.0  # Upgraded to support pydantic 2.9
 firebase-admin==6.4.0
 google-cloud-firestore==2.14.0
 google-cloud-logging==3.9.0
+google-cloud-secret-manager==2.20.0
 
 # Data processing  
 pandas==2.2.0
