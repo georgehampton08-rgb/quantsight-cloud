@@ -461,6 +461,7 @@
 .chart-container {
     position: relative;
     width: 100%;
+    max-width: 560px;
     margin: 0 auto;
     background: #1a2235;
     border-radius: 12px;

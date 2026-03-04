@@ -15,36 +15,33 @@ export function InteractiveShotChart({ plays }: Props) {
 
     return (
         <div className="chart-container">
-            <svg className="svg-court" viewBox="0 0 940 500" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="940" height="500" fill="rgba(0,0,0,0.15)" />
-                <line x1="470" y1="0" x2="470" y2="500" />
-                <circle cx="470" cy="250" r="60" />
+            <svg className="svg-court" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="500" height="500" fill="rgba(0,0,0,0.15)" />
 
+                {/* Half-court boundary line + arc */}
+                <line x1="500" y1="0" x2="500" y2="500" />
+                <path d="M 500 310 A 60 60 0 0 1 500 190" fill="none" />
+
+                {/* Paint / key */}
                 <rect x="0" y="170" width="190" height="160" fill="rgba(0,0,0,0.1)" />
                 <rect x="0" y="190" width="190" height="120" />
                 <path d="M 190 190 A 60 60 0 0 1 190 310" fill="none" />
                 <path d="M 190 190 A 60 60 0 0 0 190 310" style={{ strokeDasharray: "4 4" }} />
+
+                {/* 3-point arc */}
                 <line x1="0" y1="30" x2="140" y2="30" />
                 <line x1="0" y1="470" x2="140" y2="470" />
                 <path d="M 140 30 A 237.5 237.5 0 0 1 140 470" />
+
+                {/* Backboard + rim */}
                 <line x1="40" y1="220" x2="40" y2="280" stroke="#fff" strokeWidth="4" />
                 <circle cx="52.5" cy="250" r="7.5" stroke="#f97316" strokeWidth="3" />
-
-                <rect x="750" y="170" width="190" height="160" fill="rgba(0,0,0,0.1)" />
-                <rect x="750" y="190" width="190" height="120" />
-                <path d="M 750 190 A 60 60 0 0 0 750 310" fill="none" />
-                <path d="M 750 190 A 60 60 0 0 1 750 310" style={{ strokeDasharray: "4 4" }} />
-                <line x1="940" y1="30" x2="800" y2="30" />
-                <line x1="940" y1="470" x2="800" y2="470" />
-                <path d="M 800 30 A 237.5 237.5 0 0 0 800 470" />
-                <line x1="900" y1="220" x2="900" y2="280" stroke="#fff" strokeWidth="4" />
-                <circle cx="887.5" cy="250" r="7.5" stroke="#f97316" strokeWidth="3" />
 
                 {shootingPlays.map((p) => {
                     const rawY = p.coordinateY || 0;
                     const rawX = p.coordinateX || 0;
 
-                    let cx = Math.max(10, Math.min(930, rawY * 10));
+                    let cx = Math.max(10, Math.min(490, rawY * 10));
                     let cy = Math.max(10, Math.min(490, rawX * 10));
 
                     let is3Pt = false;
