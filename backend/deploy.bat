@@ -1,20 +1,60 @@
 @echo off
-REM Quick Deploy Script for QuantSight Cloud
-REM Usage: deploy.bat
+REM QuantSight Cloud Run Deployment - from backend/ dir
+REM Last updated: 2026-03-05
+REM Run from: quantsight_cloud_build\backend\ directory
+REM NOTE: Prefer running deploy.bat from quantsight_cloud_build\ root instead.
 
-echo ===================================
-echo  QUANTSIGHT QUICK DEPLOY
-echo ===================================
+echo ===================================================
+echo   QUANTSIGHT CLOUD RUN DEPLOY (min-instances=1)
+echo ===================================================
+echo.
 
-echo Step 1: Staging changes...
-git add backend/ index.html src/
+set PROJECT_ID=quantsight-prod
+set REGION=us-central1
+set SERVICE_NAME=quantsight-cloud
 
-echo Step 2: Committing...
-git commit -m "Quick deploy update" 2>nul || echo No changes to commit
+echo Setting project...
+gcloud config set project %PROJECT_ID% --quiet
+if %ERRORLEVEL% NEQ 0 (echo ERROR: Could not set project & exit /b 1)
+echo.
 
-echo Step 3: Deploying to Cloud Run...
-gcloud run deploy quantsight-cloud --source . --region=us-central1 --allow-unauthenticated --set-env-vars="FIREBASE_PROJECT_ID=quantsight-prod,VANGUARD_LLM_ENABLED=true,VANGUARD_VACCINE_ENABLED=true,VANGUARD_MODE=CIRCUIT_BREAKER" --add-cloudsql-instances=quantsight-prod:us-central1:quantsight-db --update-secrets="DATABASE_URL=DATABASE_URL:3,GEMINI_API_KEY=GEMINI_API_KEY:latest,GITHUB_TOKEN=GITHUB_TOKEN:latest"
+if not exist "main.py" (
+    echo ERROR: main.py not found. Run from backend\ directory.
+    exit /b 1
+)
 
-echo ===================================
-echo  DEPLOY COMPLETE
-echo ===================================
+echo Pre-flight syntax check...
+python -m py_compile main.py 2>nul || (echo SYNTAX ERROR: main.py & exit /b 1)
+echo Syntax OK
+echo.
+
+echo Deploying to Cloud Run (5-8 minutes, --no-traffic)...
+
+gcloud run deploy %SERVICE_NAME% ^
+  --source . ^
+  --region %REGION% ^
+  --platform managed ^
+  --allow-unauthenticated ^
+  --min-instances 1 ^
+  --max-instances 10 ^
+  --memory 512Mi ^
+  --cpu 1 ^
+  --timeout 300 ^
+  --concurrency 80 ^
+  --set-env-vars VANGUARD_ENABLED=true ^
+  --update-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest ^
+  --update-secrets GITHUB_TOKEN=GITHUB_TOKEN:latest ^
+  --no-traffic ^
+  --quiet
+
+if %ERRORLEVEL% NEQ 0 (
+    echo DEPLOY FAILED.
+    exit /b 1
+)
+
+echo.
+echo Build succeeded. New revision at 0%% traffic.
+echo.
+echo To shift traffic after smoke test:
+echo   gcloud run services update-traffic %SERVICE_NAME% --to-latest --region %REGION%
+echo.
