@@ -28,6 +28,10 @@ PBP_EVENTS_SUB = "events"        # subcollection name
 SHOTS = "shots"                  # shots/{gameId}/attempts/{sequenceNumber}
 SHOTS_ATTEMPTS_SUB = "attempts"  # subcollection name
 
+# ── Per-player cross-game shot history ────────────────────────────────────────
+PLAYER_SHOTS = "player_shots"    # player_shots/{playerId}/shots/{gameId}_{seq}
+PLAYER_SHOTS_SUB = "shots"       # subcollection name under player_shots/{playerId}
+
 # ── Final freeze snapshot (persisted once at game end) ───────────────────────
 FINAL_GAMES = "final_games"      # final_games/{gameId}
 

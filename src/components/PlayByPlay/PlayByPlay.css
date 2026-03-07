@@ -14,6 +14,114 @@
     box-sizing: border-box;
 }
 
+/* === DATE SELECTOR ROW === */
+.pbp-date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pbp-date-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #1e293b;
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.pbp-date-nav-btn:hover:not(:disabled) {
+    background: #334155;
+}
+
+.pbp-date-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.pbp-date-input {
+    background: #1e293b;
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    height: 32px;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.pbp-date-input:focus {
+    outline: none;
+    border-color: #38bdf8;
+}
+
+/* Chrome date picker color overrides */
+.pbp-date-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+}
+
+.pbp-date-today-btn {
+    padding: 5px 12px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.pbp-date-today-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+}
+
+/* === MODE BADGES === */
+.pbp-mode-badge {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.pbp-mode-badge.historical {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+/* === HISTORICAL FINAL BADGE on game buttons === */
+.historical-status-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 800;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+}
+
+
 /* === PBP HEADER ROW (title + connection pill) === */
 .pbp-header-row {
     display: flex;

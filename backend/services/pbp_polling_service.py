@@ -189,9 +189,26 @@ class PBPPollingService:
                 ]
 
                 if new_plays:
+                    # Fetch game metadata for player shot docs (best-effort — won't fail the batch)
+                    try:
+                        db = get_firestore_db()
+                        meta_doc = db.collection(LIVE_GAMES).document(str(game_id)).get()
+                        meta = meta_doc.to_dict() if meta_doc.exists else {}
+                    except Exception:
+                        meta = {}
+
+                    game_date = meta.get("gameDate", "")
+                    home_team = meta.get("homeTeam", {}).get("tricode", "") if isinstance(meta.get("homeTeam"), dict) else ""
+                    away_team = meta.get("awayTeam", {}).get("tricode", "") if isinstance(meta.get("awayTeam"), dict) else ""
+
                     # Phase 3: use v2 write (writes to pbp_events/ + dual-writes legacy)
                     await asyncio.to_thread(
-                        firebase_pbp_service.save_plays_batch_v2, game_id, new_plays
+                        firebase_pbp_service.save_plays_batch_v2,
+                        game_id,
+                        new_plays,
+                        game_date,
+                        home_team,
+                        away_team,
                     )
 
                     last_sequence_num = max(p.sequenceNumber for p in new_plays)

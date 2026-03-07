@@ -13,7 +13,7 @@ spec:
         run.googleapis.com/vpc-access-egress: private-ranges-only
         # Phase 8: Scaling for WebSocket support
         autoscaling.knative.dev/maxScale: "10"
-        autoscaling.knative.dev/minScale: "2"
+        autoscaling.knative.dev/minScale: "1"
         run.googleapis.com/execution-environment: gen2
     spec:
       # Phase 8: 800 concurrent (500 WS + 300 HTTP/SSE headroom)

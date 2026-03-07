@@ -30,6 +30,7 @@ from services.firestore_collections import (
     LIVE_GAMES, LEGACY_LIVE_PLAYS_SUB, LEGACY_GAME_CACHE,
     PBP_EVENTS, PBP_EVENTS_SUB,
     SHOTS, SHOTS_ATTEMPTS_SUB,
+    PLAYER_SHOTS, PLAYER_SHOTS_SUB,
     FINAL_GAMES, GAMES, CALENDAR, CALENDAR_GAMES_SUB,
     pad_sequence,
 )
@@ -54,7 +55,13 @@ class FirebasePBPService:
     # ═══════════════════════════════════════════════════════════════════════════
 
     @staticmethod
-    def save_plays_batch_v2(game_id: str, plays: List[PlayEvent]) -> int:
+    def save_plays_batch_v2(
+        game_id: str,
+        plays: List[PlayEvent],
+        game_date: str = "",
+        home_team: str = "",
+        away_team: str = "",
+    ) -> int:
         """
         Idempotent batch write to the NEW schema path.
 
@@ -64,13 +71,20 @@ class FirebasePBPService:
         For shooting plays (isShootingPlay == True), also writes a lean doc to:
             shots/{game_id}/attempts/{pad_sequence(sequenceNumber)}
 
+        For shooting plays with a known primaryPlayerId, ALSO writes to:
+            player_shots/{playerId}/shots/{game_id}_{pad_sequence(sequenceNumber)}
+
         Batch logic:
             Firestore limits batches to 500 ops.  Since a shot play produces
-            2 writes, we cap sub-batches at 225 plays to stay safely under.
+            3 writes (pbp + game-shots + player-shots), we cap sub-batches at
+            150 plays to stay safely under 500.
 
         Args:
-            game_id: Game ID string.
-            plays:   List of PlayEvent objects.
+            game_id:    Game ID string.
+            plays:      List of PlayEvent objects.
+            game_date:  'YYYY-MM-DD' string.  Used for player shot docs.
+            home_team:  Home team tricode (e.g. 'LAL').  Used for matchup.
+            away_team:  Away team tricode (e.g. 'GSW').  Used for matchup.
 
         Returns:
             Number of plays written.
@@ -90,46 +104,72 @@ class FirebasePBPService:
             .collection(SHOTS_ATTEMPTS_SUB)
         )
 
+        matchup = f"{away_team} @ {home_team}" if home_team and away_team else ""
+
+        # Cap sub-batches at 150 plays (3 writes each = 450 ops, well under 500)
+        _BATCH_LIMIT = 150
         total_written = 0
         for i in range(0, len(plays), _BATCH_LIMIT):
             chunk = plays[i : i + _BATCH_LIMIT]
             batch = db.batch()
             for play in chunk:
                 doc_id = pad_sequence(play.sequenceNumber)
-                # PBP event
+                # 1. PBP event (full)
                 batch.set(pbp_col.document(doc_id), play.model_dump(), merge=True)
-                # Shot chart (only for shooting plays)
+                # 2. Game-level shot chart (only for shooting plays)
                 if play.isShootingPlay:
-                    shot_doc = FirebasePBPService.extract_shot_doc(play)
+                    shot_doc = FirebasePBPService.extract_shot_doc(
+                        play, game_id=game_id, game_date=game_date, matchup=matchup
+                    )
                     batch.set(shots_col.document(doc_id), shot_doc, merge=True)
+                    # 3. Per-player cross-game shot history
+                    player_id = play.primaryPlayerId
+                    if player_id:
+                        player_doc_id = f"{game_id}_{doc_id}"
+                        player_shot_ref = (
+                            db.collection(PLAYER_SHOTS)
+                            .document(str(player_id))
+                            .collection(PLAYER_SHOTS_SUB)
+                            .document(player_doc_id)
+                        )
+                        batch.set(player_shot_ref, shot_doc, merge=True)
             batch.commit()
             total_written += len(chunk)
 
         logger.info(
             f"[PBP-v2] Wrote {total_written} plays for game {game_id} "
-            f"(shots extracted inline)"
+            f"(shots extracted + player_shots written)"
         )
         return total_written
 
     @staticmethod
-    def extract_shot_doc(play: PlayEvent) -> Dict[str, Any]:
+    def extract_shot_doc(
+        play: PlayEvent,
+        game_id: str = "",
+        game_date: str = "",
+        matchup: str = "",
+    ) -> Dict[str, Any]:
         """
         Extract a lean shot-chart document from a PlayEvent.
 
-        Only stores the fields needed for shot chart visualisation.
-        Full play detail remains in pbp_events/.
+        Stores all fields needed for both game-level and player-level
+        shot chart visualisation, including cross-game metadata.
 
         Returns:
             Dict with shot-relevant fields only.
         """
         return {
             "sequenceNumber": play.sequenceNumber,
+            "gameId": game_id,
+            "gameDate": game_date,
+            "matchup": matchup,
             "playerId": play.primaryPlayerId,
             "playerName": play.primaryPlayerName,
             "teamId": play.teamId,
             "teamTricode": play.teamTricode,
             "shotType": play.eventType,
             "distance": play.shotDistance,
+            "shotArea": getattr(play, 'shotArea', None),
             "made": play.isScoringPlay,
             "period": play.period,
             "clock": play.clock,
@@ -203,6 +243,49 @@ class FirebasePBPService:
             return [d.to_dict() for d in docs]
         except Exception as e:
             logger.error(f"[PBP-v2] get_shot_chart failed for {game_id}: {e}")
+            return []
+
+    @staticmethod
+    def get_player_shots(
+        player_id: str,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        limit: int = 2000,
+    ) -> List[Dict[str, Any]]:
+        """
+        Return all shot attempts for a player across games.
+
+        Reads player_shots/{player_id}/shots/ subcollection.
+        Optionally filtered by gameDate range.
+
+        Args:
+            player_id: NBA player ID string.
+            date_from: 'YYYY-MM-DD' inclusive lower bound (optional).
+            date_to:   'YYYY-MM-DD' inclusive upper bound (optional).
+            limit:     Maximum number of shot docs to return.
+
+        Returns:
+            List of shot dicts ordered by gameDate + sequenceNumber.
+        """
+        try:
+            db = FirebasePBPService.get_db()
+            col = (
+                db.collection(PLAYER_SHOTS)
+                .document(str(player_id))
+                .collection(PLAYER_SHOTS_SUB)
+            )
+            query = col.limit(limit)
+            if date_from:
+                query = query.where("gameDate", ">=", date_from)
+            if date_to:
+                query = query.where("gameDate", "<=", date_to)
+            docs = query.stream()
+            results = [d.to_dict() for d in docs]
+            # Client-side sort: by gameDate desc, then sequenceNumber asc
+            results.sort(key=lambda s: (s.get("gameDate", ""), s.get("sequenceNumber", 0)))
+            return results
+        except Exception as e:
+            logger.error(f"[PBP-v2] get_player_shots failed for {player_id}: {e}")
             return []
 
     # ═══════════════════════════════════════════════════════════════════════════

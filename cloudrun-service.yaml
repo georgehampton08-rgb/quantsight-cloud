@@ -11,6 +11,11 @@ spec:
         run.googleapis.com/cloudsql-instances: quantsight-prod:us-central1:quantsight-db
         run.googleapis.com/vpc-access-connector: projects/quantsight-prod/locations/us-central1/connectors/nba-api-connector
         run.googleapis.com/vpc-access-egress: private-ranges-only
+        # Keep 1 warm instance at all times — prevents cold starts & game save drops
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
     spec:
       containers:
       - image: us-central1-docker.pkg.dev/quantsight-prod/cloud-run-source-deploy/quantsight-cloud
