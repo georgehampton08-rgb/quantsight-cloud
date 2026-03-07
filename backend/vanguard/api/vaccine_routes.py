@@ -15,6 +15,7 @@ Routes:
 
 import logging
 import os
+from datetime import datetime
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -370,27 +371,56 @@ async def get_vaccine_run_history(run_id: str):
 )
 async def vaccine_run_stream():
     """
-    Return the most recent vaccine runs.
-    In a full implementation this would be an SSE stream;
-    for now returns the latest 20 run documents.
+    SSE stream for vaccine run progress.
+    Frontend opens EventSource to this endpoint.
+    Sends recent runs as events, then keeps alive with heartbeats.
     """
-    try:
-        from vanguard.archivist.storage import get_incident_storage
-        storage = get_incident_storage()
-        runs = []
-        if hasattr(storage, "firestore_client") and storage.firestore_client:
-            query = (
-                storage.firestore_client.collection("vaccine_runs")
-                .order_by("started_at", direction="DESCENDING")
-                .limit(20)
-            )
-            for doc in query.stream():
-                data = doc.to_dict()
-                data["run_id"] = doc.id
-                runs.append(data)
+    import asyncio
+    import json as _json
+    from sse_starlette.sse import EventSourceResponse
 
-        return {"runs": runs, "count": len(runs)}
-    except Exception as e:
-        logger.error(f"Failed to list vaccine runs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    async def event_generator():
+        # 1) Send recent runs as initial data
+        try:
+            from vanguard.archivist.storage import get_incident_storage
+            storage = get_incident_storage()
+            if hasattr(storage, "firestore_client") and storage.firestore_client:
+                query = (
+                    storage.firestore_client.collection("vaccine_runs")
+                    .order_by("started_at", direction="DESCENDING")
+                    .limit(20)
+                )
+                for doc in query.stream():
+                    data = doc.to_dict()
+                    data["run_id"] = doc.id
+                    # Convert any datetime fields to strings
+                    for k, v in data.items():
+                        if hasattr(v, 'isoformat'):
+                            data[k] = v.isoformat()
+                    yield {
+                        "event": "run",
+                        "data": _json.dumps(data),
+                    }
+        except Exception as e:
+            yield {
+                "event": "error",
+                "data": _json.dumps({"error": str(e)}),
+            }
+
+        # 2) Send connected confirmation
+        yield {
+            "event": "connected",
+            "data": _json.dumps({"status": "connected", "message": "Vaccine stream active"}),
+        }
+
+        # 3) Keep alive with heartbeats every 15s (Cloud Run has 30s idle timeout)
+        while True:
+            await asyncio.sleep(15)
+            yield {
+                "event": "heartbeat",
+                "data": _json.dumps({"ts": datetime.utcnow().isoformat() + "Z"}),
+            }
+
+    return EventSourceResponse(event_generator())
+
 
