@@ -333,3 +333,64 @@ async def apply_patch(fingerprint: str, request: PatchApplyRequest):
         _save_vaccine_data(fingerprint, "vaccine_applied", True)
 
     return result.to_dict()
+
+
+# ── Vaccine Run History & Stream ─────────────────────────────────────────────
+
+@router.get("/vanguard/admin/vaccine/run-history/{run_id}")
+async def get_vaccine_run_history(run_id: str):
+    """
+    Get details for a specific vaccine run from Firestore.
+    The Control Room UI requests this to show run results.
+    """
+    try:
+        from vanguard.archivist.storage import get_incident_storage
+        storage = get_incident_storage()
+        if hasattr(storage, "firestore_client") and storage.firestore_client:
+            doc_ref = storage.firestore_client.collection("vaccine_runs").document(run_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                data["run_id"] = run_id
+                return data
+
+        return {
+            "run_id": run_id,
+            "status": "not_found",
+            "message": f"No vaccine run found with id {run_id}",
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch vaccine run {run_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/vanguard/admin/vaccine/run-stream",
+    dependencies=[Depends(require_vaccine_enabled)],
+)
+async def vaccine_run_stream():
+    """
+    Return the most recent vaccine runs.
+    In a full implementation this would be an SSE stream;
+    for now returns the latest 20 run documents.
+    """
+    try:
+        from vanguard.archivist.storage import get_incident_storage
+        storage = get_incident_storage()
+        runs = []
+        if hasattr(storage, "firestore_client") and storage.firestore_client:
+            query = (
+                storage.firestore_client.collection("vaccine_runs")
+                .order_by("started_at", direction="DESCENDING")
+                .limit(20)
+            )
+            for doc in query.stream():
+                data = doc.to_dict()
+                data["run_id"] = doc.id
+                runs.append(data)
+
+        return {"runs": runs, "count": len(runs)}
+    except Exception as e:
+        logger.error(f"Failed to list vaccine runs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

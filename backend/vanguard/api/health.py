@@ -98,3 +98,42 @@ async def get_incident_detail(fingerprint: str) -> Dict[str, Any]:
         return {"error": "Incident not found", "fingerprint": fingerprint}
 
     return incident
+
+
+@router.get("/stats")
+async def vanguard_stats_alias() -> Dict[str, Any]:
+    """
+    Vanguard system stats — health score, incident counts, uptime.
+    This is the public-facing variant of /vanguard/admin/stats
+    (the admin version requires auth; this one returns subset data).
+    """
+    try:
+        storage = get_incident_storage()
+        metadata = await MetadataTracker().load()
+
+        total = metadata.get("total_incidents", 0)
+        active = metadata.get("active_count", 0)
+        resolved = metadata.get("resolved_count", 0)
+
+        health_score = max(0, 100 - (active * 5))
+
+        return {
+            "health_score": health_score,
+            "incidents": {
+                "total": total,
+                "active": active,
+                "resolved": resolved,
+            },
+            "status": "operational" if health_score >= 80 else ("degraded" if health_score >= 50 else "critical"),
+        }
+    except Exception as e:
+        return {"health_score": 0, "error": str(e), "status": "unknown"}
+
+
+@router.get("/admin/health")
+async def vanguard_admin_health() -> Dict[str, Any]:
+    """
+    Alias for /vanguard/health — frontend calls /vanguard/admin/health.
+    Delegates to the canonical health endpoint.
+    """
+    return await vanguard_health()

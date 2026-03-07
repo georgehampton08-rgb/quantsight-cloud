@@ -59,6 +59,81 @@ async def admin_status():
     }
 
 
+@router.get("/db-status")
+async def admin_db_status():
+    """
+    Database status — returns Firestore collection document counts.
+    Called by test suites, sync scripts, and the Vanguard Control Room.
+    """
+    try:
+        db = get_firestore_db()
+
+        collections_to_check = [
+            'teams', 'players', 'player_stats', 'game_logs',
+            'team_stats', 'live_leaders', 'nexus_cooldowns',
+            'vanguard_incidents',
+        ]
+
+        counts = {}
+        for name in collections_to_check:
+            try:
+                docs = list(db.collection(name).limit(1).stream())
+                # Use aggregation if available, otherwise just check if empty
+                counts[name] = "populated" if docs else "empty"
+            except Exception:
+                counts[name] = "error"
+
+        # Get precise counts for the core collections
+        for core in ['teams', 'players']:
+            try:
+                all_docs = list(db.collection(core).stream())
+                counts[core] = len(all_docs)
+            except Exception:
+                pass
+
+        return {
+            "status": "connected",
+            "storage": "firestore",
+            "project": os.getenv("GOOGLE_CLOUD_PROJECT", "unknown"),
+            "players": counts.get("players", 0),
+            "teams": counts.get("teams", 0),
+            "collections": counts,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"[DB-STATUS] Firestore query failed: {e}")
+        return {
+            "status": "disconnected",
+            "storage": "firestore",
+            "error": str(e),
+            "players": 0,
+            "teams": 0,
+        }
+
+
+@router.post("/bulk-seed-players")
+async def bulk_seed_players(players: List[Dict]):
+    """
+    Bulk seed players into Firestore.
+    Called by sync scripts (local_seed.py, sync_to_cloud.py).
+    Accepts JSON array of player objects.
+    """
+    if not players:
+        raise HTTPException(status_code=400, detail="Empty player list")
+
+    try:
+        result = batch_write_players(players)
+        logger.info(f"[BULK-SEED] Seeded {len(players)} players")
+        return {
+            "status": "success",
+            "players_seeded": len(players),
+            "result": result,
+        }
+    except Exception as e:
+        logger.error(f"[BULK-SEED] Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/key-status")
 async def key_status():
     """Return whether the Gemini API key is configured (bool only — never exposes the key)."""

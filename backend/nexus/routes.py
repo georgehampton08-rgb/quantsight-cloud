@@ -6,6 +6,60 @@ from firestore_db import get_firestore_db
 
 router = APIRouter(prefix="/nexus", tags=["nexus"])
 
+
+@router.get("/overview")
+async def get_nexus_overview():
+    """Get complete Nexus Hub system overview."""
+    try:
+        db = get_firestore_db()
+        # Return overview of all Nexus subsystems
+        cooldowns_ref = db.collection('nexus_cooldowns')
+        now = datetime.utcnow()
+        total = 0
+        active = 0
+        for doc in cooldowns_ref.stream():
+            total += 1
+            data = doc.to_dict()
+            expires_at = data.get('expires_at')
+            if expires_at and expires_at.timestamp() > now.timestamp():
+                active += 1
+
+        return {
+            "status": "operational",
+            "service": "nexus",
+            "version": "2.0.0",
+            "timestamp": now.isoformat() + "Z",
+            "subsystems": {
+                "cooldown_manager": {"active_cooldowns": active, "total_cooldowns": total},
+                "route_matrix": {"status": "operational"},
+                "health_monitor": {"status": "operational"},
+            },
+            "storage": "firestore",
+        }
+    except Exception as e:
+        return {
+            "status": "degraded",
+            "service": "nexus",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+
+
+@router.get("/route-matrix")
+async def get_route_matrix():
+    """Get the Nexus route matrix for system diagnostics."""
+    return {
+        "routes": [
+            {"path": "/nexus/health", "method": "GET", "status": "active"},
+            {"path": "/nexus/overview", "method": "GET", "status": "active"},
+            {"path": "/nexus/cooldowns", "method": "GET", "status": "active"},
+            {"path": "/nexus/route-matrix", "method": "GET", "status": "active"},
+        ],
+        "total": 4,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 def get_cooldowns_collection():
     """Get Firestore cooldowns collection"""
     db = get_firestore_db()

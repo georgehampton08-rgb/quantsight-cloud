@@ -292,6 +292,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Play-By-Play router not available: {e}")
 
+# Data routes — migrated endpoints from legacy server.py
+try:
+    from api.data_routes import router as data_router
+    app.include_router(data_router)
+    logger.info("✅ Data routes registered (player-hustle, boxscore alias, play-types, /api/today)")
+except ImportError as e:
+    logger.warning(f"⚠️ Data routes not available: {e}")
+
+
 
 # Include Vanguard health endpoint (MUST BE BEFORE MIDDLEWARE)
 if VANGUARD_AVAILABLE:

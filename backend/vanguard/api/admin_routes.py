@@ -2066,7 +2066,7 @@ async def get_kb_status():
         return {"error": str(e), "built": None, "stale": True}
 
 
-@router.post("/vanguard/admin/vaccine/kb-rebuild")
+@router.api_route("/vanguard/admin/vaccine/kb-rebuild", methods=["GET", "POST"])
 async def rebuild_kb():
     """
     Force an immediate rebuild of the codebase KB.
