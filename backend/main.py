@@ -369,33 +369,18 @@ if not VANGUARD_AVAILABLE:
 
 
 
-# CORS configuration — explicitly allowlisted origins only, NO wildcard
-# Reads from ALLOWED_ORIGINS env var (comma-separated) set in Cloud Run env
-# Falls back to production origins if env var is not set
-_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
-_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()] or [
-    "https://quantsight-prod.web.app",
-    "https://quantsight.app",
-    "http://localhost:5173",   # Vite dev server
-    "http://localhost:5174",   # Vite dev server alternate port
-]
-logger.info(f"[CORS] Allowed origins: {_allowed_origins}")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-Idempotency-Key"],
-)
-
 # Vanguard Middleware Stack
 # Starlette executes middleware in REVERSE registration order (last-added = outermost).
+# CORSMiddleware MUST be registered LAST so it is outermost and intercepts
+# OPTIONS preflight BEFORE rate-limiter / telemetry can reject it.
+#
 # Execution order (outermost → innermost):
-#   1. RequestIDMiddleware       — assigns X-Request-ID first
+#   0. CORSMiddleware             — handles OPTIONS preflight (MUST be outermost)
+#   1. RequestIDMiddleware        — assigns X-Request-ID first
 #   2. DegradedInjectorMiddleware — injects X-System-Status header
-#   3. RateLimiterMiddleware     — rejects over-limit before business logic
-#   4. IdempotencyMiddleware     — deduplicates after rate check passes
-#   5. SurgeonMiddleware         — circuit breaker + load shed (Phase 4)
+#   3. RateLimiterMiddleware      — rejects over-limit before business logic
+#   4. IdempotencyMiddleware      — deduplicates after rate check passes
+#   5. SurgeonMiddleware          — circuit breaker + load shed (Phase 4)
 #   6. VanguardTelemetryMiddleware — telemetry + incident capture (innermost)
 if VANGUARD_AVAILABLE:
     # Import SurgeonMiddleware (graceful fallback if surgeon module not ready)
@@ -412,8 +397,31 @@ if VANGUARD_AVAILABLE:
     app.add_middleware(IdempotencyMiddleware)          # 4
     app.add_middleware(RateLimiterMiddleware)          # 3
     app.add_middleware(DegradedInjectorMiddleware)     # 2
-    app.add_middleware(RequestIDMiddleware)            # 1 — outermost
+    app.add_middleware(RequestIDMiddleware)            # 1
     logger.info("✅ Vanguard middleware registered (RequestID → DegradedInjector → RateLimiter → Idempotency → Surgeon → Telemetry)")
+
+# CORS configuration — MUST be registered LAST (= outermost in Starlette)
+# so that OPTIONS preflight is handled before Vanguard middleware can reject it.
+# Reads from ALLOWED_ORIGINS env var (comma-separated) set in Cloud Run env
+# Falls back to production origins if env var is not set
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()] or [
+    "https://quantsight-prod.web.app",
+    "https://quantsight.app",
+    "http://localhost:5173",   # Vite dev server
+    "http://localhost:5174",   # Vite dev server alternate port
+]
+logger.info(f"[CORS] Allowed origins: {_allowed_origins}")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Content-Language",
+                   "Accept-Language", "X-Request-ID", "X-Idempotency-Key",
+                   "Cache-Control"],
+    max_age=600,  # Cache preflight for 10 mins
+)
 
 
 
