@@ -1,25 +1,33 @@
 import { useEffect, useState } from 'react';
-import { ApiContract } from '../../api/client';
 import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
-import { Activity, ShieldAlert, Target } from 'lucide-react';
+import { Activity, Target } from 'lucide-react';
 
 interface ShotAttempt {
-    sequenceNumber: number;
+    sequenceNumber?: number;
     gameId: string;
     gameDate: string;
     matchup: string;
     playerId: string | number;
-    playerName: string;
-    teamTricode: string;
-    shotType: string;
+    playerName?: string;
+    teamTricode?: string;
+    shotType?: string;
     distance: number | null;
-    shotArea: string | null;
+    shotArea?: string | null;
     made: boolean;
-    period: number;
-    clock: string;
+    period?: number;
+    clock?: string;
     x: number | null;
     y: number | null;
-    pointsValue: number;
+    pointsValue?: number;
+}
+
+interface ClusteredShot {
+    cx: number;
+    cy: number;
+    made: number;
+    missed: number;
+    total: number;
+    pct: number;
 }
 
 interface PlayerShotChartProps {
@@ -27,10 +35,10 @@ interface PlayerShotChartProps {
     playerName?: string;
 }
 
-// NBA court is 94ft × 50ft. Shot chart shows half court (47×50).
-// NBA API coordinates: x ∈ [-250, 250], y ∈ [-50, 420]
+// NBA court half-court dimensions
 const COURT_W = 500;
 const COURT_H = 470;
+const CLUSTER_RADIUS = 12; // pixels — shots within this radius merge
 
 function courtX(x: number): number {
     return ((x + 250) / 500) * COURT_W;
@@ -39,10 +47,62 @@ function courtY(y: number): number {
     return ((y + 50) / 470) * COURT_H;
 }
 
-function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) {
+/** Group shots that land within CLUSTER_RADIUS pixels of each other */
+function clusterShots(shots: ShotAttempt[]): ClusteredShot[] {
+    const clusters: ClusteredShot[] = [];
+
+    for (const s of shots) {
+        if (s.x === null || s.y === null) continue;
+        const sx = courtX(s.x);
+        const sy = courtY(s.y);
+
+        // Find existing cluster within radius
+        let merged = false;
+        for (const c of clusters) {
+            const dx = c.cx - sx;
+            const dy = c.cy - sy;
+            if (Math.sqrt(dx * dx + dy * dy) <= CLUSTER_RADIUS) {
+                // Weighted average position
+                const newTotal = c.total + 1;
+                c.cx = (c.cx * c.total + sx) / newTotal;
+                c.cy = (c.cy * c.total + sy) / newTotal;
+                if (s.made) c.made++;
+                else c.missed++;
+                c.total = newTotal;
+                c.pct = c.total > 0 ? (c.made / c.total) * 100 : 0;
+                merged = true;
+                break;
+            }
+        }
+
+        if (!merged) {
+            clusters.push({
+                cx: sx,
+                cy: sy,
+                made: s.made ? 1 : 0,
+                missed: s.made ? 0 : 1,
+                total: 1,
+                pct: s.made ? 100 : 0,
+            });
+        }
+    }
+
+    return clusters;
+}
+
+function getClusterColor(pct: number): string {
+    if (pct >= 60) return '#22c55e';      // green — hot
+    if (pct >= 45) return '#84cc16';      // lime
+    if (pct >= 35) return '#eab308';      // yellow
+    if (pct >= 20) return '#f97316';      // orange
+    return '#ef4444';                      // red — cold
+}
+
+function PlayerShotChartContent({ playerId }: PlayerShotChartProps) {
     const [shots, setShots] = useState<ShotAttempt[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [source, setSource] = useState<string>('');
     const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
     useEffect(() => {
@@ -53,10 +113,12 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
             setError(null);
             try {
                 const base = import.meta.env.VITE_API_URL || 'https://quantsight-cloud-458498663186.us-central1.run.app';
-                const res = await fetch(`${base}/v1/games/players/${playerId}/shots?limit=500`);
+                // Use the new endpoint that tries Firestore first, then NBA API
+                const res = await fetch(`${base}/player-shots/${playerId}`);
                 if (!res.ok) throw new Error(`Shot data unavailable (${res.status})`);
                 const data = await res.json();
                 setShots(data.shots || []);
+                setSource(data.source || '');
             } catch (e: any) {
                 setError(e.message || 'Failed to load shot chart data');
             } finally {
@@ -81,13 +143,13 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
                 <Target className="w-10 h-10 mx-auto mb-4 opacity-50" />
                 <p className="text-sm font-bold mb-1">No Shot Chart Data Available</p>
                 <p className="text-xs text-slate-500">
-                    {error || 'Shot data is populated from tracked live games. Check back after game tracking.'}
+                    {error || 'Shot data will populate automatically as games are tracked. Data may also be available from historical NBA records.'}
                 </p>
             </div>
         );
     }
 
-    // Get unique games for the filter
+    // Unique games for filter
     const games = Array.from(new Set(shots.map(s => s.gameId))).map(gid => {
         const shot = shots.find(s => s.gameId === gid);
         return { gameId: gid, gameDate: shot?.gameDate || '', matchup: shot?.matchup || gid };
@@ -99,6 +161,9 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
     const missedShots = filteredShots.filter(s => !s.made);
     const fgPct = filteredShots.length > 0 ? ((madeShots.length / filteredShots.length) * 100).toFixed(1) : '0';
 
+    // Cluster shots for visualization
+    const clusters = clusterShots(filteredShots);
+
     // Zone breakdown
     const paintShots = filteredShots.filter(s => (s.distance || 0) < 8);
     const midShots = filteredShots.filter(s => (s.distance || 0) >= 8 && (s.distance || 0) < 23);
@@ -109,11 +174,19 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
 
     return (
         <div className="space-y-6">
-            {/* Game Selector */}
+            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
                     <span>🎯</span> Shot Chart
                     <span className="text-xs text-slate-500 font-mono ml-2">{filteredShots.length} shots</span>
+                    {source && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono uppercase tracking-wider ${source === 'firestore' ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700/50' :
+                                source === 'nba_api' ? 'bg-blue-900/50 text-blue-400 border border-blue-700/50' :
+                                    'bg-slate-800 text-slate-500'
+                            }`}>
+                            {source === 'firestore' ? 'LIVE' : source === 'nba_api' ? 'NBA API' : source}
+                        </span>
+                    )}
                 </h3>
                 <select
                     value={selectedGame || ''}
@@ -129,7 +202,7 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
                 </select>
             </div>
 
-            {/* Court SVG */}
+            {/* Court SVG with clustering */}
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 overflow-hidden">
                 <div className="aspect-[500/470] max-w-2xl mx-auto relative">
                     <svg viewBox={`0 0 ${COURT_W} ${COURT_H}`} className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1a2332, #0f1923)' }}>
@@ -141,35 +214,64 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
                         <rect x={courtX(-80)} y={0} width={courtX(80) - courtX(-80)} height={courtY(190)} fill="rgba(249,115,22,0.05)" stroke="#475569" strokeWidth="1" />
                         {/* Free throw circle */}
                         <circle cx={COURT_W / 2} cy={courtY(190)} r={(courtX(60) - courtX(0))} fill="none" stroke="#475569" strokeWidth="1" strokeDasharray="6,6" />
-                        {/* 3-point arc (simplified) */}
+                        {/* 3-point arc */}
                         <path d={`M ${courtX(-220)} 0 Q ${courtX(-220)} ${courtY(300)}, ${COURT_W / 2} ${courtY(375)} Q ${courtX(220)} ${courtY(300)}, ${courtX(220)} 0`}
                             fill="none" stroke="#475569" strokeWidth="1.5" />
 
-                        {/* Missed shots */}
-                        {missedShots.map((s, i) => (
-                            s.x !== null && s.y !== null && (
-                                <g key={`miss-${i}`}>
-                                    <line x1={courtX(s.x) - 4} y1={courtY(s.y) - 4} x2={courtX(s.x) + 4} y2={courtY(s.y) + 4} stroke="#ef4444" strokeWidth="1.5" opacity="0.6" />
-                                    <line x1={courtX(s.x) + 4} y1={courtY(s.y) - 4} x2={courtX(s.x) - 4} y2={courtY(s.y) + 4} stroke="#ef4444" strokeWidth="1.5" opacity="0.6" />
+                        {/* Clustered shots — size scales with frequency, color with FG% */}
+                        {clusters.map((c, i) => {
+                            const r = Math.min(18, 4 + Math.sqrt(c.total) * 2.5);
+                            const color = getClusterColor(c.pct);
+                            return (
+                                <g key={i}>
+                                    {/* Outer glow for hot zones */}
+                                    {c.total >= 3 && (
+                                        <circle cx={c.cx} cy={c.cy} r={r + 3} fill={color} opacity={0.15} />
+                                    )}
+                                    {/* Main dot */}
+                                    <circle
+                                        cx={c.cx}
+                                        cy={c.cy}
+                                        r={r}
+                                        fill={color}
+                                        opacity={Math.min(0.9, 0.4 + c.total * 0.05)}
+                                        stroke={c.total > 1 ? '#fff' : 'none'}
+                                        strokeWidth={c.total > 1 ? 0.5 : 0}
+                                    />
+                                    {/* Count badge for clusters of 2+ */}
+                                    {c.total >= 2 && (
+                                        <text
+                                            x={c.cx}
+                                            y={c.cy + 1}
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                            fontSize={r > 8 ? 8 : 6}
+                                            fontWeight="bold"
+                                            fill="#fff"
+                                            opacity={0.95}
+                                        >
+                                            {c.total}
+                                        </text>
+                                    )}
                                 </g>
-                            )
-                        ))}
-                        {/* Made shots */}
-                        {madeShots.map((s, i) => (
-                            s.x !== null && s.y !== null && (
-                                <circle key={`made-${i}`} cx={courtX(s.x)} cy={courtY(s.y)} r="4" fill="#22c55e" opacity="0.7" />
-                            )
-                        ))}
+                            );
+                        })}
                     </svg>
                 </div>
 
                 {/* Legend */}
                 <div className="flex items-center justify-center gap-6 mt-4 text-xs text-slate-500">
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500" /> Made
+                        <div className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }} /> Hot (60%+)
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 flex items-center justify-center text-red-500 font-bold">✕</div> Missed
+                        <div className="w-3 h-3 rounded-full" style={{ background: '#eab308' }} /> Avg (35-45%)
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }} /> Cold (&lt;20%)
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] opacity-60">
+                        <span className="border border-slate-600 rounded px-1">3</span> = shot count
                     </div>
                 </div>
             </div>
@@ -204,7 +306,7 @@ function PlayerShotChartContent({ playerId, playerName }: PlayerShotChartProps) 
 export default function PlayerShotChart({ playerId, playerName }: PlayerShotChartProps) {
     return (
         <SectionErrorBoundary fallbackMessage="Shot Chart Visualization offline">
-            <PlayerShotChartContent playerId={playerId} playerName={playerName} />
+            <PlayerShotChartContent playerId={playerId} />
         </SectionErrorBoundary>
     );
 }

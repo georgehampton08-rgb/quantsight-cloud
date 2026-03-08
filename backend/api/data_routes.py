@@ -475,6 +475,7 @@ async def get_player_game_logs(player_id: str):
                     "STL": int(g.get("STL", 0) or 0),
                     "BLK": int(g.get("BLK", 0) or 0),
                     "TOV": int(g.get("TOV", 0) or 0),
+                    "PF": int(g.get("PF", 0) or 0),
                     "FG_PCT": float(g.get("FG_PCT", 0) or 0),
                     "FG3_PCT": float(g.get("FG3_PCT", 0) or 0),
                     "FT_PCT": float(g.get("FT_PCT", 0) or 0),
@@ -516,6 +517,7 @@ async def get_player_game_logs(player_id: str):
                     "STL": int(row.get("STL", 0) or 0),
                     "BLK": int(row.get("BLK", 0) or 0),
                     "TOV": int(row.get("TOV", 0) or 0),
+                    "PF": int(row.get("PF", 0) or 0),
                     "FG_PCT": round(fgm / max(fga, 1), 3),
                     "FG3_PCT": round(fg3m / max(fg3a, 1), 3),
                     "FT_PCT": round(ftm / max(fta, 1), 3),
@@ -533,6 +535,80 @@ async def get_player_game_logs(player_id: str):
     except Exception as e:
         logger.error(f"[GAME-LOGS] Failed for {player_id}: {e}")
         raise HTTPException(status_code=404, detail="Not Found")
+
+
+# ─── Player Shot Chart (NBA API Fallback) ────────────────────────────────────
+
+@router.get("/player-shots/{player_id}")
+async def get_player_shot_chart(player_id: str):
+    """
+    Shot chart data for a player.
+    Tries Firestore player_shots first, then falls back to NBA API ShotChartDetail.
+    """
+    try:
+        # Source 1: Firestore player_shots (from live game tracking)
+        from firestore_db import get_firestore_db
+        db = get_firestore_db()
+        from services.firestore_collections import PLAYER_SHOTS, PLAYER_SHOTS_SUB
+
+        shots = []
+        try:
+            col = (
+                db.collection(PLAYER_SHOTS)
+                .document(str(player_id))
+                .collection(PLAYER_SHOTS_SUB)
+                .limit(2000)
+            )
+            for doc in col.stream():
+                shots.append(doc.to_dict())
+        except Exception:
+            pass
+
+        if shots:
+            return {"status": "success", "playerId": player_id, "count": len(shots), "shots": shots, "source": "firestore"}
+
+        # Source 2: NBA API ShotChartDetail (historical data)
+        try:
+            from nba_api.stats.endpoints import shotchartdetail
+            time.sleep(0.8)
+            chart = shotchartdetail.ShotChartDetail(
+                player_id=int(player_id),
+                team_id=0,
+                season_nullable=CURRENT_SEASON,
+                season_type_all_star="Regular Season",
+                context_measure_simple="FGA",
+                timeout=20,
+            )
+            df = chart.get_data_frames()[0]
+            for _, row in df.iterrows():
+                shots.append({
+                    "sequenceNumber": 0,
+                    "gameId": str(row.get("GAME_ID", "")),
+                    "gameDate": str(row.get("GAME_DATE", "")),
+                    "matchup": str(row.get("HTM", "")) + " vs " + str(row.get("VTM", "")),
+                    "playerId": player_id,
+                    "playerName": str(row.get("PLAYER_NAME", "")),
+                    "teamTricode": "",
+                    "shotType": str(row.get("ACTION_TYPE", "")),
+                    "distance": int(row.get("SHOT_DISTANCE", 0) or 0),
+                    "shotArea": str(row.get("SHOT_ZONE_BASIC", "")),
+                    "made": row.get("SHOT_MADE_FLAG", 0) == 1,
+                    "period": int(row.get("PERIOD", 0) or 0),
+                    "clock": str(row.get("MINUTES_REMAINING", "")) + ":" + str(row.get("SECONDS_REMAINING", "")),
+                    "x": int(row.get("LOC_X", 0) or 0),
+                    "y": int(row.get("LOC_Y", 0) or 0),
+                    "pointsValue": 3 if row.get("SHOT_TYPE", "") == "3PT Field Goal" else 2,
+                })
+
+            return {"status": "success", "playerId": player_id, "count": len(shots), "shots": shots, "source": "nba_api"}
+        except Exception as e:
+            logger.warning(f"[SHOT-CHART] NBA API fallback failed: {e}")
+
+        return {"status": "success", "playerId": player_id, "count": 0, "shots": [], "source": "none"}
+
+    except Exception as e:
+        logger.error(f"[SHOT-CHART] Failed for {player_id}: {e}")
+        return {"status": "success", "playerId": player_id, "count": 0, "shots": [], "source": "error"}
 
 
 # ─── Radar Dimensions (Matchup Tab) ─────────────────────────────────────────

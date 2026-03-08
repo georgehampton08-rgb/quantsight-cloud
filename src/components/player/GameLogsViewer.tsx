@@ -15,6 +15,7 @@ interface GameLog {
     STL: number;
     BLK: number;
     TOV: number;
+    PF?: number;
     FG_PCT: number;
     FG3_PCT: number;
     FT_PCT: number;
@@ -121,7 +122,10 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">REB</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">AST</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">STL/BLK</th>
+                                <th className="px-4 py-3 font-semibold tracking-wider text-center">TOV</th>
+                                <th className="px-4 py-3 font-semibold tracking-wider text-center">PF</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">FG%</th>
+                                <th className="px-4 py-3 font-semibold tracking-wider text-center">3PT%</th>
                                 <th className="px-4 py-3 font-semibold tracking-wider text-center">+/-</th>
                             </tr>
                         </thead>
@@ -151,6 +155,12 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                                         <span className="mx-1 opacity-50">/</span>
                                         <span className={log.BLK > 1 ? 'text-blue-400 font-bold' : ''}>{log.BLK}</span>
                                     </td>
+                                    <td className={`px-4 py-3 text-center ${log.TOV >= 4 ? 'text-red-400' : 'text-slate-400'}`}>
+                                        {log.TOV}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-slate-400">
+                                        {log.PF ?? '—'}
+                                    </td>
                                     <td className="px-4 py-3 text-center text-slate-400">
                                         <div className="flex items-center justify-center gap-1">
                                             <Crosshair className="w-3 h-3 opacity-50" />
@@ -158,6 +168,11 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                                                 {(log.FG_PCT * 100).toFixed(1)}%
                                             </span>
                                         </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-slate-400">
+                                        <span className={log.FG3_PCT >= 0.36 ? 'text-cyan-400' : ''}>
+                                            {(log.FG3_PCT * 100).toFixed(1)}%
+                                        </span>
                                     </td>
                                     <td className={`px-4 py-3 text-center font-bold ${getPlusMinusColor(log.PLUS_MINUS)}`}>
                                         {log.PLUS_MINUS > 0 ? `+${log.PLUS_MINUS}` : log.PLUS_MINUS}
