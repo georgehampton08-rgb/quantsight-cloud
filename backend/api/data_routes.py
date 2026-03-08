@@ -491,11 +491,21 @@ async def get_player_game_logs(player_id: str):
         try:
             from nba_api.stats.endpoints import playergamelog
             time.sleep(0.6)
+            _nba_headers = {
+                "Host": "stats.nba.com",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "application/json, text/plain, */*",
+                "Referer": "https://www.nba.com/",
+                "x-nba-stats-origin": "stats",
+                "x-nba-stats-token": "true",
+                "Origin": "https://www.nba.com",
+            }
             gl = playergamelog.PlayerGameLog(
                 player_id=player_id,
                 season=CURRENT_SEASON,
                 season_type_all_star="Regular Season",
-                timeout=15,
+                timeout=20,
+                headers=_nba_headers,
             )
             df = gl.get_data_frames()[0]
             for _, row in df.head(20).iterrows():
@@ -571,13 +581,25 @@ async def get_player_shot_chart(player_id: str):
         try:
             from nba_api.stats.endpoints import shotchartdetail
             time.sleep(0.8)
+            _nba_headers = {
+                "Host": "stats.nba.com",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://www.nba.com/",
+                "x-nba-stats-origin": "stats",
+                "x-nba-stats-token": "true",
+                "Origin": "https://www.nba.com",
+                "Connection": "keep-alive",
+            }
             chart = shotchartdetail.ShotChartDetail(
                 player_id=int(player_id),
                 team_id=0,
                 season_nullable=CURRENT_SEASON,
                 season_type_all_star="Regular Season",
                 context_measure_simple="FGA",
-                timeout=20,
+                timeout=25,
+                headers=_nba_headers,
             )
             df = chart.get_data_frames()[0]
             for _, row in df.iterrows():
