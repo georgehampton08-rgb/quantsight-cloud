@@ -50,14 +50,60 @@ async def get_live_games():
 async def get_games_by_date(date: str):
     """
     List all games on a given date (YYYY-MM-DD format).
-    Reads from calendar/{date}/games/ — the thin date index.
-
-    Example: GET /v1/games/by-date/2026-03-03
+    Multi-source: calendar → pulse_stats → schedule (for today).
     """
     try:
         from services.firebase_game_service import FirebaseGameService
         games = FirebaseGameService.get_games_for_date(date)
+
+        # Source 1 worked
+        if games:
+            return {"status": "success", "date": date, "count": len(games), "games": games}
+
+        # Source 2: pulse_stats/{date}/games/ (box score data)
+        try:
+            from firestore_db import get_firestore_db
+            db = get_firestore_db()
+            pulse_docs = db.collection("pulse_stats").document(date).collection("games").stream()
+            for doc in pulse_docs:
+                d = doc.to_dict()
+                games.append({
+                    "gameId": doc.id,
+                    "homeTeam": d.get("home_team", ""),
+                    "awayTeam": d.get("away_team", ""),
+                    "status": "Final",
+                })
+        except Exception as e:
+            logger.debug(f"[by-date] pulse_stats fallback: {e}")
+
+        if games:
+            return {"status": "success", "date": date, "count": len(games), "games": games}
+
+        # Source 3: Schedule API (for today only)
+        from datetime import datetime
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        if date == today:
+            try:
+                from services.schedule_service import get_schedule_service
+                svc = get_schedule_service()
+                sched = await svc.get_schedule()
+                if sched and sched.get("games"):
+                    for g in sched["games"]:
+                        gid = g.get("game_id") or g.get("gameId", "")
+                        home = g.get("home") or (g.get("home_team", {}).get("tricode") if isinstance(g.get("home_team"), dict) else g.get("home_team", ""))
+                        away = g.get("away") or (g.get("away_team", {}).get("tricode") if isinstance(g.get("away_team"), dict) else g.get("away_team", ""))
+                        status = g.get("status", "UPCOMING")
+                        games.append({
+                            "gameId": gid,
+                            "homeTeam": home,
+                            "awayTeam": away,
+                            "status": status if isinstance(status, str) else "UPCOMING",
+                        })
+            except Exception as e:
+                logger.debug(f"[by-date] schedule fallback: {e}")
+
         return {"status": "success", "date": date, "count": len(games), "games": games}
+
     except Exception as e:
         logger.error(f"Error fetching games for date {date}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch games for {date}")
