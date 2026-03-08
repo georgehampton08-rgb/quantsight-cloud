@@ -180,34 +180,66 @@ class FirebasePBPService:
         }
 
     @staticmethod
+    def _resolve_game_id(db, game_id: str) -> Optional[str]:
+        """
+        Look up game_id_map to find the alternate ID (ESPN↔NBA).
+        Returns the alternate ID if found, else None.
+        """
+        try:
+            map_doc = db.collection("game_id_map").document(str(game_id)).get()
+            if map_doc.exists:
+                data = map_doc.to_dict()
+                # Return whichever ID is NOT the one we already have
+                espn = data.get("espn_id", "")
+                nba = data.get("nba_id", "")
+                return espn if str(game_id) == nba else nba
+        except Exception as e:
+            logger.debug(f"[PBP] game_id_map lookup failed for {game_id}: {e}")
+        return None
+
+    @staticmethod
     def get_cached_plays_v2(
         game_id: str, limit: int = 1500
     ) -> List[Dict[str, Any]]:
         """
-        Read plays from the NEW pbp_events/{game_id}/events/ path.
+        Read plays from pbp_events/{game_id}/events/.
 
-        Falls back to the legacy live_games/{game_id}/plays/ subcollection
-        if the new collection is empty (handles transition period).
+        Resolution order:
+          1. pbp_events/{game_id}/events/        (direct lookup)
+          2. game_id_map → alternate ID → pbp_events/{alt_id}/events/
+          3. Legacy live_games/{game_id}/plays/   (old schema fallback)
 
         Returns:
             List of play dicts in ascending sequence order.
         """
         db = FirebasePBPService.get_db()
 
-        # Try new path first
+        # 1. Try direct lookup
         new_col = (
             db.collection(PBP_EVENTS)
             .document(str(game_id))
             .collection(PBP_EVENTS_SUB)
         )
-        # Doc IDs are zero-padded → lexicographic sort == numeric sort
         docs = list(new_col.limit(limit).stream())
         if docs:
             return [d.to_dict() for d in docs]
 
-        # Fallback to legacy path (logs a warning so we can monitor transition)
+        # 2. Try alternate ID via game_id_map (ESPN ↔ NBA translation)
+        alt_id = FirebasePBPService._resolve_game_id(db, game_id)
+        if alt_id:
+            logger.info(f"[PBP-v2] Resolved {game_id} → {alt_id} via game_id_map")
+            alt_col = (
+                db.collection(PBP_EVENTS)
+                .document(str(alt_id))
+                .collection(PBP_EVENTS_SUB)
+            )
+            alt_docs = list(alt_col.limit(limit).stream())
+            if alt_docs:
+                return [d.to_dict() for d in alt_docs]
+
+        # 3. Fallback to legacy path
         logger.warning(
-            f"[PBP-v2] pbp_events empty for {game_id} — "
+            f"[PBP-v2] pbp_events empty for {game_id} (alt={alt_id}) — "
             f"falling back to legacy live_games/.../plays/"
         )
         legacy_col = (
