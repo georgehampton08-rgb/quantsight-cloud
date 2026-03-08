@@ -44,19 +44,33 @@ const PlayerRow: React.FC<PlayerRowProps> = ({ player, rank, changedPlayerIds })
 };
 
 // Game chip for the ticker
-const GameChip: React.FC<{ game: LiveGame }> = ({ game }) => {
+const GameChip: React.FC<{ game: LiveGame; isActive?: boolean; onClick?: () => void }> = ({ game, isActive, onClick }) => {
     const isLive = game.status === 'LIVE';
+    const isFinal = game.status === 'FINAL';
+    const periodLabel = game.period > 4 ? `OT${game.period - 4}` : `Q${game.period}`;
 
     return (
-        <div className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${isLive ? 'bg-red-500/20 border border-red-500/30' : 'bg-white/5'
-            }`}>
+        <div
+            onClick={onClick}
+            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-all hover:scale-105 ${isActive ? 'ring-2 ring-cyan-500/60 bg-cyan-500/10 shadow-lg shadow-cyan-500/10' :
+                    isLive ? 'bg-red-500/20 border border-red-500/30 hover:bg-red-500/30' :
+                        'bg-white/5 hover:bg-white/10'
+                }`}
+        >
             {isLive && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
             <span className="text-gray-400">{game.away_team}</span>
             <span className="font-mono font-bold text-white">
                 {game.away_score}-{game.home_score}
             </span>
             <span className="text-gray-400">{game.home_team}</span>
-            {isLive && <span className="text-xs text-gray-500 ml-1">{game.clock}</span>}
+            {isLive && game.period > 0 && (
+                <span className="text-[10px] text-red-400 font-mono font-bold ml-1 bg-red-500/10 px-1.5 py-0.5 rounded">
+                    {periodLabel} {game.clock}
+                </span>
+            )}
+            {isFinal && (
+                <span className="text-[10px] text-gray-500 font-mono ml-1">FNL</span>
+            )}
         </div>
     );
 };
@@ -72,14 +86,18 @@ const PulsePage: React.FC = () => {
         changedPlayerIds
     } = useLiveStats();
 
+    const [selectedGameId, setSelectedGameId] = React.useState<string | null>(null);
+
     // Sort games: LIVE first
     const sortedGames = [...games].sort((a, b) => {
         const order = { 'LIVE': 0, 'HALFTIME': 1, 'UPCOMING': 2, 'FINAL': 3 };
         return (order[a.status] || 4) - (order[b.status] || 4);
     });
 
-    // Get first live game for featured display, fallback to next upcoming game
-    const featuredGame = games.find(g => g.status === 'LIVE' || g.status === 'HALFTIME') || games.find(g => g.status === 'UPCOMING');
+    // Featured game: selected > first live > first upcoming
+    const featuredGame = selectedGameId
+        ? games.find(g => g.game_id === selectedGameId)
+        : games.find(g => g.status === 'LIVE' || g.status === 'HALFTIME') || games.find(g => g.status === 'UPCOMING');
 
     return (
         <div className="matchup-lab-page h-full flex flex-col p-4 sm:p-8">
@@ -114,7 +132,14 @@ const PulsePage: React.FC = () => {
                 {games.length > 0 && (
                     <div className="flex gap-3 overflow-x-auto pb-4 mb-4 sm:mb-6 flex-shrink-0 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                         {sortedGames.map(game => (
-                            <GameChip key={game.game_id} game={game} />
+                            <GameChip
+                                key={game.game_id}
+                                game={game}
+                                isActive={selectedGameId === game.game_id}
+                                onClick={() => setSelectedGameId(
+                                    selectedGameId === game.game_id ? null : game.game_id
+                                )}
+                            />
                         ))}
                     </div>
                 )}
