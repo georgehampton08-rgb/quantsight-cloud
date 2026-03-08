@@ -13,6 +13,7 @@ import { useDataFreshness } from '../hooks/useDataFreshness';
 import { useToast } from '../context/ToastContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiContract } from '../api/client';
+import PlayerShotChart from '../components/player/PlayerShotChart';
 import { GameLogsViewer } from '../components/player/GameLogsViewer';
 import { H2HHistoryPanel } from '../components/player/H2HHistoryPanel';
 import { useOrbital } from '../context/OrbitalContext';
@@ -456,27 +457,7 @@ export default function PlayerProfilePage() {
                     )}
 
                     {activeTab === 'ShotChart' && (
-                        <div className="space-y-6">
-                            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-8">
-                                <h3 className="text-lg font-bold text-slate-200 mb-6 flex items-center gap-2">
-                                    <span>🎯</span>
-                                    Shot Distribution Heat Map
-                                </h3>
-                                <div className="aspect-square max-w-2xl mx-auto bg-slate-900/50 rounded-lg border border-dashed border-slate-700 flex items-center justify-center">
-                                    <div className="text-center text-slate-500">
-                                        <div className="text-4xl mb-4">🏀</div>
-                                        <div className="text-sm">Shot Chart Visualization</div>
-                                        <div className="text-xs opacity-50 mt-2">Coming Soon</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <MetricCard title="3PT%" value="38.2%" subValue="Above League Avg" />
-                                <MetricCard title="FG% (Paint)" value="64.1%" subValue="Elite Finishing" />
-                                <MetricCard title="Mid-Range %" value="42.7%" subValue="Solid" />
-                            </div>
-                        </div>
+                        <PlayerShotChart playerId={targetId || '0'} />
                     )}
                 </div>
 

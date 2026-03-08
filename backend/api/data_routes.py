@@ -439,43 +439,94 @@ async def get_player_game_logs(player_id: str):
     """
     Return recent game logs for a player.
     GameLogsViewer.tsx expects: { logs: GameLog[] }
+
+    Data source:
+      1. Firestore player_game_stats/{pid}/games/ — dedicated per-player collection
+         (denormalized from pulse_stats by the seeder script)
+      2. NBA API PlayerGameLog — live pull as last resort
     """
     try:
         from firestore_db import get_firestore_db
         db = get_firestore_db()
 
+        # ── Source 1: player_game_stats (dedicated per-player collection) ─
         logs = []
-        query = (
-            db.collection("game_logs")
-            .where("PLAYER_ID", "==", int(player_id))
-            .order_by("GAME_DATE", direction="DESCENDING")
-            .limit(20)
-        )
+        try:
+            # Doc IDs are {date}_{game_id} so lexicographic desc = newest first
+            docs = (
+                db.collection("player_game_stats")
+                .document(str(player_id))
+                .collection("games")
+                .order_by("GAME_DATE", direction="DESCENDING")
+                .limit(20)
+                .stream()
+            )
+            for doc in docs:
+                g = doc.to_dict()
+                logs.append({
+                    "GAME_ID": g.get("GAME_ID", ""),
+                    "GAME_DATE": g.get("GAME_DATE", ""),
+                    "MATCHUP": g.get("MATCHUP", ""),
+                    "WL": g.get("WL", ""),
+                    "MIN": float(g.get("MIN", 0) or 0),
+                    "PTS": int(g.get("PTS", 0) or 0),
+                    "REB": int(g.get("REB", 0) or 0),
+                    "AST": int(g.get("AST", 0) or 0),
+                    "STL": int(g.get("STL", 0) or 0),
+                    "BLK": int(g.get("BLK", 0) or 0),
+                    "TOV": int(g.get("TOV", 0) or 0),
+                    "FG_PCT": float(g.get("FG_PCT", 0) or 0),
+                    "FG3_PCT": float(g.get("FG3_PCT", 0) or 0),
+                    "FT_PCT": float(g.get("FT_PCT", 0) or 0),
+                    "PLUS_MINUS": float(g.get("PLUS_MINUS", 0) or 0),
+                })
+        except Exception as e:
+            logger.debug(f"[GAME-LOGS] player_game_stats query failed: {e}")
 
-        for doc in query.stream():
-            g = doc.to_dict()
-            logs.append({
-                "GAME_ID": g.get("GAME_ID", ""),
-                "GAME_DATE": g.get("GAME_DATE", ""),
-                "MATCHUP": g.get("MATCHUP", ""),
-                "WL": g.get("WL", ""),
-                "MIN": float(g.get("MIN", 0) or 0),
-                "PTS": int(g.get("PTS", 0) or 0),
-                "REB": int(g.get("REB", 0) or 0),
-                "AST": int(g.get("AST", 0) or 0),
-                "STL": int(g.get("STL", 0) or 0),
-                "BLK": int(g.get("BLK", 0) or 0),
-                "TOV": int(g.get("TOV", 0) or 0),
-                "FG_PCT": float(g.get("FG_PCT", 0) or 0),
-                "FG3_PCT": float(g.get("FG3_PCT", 0) or 0),
-                "FT_PCT": float(g.get("FT_PCT", 0) or 0),
-                "PLUS_MINUS": float(g.get("PLUS_MINUS", 0) or 0),
-            })
+        if logs:
+            return {"logs": logs, "source": "player_game_stats"}
 
-        if not logs:
-            raise HTTPException(status_code=404, detail="Not Found")
+        # ── Source 2: NBA API (live pull as last resort) ──────────────────
+        try:
+            from nba_api.stats.endpoints import playergamelog
+            time.sleep(0.6)
+            gl = playergamelog.PlayerGameLog(
+                player_id=player_id,
+                season=CURRENT_SEASON,
+                season_type_all_star="Regular Season",
+                timeout=15,
+            )
+            df = gl.get_data_frames()[0]
+            for _, row in df.head(20).iterrows():
+                fga = int(row.get("FGA", 1) or 1)
+                fgm = int(row.get("FGM", 0) or 0)
+                fg3a = int(row.get("FG3A", 1) or 1)
+                fg3m = int(row.get("FG3M", 0) or 0)
+                fta = int(row.get("FTA", 1) or 1)
+                ftm = int(row.get("FTM", 0) or 0)
+                logs.append({
+                    "GAME_ID": str(row.get("Game_ID", "")),
+                    "GAME_DATE": str(row.get("GAME_DATE", "")),
+                    "MATCHUP": str(row.get("MATCHUP", "")),
+                    "WL": str(row.get("WL", "")),
+                    "MIN": float(row.get("MIN", 0) or 0),
+                    "PTS": int(row.get("PTS", 0) or 0),
+                    "REB": int(row.get("REB", 0) or 0),
+                    "AST": int(row.get("AST", 0) or 0),
+                    "STL": int(row.get("STL", 0) or 0),
+                    "BLK": int(row.get("BLK", 0) or 0),
+                    "TOV": int(row.get("TOV", 0) or 0),
+                    "FG_PCT": round(fgm / max(fga, 1), 3),
+                    "FG3_PCT": round(fg3m / max(fg3a, 1), 3),
+                    "FT_PCT": round(ftm / max(fta, 1), 3),
+                    "PLUS_MINUS": float(row.get("PLUS_MINUS", 0) or 0),
+                })
+            if logs:
+                return {"logs": logs, "source": "nba_api"}
+        except Exception as e:
+            logger.warning(f"[GAME-LOGS] NBA API fallback failed: {e}")
 
-        return {"logs": logs}
+        raise HTTPException(status_code=404, detail="No game logs available")
 
     except HTTPException:
         raise
