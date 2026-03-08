@@ -218,6 +218,84 @@ class PulseStatsArchiver:
             )
             
             logger.debug(f"Saved {quarter_label} with {len(players_map)} players to {doc_path}")
+
+            # ── Auto-populate player_game_stats on FINAL ─────────────────
+            # Denormalize per-player stats so /player-data/logs/{pid}
+            # returns instantly from player_game_stats/{pid}/games/
+            if is_final and players_map:
+                try:
+                    from firestore_db import get_firestore_db
+                    db = get_firestore_db()
+                    batch = db.batch()
+                    batch_count = 0
+
+                    for pid, pdata in players_map.items():
+                        team = pdata.get("team", "")
+                        if team == away_team:
+                            matchup = f"{team} @ {home_team}"
+                            wl = "W" if away_score > home_score else "L"
+                        elif team == home_team:
+                            matchup = f"{team} vs. {away_team}"
+                            wl = "W" if home_score > away_score else "L"
+                        else:
+                            matchup = f"{home_team} vs {away_team}"
+                            wl = ""
+
+                        raw_min = pdata.get("min", 0)
+                        if isinstance(raw_min, str) and ":" in raw_min:
+                            raw_min = float(raw_min.split(":")[0])
+
+                        fga = int(pdata.get("fga", 1) or 1)
+                        fgm = int(pdata.get("fgm", 0) or 0)
+                        fg3m = int(pdata.get("fg3m", 0) or 0)
+                        fg3a = int(pdata.get("fg3a", 1) or 1)
+                        fta = int(pdata.get("fta", 1) or 1)
+                        ftm = int(pdata.get("ftm", 0) or 0)
+
+                        doc_id = f"{today}_{game_id}"
+                        player_log = {
+                            "GAME_ID": game_id,
+                            "GAME_DATE": today,
+                            "MATCHUP": matchup,
+                            "WL": wl,
+                            "MIN": float(raw_min or 0),
+                            "PTS": int(pdata.get("pts", 0) or 0),
+                            "REB": int(pdata.get("reb", 0) or 0),
+                            "AST": int(pdata.get("ast", 0) or 0),
+                            "STL": int(pdata.get("stl", 0) or 0),
+                            "BLK": int(pdata.get("blk", 0) or 0),
+                            "TOV": int(pdata.get("to", 0) or 0),
+                            "FG_PCT": round(fgm / max(fga, 1), 3),
+                            "FG3_PCT": round(fg3m / max(fg3a, 1), 3),
+                            "FT_PCT": round(ftm / max(fta, 1), 3),
+                            "PLUS_MINUS": float(pdata.get("plus_minus", 0) or 0),
+                            "player_name": pdata.get("name", f"Player {pid}"),
+                            "team": team,
+                        }
+
+                        ref = (
+                            db.collection("player_game_stats")
+                            .document(str(pid))
+                            .collection("games")
+                            .document(doc_id)
+                        )
+                        batch.set(ref, player_log, merge=True)
+                        batch_count += 1
+
+                        if batch_count >= 450:
+                            batch.commit()
+                            batch = db.batch()
+                            batch_count = 0
+
+                    if batch_count > 0:
+                        batch.commit()
+
+                    logger.info(
+                        f"📋 Auto-populated player_game_stats for {len(players_map)} "
+                        f"players from game {game_id}"
+                    )
+                except Exception as e:
+                    logger.warning(f"[player_game_stats] Auto-populate failed: {e}")
             
         except Exception as e:
             logger.error(f"Failed to archive quarter stats: {e}")
