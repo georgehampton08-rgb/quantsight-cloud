@@ -167,6 +167,35 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning(f"⚠️ WebSocket heartbeat not started: {e}")
             
+            # Auto-track all live games (PBP data capture)
+            _auto_track_task = None
+            try:
+                async def _auto_track_loop():
+                    """Poll schedule every 2min, auto-start tracking for live games."""
+                    from services.pbp_polling_service import pbp_polling_manager
+                    while True:
+                        try:
+                            from services.schedule_service import get_schedule_service
+                            svc = get_schedule_service()
+                            sched = await svc.get_schedule()
+                            if sched and sched.get("games"):
+                                for g in sched["games"]:
+                                    gid = g.get("game_id") or g.get("gameId", "")
+                                    status = g.get("status", "")
+                                    is_live = (status == "LIVE" or status == 2 or 
+                                             str(g.get("statusText", "")).lower() in ("half", "halftime"))
+                                    if is_live and gid and gid not in pbp_polling_manager.active_tasks:
+                                        logger.info(f"[AutoTrack] Starting PBP tracking for {gid}")
+                                        await pbp_polling_manager.start_tracking(gid)
+                        except Exception as e:
+                            logger.debug(f"[AutoTrack] Schedule poll error: {e}")
+                        await asyncio.sleep(120)  # every 2 minutes
+                
+                _auto_track_task = asyncio.create_task(_auto_track_loop())
+                logger.info("✅ Auto game tracker started (2min poll)")
+            except Exception as e:
+                logger.warning(f"⚠️ Auto game tracker not started: {e}")
+            
             yield
             
             # Shutdown heartbeat
@@ -174,6 +203,14 @@ async def lifespan(app: FastAPI):
                 _heartbeat_task.cancel()
                 try:
                     await _heartbeat_task
+                except asyncio.CancelledError:
+                    pass
+            
+            # Shutdown auto-tracker
+            if _auto_track_task and not _auto_track_task.done():
+                _auto_track_task.cancel()
+                try:
+                    await _auto_track_task
                 except asyncio.CancelledError:
                     pass
             
