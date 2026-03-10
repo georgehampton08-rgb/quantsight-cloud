@@ -69,23 +69,21 @@ body {
   }
 }
 
-/* ── Mobile Sidebar ──────────────────────────────────────────────── */
-@media (max-width: 767px) {
-  .sidebar {
-    position: fixed;
-    left: -280px;
-    top: 0;
-    bottom: 0;
-    width: 280px;
-    z-index: 9999;
-    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: none;
-  }
+/* ── Sidebar (All viewport sizes) ────────────────────────────────── */
+.sidebar {
+  position: fixed;
+  left: -280px;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 9999;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+}
 
-  .sidebar.open {
-    left: 0;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-  }
+.sidebar.open {
+  left: 0;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
 }
 
 /* ── Disclaimer Modal ────────────────────────────────────────────── */

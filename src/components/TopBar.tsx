@@ -48,8 +48,8 @@ export default function TopBar() {
                 {/* Main bar row */}
                 <div className="flex items-center h-14 px-3 gap-2 overflow-hidden">
 
-                    {/* Left: Hamburger (narrow) or Back+Selector (wide) */}
-                    {isNarrow ? (
+                    {/* Left: Hamburger and Selector */}
+                    <div className="flex-shrink-0 flex items-center gap-2 md:gap-3">
                         <button
                             onClick={toggleMobileMenu}
                             className="flex-shrink-0 p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -57,18 +57,20 @@ export default function TopBar() {
                         >
                             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </button>
-                    ) : (
-                        <div className="flex-shrink-0 flex items-center gap-3">
-                            <button
-                                onClick={() => navigate(-1)}
-                                className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                                title="Go Back"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <CascadingSelector />
-                        </div>
-                    )}
+
+                        {!isNarrow && (
+                            <>
+                                <button
+                                    onClick={() => navigate(-1)}
+                                    className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                    title="Go Back"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <CascadingSelector />
+                            </>
+                        )}
+                    </div>
 
                     {/* Center: Search bar (flex-1 so it fills available space) */}
                     <div className="flex-1 min-w-0 px-2">
