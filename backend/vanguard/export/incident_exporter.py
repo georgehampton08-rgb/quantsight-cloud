@@ -269,10 +269,14 @@ class IncidentExporter:
             if col in df.columns:
                 df[col] = pd.to_datetime(df[col], utc=True, errors="coerce")
         
-        # Ensure integer columns
+        # Ensure integer columns — use pandas nullable Int64 (capital I), NOT float64.
+        # pd.to_numeric() alone returns float64 when NaN is present (standard int can't hold NaN).
+        # BigQuery canonical table has these columns as INT64, so the MERGE rejects float64 values
+        # with "Value of type FLOAT64 cannot be assigned to <col>, which has type INT64".
+        # pandas nullable integer ("Int64") handles NaN correctly and maps to BQ INT64.
         for col in ["occurrence_count", "status_code", "ai_confidence", "heuristic_confidence"]:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
         
         # Log label distribution
         if "ml_label" in df.columns:
