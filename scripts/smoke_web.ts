@@ -44,18 +44,19 @@ async function runSmokeTests() {
     }
 
     // 2. GET /pulse/boxscore/{valid_game_id}
+    // Backend shape: { game_info: {}, home: [...], away: [...] }
+    // (NOT home_team.players / away_team.players — that was the old expected contract)
     try {
         const res = await fetch(`${BASE_URL}/pulse/boxscore/${VALID_GAME_ID}`);
         if (!res.ok) {
-            // It could be 404 if game isn't live/valid recently, but we test contract
-            // If it returns 200, check home/away
+            // 404 is acceptable — game may be old and not on the CDN anymore
             log("WARN", `/pulse/boxscore/${VALID_GAME_ID}`, `Returned HTTP ${res.status} (expected if game id is old)`);
         } else {
             const data = await res.json() as any;
-            if (data?.home_team?.players && data?.away_team?.players) {
-                log("PASS", `/pulse/boxscore/${VALID_GAME_ID}`, "Returned valid boxscore arrays");
+            if (Array.isArray(data?.home) && Array.isArray(data?.away)) {
+                log("PASS", `/pulse/boxscore/${VALID_GAME_ID}`, `Returned valid boxscore arrays (home: ${data.home.length}, away: ${data.away.length})`);
             } else {
-                log("FAIL", `/pulse/boxscore/${VALID_GAME_ID}`, "Missing home/away players array");
+                log("FAIL", `/pulse/boxscore/${VALID_GAME_ID}`, "Missing home/away arrays in response");
                 passed = false;
             }
         }
@@ -65,7 +66,16 @@ async function runSmokeTests() {
     }
 
     // 3. POST /vanguard/admin/incidents/ingest
+    // NOTE: This endpoint requires admin auth (Firebase JWT).
+    // CI runner has no auth token, so 403 is the EXPECTED response —
+    // it confirms the admin gate is working correctly.
+    // A PASS (200 with success+fingerprint) is also valid if a token is
+    // provided via SMOKE_ADMIN_TOKEN env var in the future.
     try {
+        const adminToken = process.env.SMOKE_ADMIN_TOKEN;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
+
         const payload = {
             fingerprint: `smoke_test_${Date.now()}`,
             severity: 'GREEN',
@@ -75,16 +85,23 @@ async function runSmokeTests() {
         };
         const res = await fetch(`${BASE_URL}/vanguard/admin/incidents/ingest`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as any;
-        if (data.success && data.fingerprint) {
-            log("PASS", "/vanguard/admin/incidents/ingest", `Success: ${data.fingerprint}`);
-        } else {
-            log("FAIL", "/vanguard/admin/incidents/ingest", "Missing success or fingerprint flag");
+        if (res.status === 403) {
+            // Admin gate is working as designed — not a regression
+            log("WARN", "/vanguard/admin/incidents/ingest", "HTTP 403 — admin gate active (expected in unauthenticated CI)");
+        } else if (!res.ok) {
+            log("FAIL", "/vanguard/admin/incidents/ingest", `HTTP ${res.status}`);
             passed = false;
+        } else {
+            const data = await res.json() as any;
+            if (data.success && data.fingerprint) {
+                log("PASS", "/vanguard/admin/incidents/ingest", `Success: ${data.fingerprint}`);
+            } else {
+                log("FAIL", "/vanguard/admin/incidents/ingest", "Missing success or fingerprint flag");
+                passed = false;
+            }
         }
     } catch (e: any) {
         log("FAIL", "/vanguard/admin/incidents/ingest", e.message);
