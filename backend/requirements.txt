@@ -86,3 +86,5 @@ imbalanced-learn>=0.12.0
 google-cloud-bigquery>=3.17.0
 google-cloud-storage>=2.14.0
 pyarrow>=15.0.0  # Required for BQ load_table_from_dataframe
+pandas-gbq>=0.26.1  # Required for load_table_from_dataframe (future BQ SDK enforcement)
+
