@@ -255,6 +255,14 @@ class PBPPollingService:
                     await asyncio.to_thread(
                         FirebasePBPService.finalize_game, game_id
                     )
+                    # Signal SSE clients to close gracefully — prevents zombie
+                    # connections from exhausting Cloud Run concurrency limits.
+                    sentinel = [{"type": "system_game_ended"}]
+                    for q in self.sse_queues.get(game_id, []):
+                        try:
+                            q.put_nowait(sentinel)
+                        except asyncio.QueueFull:
+                            pass
                     self.active_tasks.pop(game_id, None)
                     break
 

@@ -36,6 +36,7 @@ export function useLivePlayByPlay(gameId: string | null) {
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const retryTimeoutRef = useRef<any>(null);
+    const gameEndedRef = useRef<boolean>(false);
 
     // 1. Initial Hydration
     const fetchCachedPlays = useCallback(async (id: string) => {
@@ -77,6 +78,19 @@ export function useLivePlayByPlay(gameId: string | null) {
                 const data = JSON.parse(event.data);
                 if (data.type === 'connection') {
                     console.log(`PBP SSE Connected for ${data.gameId}`);
+                } else if (data.type === 'game_ended') {
+                    // Backend signals game is officially over — close cleanly.
+                    // Do NOT reconnect: a zombie reconnect loop would exhaust
+                    // Cloud Run concurrency and cause site-wide 429 errors.
+                    console.log(`PBP SSE: game ${data.gameId} ended. Closing stream.`);
+                    gameEndedRef.current = true;
+                    es.close();
+                    if (retryTimeoutRef.current) {
+                        clearTimeout(retryTimeoutRef.current);
+                        retryTimeoutRef.current = null;
+                    }
+                    setIsConnected(false);
+                    setIsReconnecting(false);
                 } else if (data.type === 'plays_update' && data.plays) {
                     // Append new plays and deduplicate by sequenceNumber
                     setPlays(prev => {
@@ -96,10 +110,13 @@ export function useLivePlayByPlay(gameId: string | null) {
             setIsReconnecting(true);
             es.close();
 
-            // Exponential backoff or simple retry
-            retryTimeoutRef.current = setTimeout(() => {
-                if (id) connectSSE(id);
-            }, 5000);
+            // Only retry if the game hasn't ended — prevents reconnect loops
+            // on finalized games from consuming all Cloud Run instances.
+            if (!gameEndedRef.current) {
+                retryTimeoutRef.current = setTimeout(() => {
+                    if (id) connectSSE(id);
+                }, 5000);
+            }
         };
 
     }, []);
@@ -114,6 +131,7 @@ export function useLivePlayByPlay(gameId: string | null) {
         // Reset state for new game
         setPlays([]);
         setError(null);
+        gameEndedRef.current = false;
 
         // Initial load
         fetchCachedPlays(gameId).then(() => {

@@ -299,6 +299,18 @@ async def _sse_pbp_generator(request: Request, game_id: str):
 
             try:
                 payload = await asyncio.wait_for(q.get(), timeout=15.0)
+                # Check for termination sentinel from the polling service.
+                # Sending a game_ended event allows the client to close the
+                # EventSource cleanly instead of auto-reconnecting into a
+                # heartbeat loop (which would exhaust Cloud Run concurrency).
+                if (
+                    isinstance(payload, list)
+                    and len(payload) == 1
+                    and isinstance(payload[0], dict)
+                    and payload[0].get("type") == "system_game_ended"
+                ):
+                    yield f"data: {json.dumps({'type': 'game_ended', 'gameId': game_id})}\n\n"
+                    break
                 yield f"data: {json.dumps({'type': 'plays_update', 'plays': payload})}\n\n"
             except asyncio.TimeoutError:
                 if await request.is_disconnected():
