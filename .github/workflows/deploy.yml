@@ -1,0 +1,152 @@
+# ============================================================================
+# QuantSight Production Deploy — Backend + Frontend
+# ============================================================================
+# Triggers on every push to main.
+# Backend  → Cloud Run    (gcloud run deploy --source backend/)
+# Frontend → Firebase Hosting (npm run build && firebase deploy --only hosting)
+#
+# Secrets required in GitHub repo settings:
+#   GCP_WORKLOAD_IDENTITY_PROVIDER  — Workload Identity Federation provider
+#   GCP_SERVICE_ACCOUNT             — GCP service account email
+#   FIREBASE_SERVICE_ACCOUNT_JSON   — Firebase service account JSON for deploy
+# ============================================================================
+
+name: "Deploy: Backend + Frontend"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: quantsight-prod
+  SERVICE_NAME: quantsight-cloud
+  REGION: us-central1
+
+jobs:
+  # ── Job 1: Deploy Backend to Cloud Run ─────────────────────────────────────
+  deploy-backend:
+    name: "Backend → Cloud Run"
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy to Cloud Run (no-traffic staging)
+        id: deploy
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --source backend \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 1 \
+            --max-instances 10 \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 300 \
+            --concurrency 80 \
+            --set-env-vars "VANGUARD_ENABLED=true,FIREBASE_PROJECT_ID=quantsight-prod,DEPLOYMENT_MODE=cloud,PORT=8080" \
+            --update-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,GITHUB_TOKEN=GITHUB_TOKEN:latest" \
+            --no-traffic \
+            --quiet
+
+          # Capture the new revision name
+          NEW_REV=$(gcloud run revisions list \
+            --service $SERVICE_NAME \
+            --region $REGION \
+            --limit 1 \
+            --format "value(name)")
+          echo "new_revision=$NEW_REV" >> $GITHUB_OUTPUT
+          echo "New revision: $NEW_REV"
+
+      - name: Smoke test new revision
+        id: smoke
+        run: |
+          SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+            --region $REGION \
+            --format "value(status.url)")
+
+          echo "Smoke testing: $SERVICE_URL/health"
+          sleep 10  # allow instance to warm up
+
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "$SERVICE_URL/health" --max-time 15 || echo "000")
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "smoke_passed=true" >> $GITHUB_OUTPUT
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$STATUS" != "200" ]; then
+            echo "smoke_passed=false" >> $GITHUB_OUTPUT
+            echo "::error::Smoke test failed (HTTP $STATUS). Traffic NOT shifted."
+            exit 1
+          fi
+
+      - name: Shift traffic to new revision
+        if: steps.smoke.outputs.smoke_passed == 'true'
+        run: |
+          gcloud run services update-traffic $SERVICE_NAME \
+            --to-revisions ${{ steps.deploy.outputs.new_revision }}=100 \
+            --region $REGION
+          echo "Traffic shifted to ${{ steps.deploy.outputs.new_revision }}"
+
+  # ── Job 2: Deploy Frontend to Firebase Hosting ─────────────────────────────
+  deploy-frontend:
+    name: "Frontend → Firebase Hosting"
+    runs-on: ubuntu-latest
+    # Run frontend deploy in parallel with backend, but both start from main push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Security gate — no API keys in dist
+        run: |
+          if grep -r "AIza\|gemini_api_key" dist/ 2>/dev/null; then
+            echo "::error::API key found in dist/ build output! Aborting deploy."
+            exit 1
+          fi
+          echo "Security gate passed — no keys in dist/"
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          channelId: live
+          projectId: ${{ env.PROJECT_ID }}
