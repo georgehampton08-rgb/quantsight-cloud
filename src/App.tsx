@@ -4,6 +4,7 @@ import { HealthProvider } from './context/HealthContext'
 import { ToastProvider } from './context/ToastContext'
 import { OrbitalProvider } from './context/OrbitalContext'
 import ToastContainer from './components/common/ToastContainer'
+import DisclaimerModal from './components/DisclaimerModal'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import MainCanvas from './components/MainCanvas'
@@ -53,6 +54,7 @@ function App() {
                 <OrbitalProvider>
                     <HealthProvider>
                         <ToastProvider>
+                            <DisclaimerModal />
                             <div className="flex h-screen w-screen bg-financial-bg text-financial-text overflow-hidden relative">
                                 <ToastContainer />
 

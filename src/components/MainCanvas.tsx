@@ -10,6 +10,7 @@ import InjuryAdmin from '../pages/InjuryAdmin'
 import PulsePage from '../pages/PulsePage'
 import VanguardControlRoom from '../pages/VanguardControlRoom'
 import BoxScoresPage from '../pages/BoxScoresPage'
+import AboutPage from '../pages/AboutPage'
 
 export default function MainCanvas() {
     return (
@@ -28,6 +29,7 @@ export default function MainCanvas() {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/pulse" element={<PulsePage />} />
                     <Route path="/box-scores" element={<BoxScoresPage />} />
+                    <Route path="/about" element={<AboutPage />} />
 
                     {/* Admin-gated routes — show Sign In prompt when not authenticated */}
                     <Route path="/vanguard" element={
