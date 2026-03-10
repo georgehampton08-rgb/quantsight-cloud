@@ -316,8 +316,8 @@ function RunHistoryPanel() {
             return 'text-slate-400 bg-slate-500/10';
         };
 
-        return createPortal(
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+        return (
+            <div className="flex flex-col bg-slate-900/80 border border-slate-700/50 rounded-xl overflow-hidden shadow-2xl mb-8">
                 {/* Sticky header */}
                 <div className="flex-shrink-0 bg-[#0a0e1a] border-b border-slate-700/50 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -352,9 +352,9 @@ function RunHistoryPanel() {
                                     <Activity className="w-4 h-4 text-cyan-400" /> Triggered By
                                 </h4>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 text-xs">
                                 {tb.ip && <div><span className="text-slate-600 block">IP Address</span><span className="text-slate-300 font-mono">{tb.ip}</span></div>}
-                                {tb.user_agent && <div className="col-span-2"><span className="text-slate-600 block">User Agent</span><span className="text-slate-300 font-mono text-[10px] break-all">{tb.user_agent}</span></div>}
+                                {tb.user_agent && <div className="sm:col-span-2"><span className="text-slate-600 block">User Agent</span><span className="text-slate-300 font-mono text-[10px] break-all">{tb.user_agent}</span></div>}
                                 {tb.host && <div><span className="text-slate-600 block">Host</span><span className="text-slate-300 font-mono">{tb.host}</span></div>}
                                 {tb.origin && <div><span className="text-slate-600 block">Origin</span><span className="text-slate-300 font-mono">{tb.origin}</span></div>}
                                 {tb.referer && <div><span className="text-slate-600 block">Referer</span><span className="text-slate-300 font-mono">{tb.referer}</span></div>}
@@ -490,8 +490,7 @@ function RunHistoryPanel() {
                         </div>
                     )}
                 </div>
-            </div>,
-            document.body
+            </div>
         );
     }
 
