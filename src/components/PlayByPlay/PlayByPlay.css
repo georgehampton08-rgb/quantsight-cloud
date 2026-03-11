@@ -214,6 +214,45 @@
     }
 }
 
+/* Games without PBP data — dimmed */
+.game-selector-btn.no-pbp {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Score inside a historical game button */
+.game-btn-label {
+    display: block;
+}
+
+.game-btn-score {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.game-selector-btn.active .game-btn-score {
+    color: #0f172a;
+}
+
+/* PBP available badge — small green pill */
+.pbp-available-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 800;
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+}
+
 /* === MAIN 2-COLUMN LAYOUT (desktop) === */
 .pbp-feed-layout {
     display: flex;

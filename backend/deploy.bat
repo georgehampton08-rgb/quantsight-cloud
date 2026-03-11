@@ -41,9 +41,8 @@ gcloud run deploy %SERVICE_NAME% ^
   --cpu 1 ^
   --timeout 300 ^
   --concurrency 80 ^
-  --set-env-vars VANGUARD_ENABLED=true ^
-  --update-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest ^
-  --update-secrets GITHUB_TOKEN=GITHUB_TOKEN:latest ^
+  --set-env-vars "VANGUARD_ENABLED=true,GRPC_ENABLE_FORK_SUPPORT=1" ^
+  --update-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,GITHUB_TOKEN=GITHUB_TOKEN:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest" ^
   --no-traffic ^
   --quiet
 

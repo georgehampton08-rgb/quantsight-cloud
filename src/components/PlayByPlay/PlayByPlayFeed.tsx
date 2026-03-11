@@ -25,7 +25,14 @@ export function PlayByPlayFeed() {
     const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
     const [historicalLoading, setHistoricalLoading] = useState(false);
 
+    // Live mode when date is today
     const isLiveMode = selectedDate === today;
+
+    // Selected historical game metadata (for score header even when plays are empty)
+    const [selectedGameMeta, setSelectedGameMeta] = useState<{
+        homeTeam: string; awayTeam: string;
+        scoreHome?: number; scoreAway?: number;
+    } | null>(null);
 
     // Live mode: use the real-time hook
     const { plays: livePlays, isConnected, isReconnecting, error } = useLivePlayByPlay(
@@ -39,6 +46,7 @@ export function PlayByPlayFeed() {
     useEffect(() => {
         setActiveGameId(null);
         setHistoricalPlays([]);
+        setSelectedGameMeta(null);
     }, [selectedDate]);
 
     // Historical: load cached plays when a past game is selected
@@ -63,13 +71,16 @@ export function PlayByPlayFeed() {
         }
     }, [livePlays, isLiveMode]);
 
-    // Score + clock derived from last play
-    let homeScore = 0, awayScore = 0, clock = '12:00', period = 1;
-    let homeTeam = 'HOME', awayTeam = 'AWAY';
+    // Score + clock derived from last play (or historical metadata)
+    let homeScore = selectedGameMeta?.scoreHome ?? 0;
+    let awayScore = selectedGameMeta?.scoreAway ?? 0;
+    let clock = '12:00', period = 1;
+    let homeTeam = selectedGameMeta?.homeTeam ?? 'HOME';
+    let awayTeam = selectedGameMeta?.awayTeam ?? 'AWAY';
     if (plays.length > 0) {
         const last = plays[plays.length - 1];
-        homeScore = last.homeScore;
-        awayScore = last.awayScore;
+        homeScore = last.homeScore ?? homeScore;
+        awayScore = last.awayScore ?? awayScore;
         clock = last.clock;
         period = last.period;
     }
@@ -141,6 +152,12 @@ export function PlayByPlayFeed() {
             <LiveGameSelector
                 activeGameId={activeGameId}
                 onSelectGame={setActiveGameId}
+                onSelectGameFull={(g) => setSelectedGameMeta({
+                    homeTeam: g.homeTeam,
+                    awayTeam: g.awayTeam,
+                    scoreHome: g.scoreHome,
+                    scoreAway: g.scoreAway,
+                })}
                 date={selectedDate}
                 isLiveMode={isLiveMode}
             />

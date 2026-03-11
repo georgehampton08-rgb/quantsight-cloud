@@ -17,6 +17,11 @@ Environment:
 import asyncio
 import logging
 import os
+
+# Enable gRPC fork support to prevent child processes from segfaulting
+# when uvicorn forks workers or reloader processes.
+os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Response

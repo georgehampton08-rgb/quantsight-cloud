@@ -62,3 +62,18 @@ deploy_cloud_run.sh
 # Build artifacts
 backend/data/*.db
 backend/data/*.db-journal
+
+# Test files (not needed in production image)
+tests/
+test_*.py
+*_test.py
+expanded_test_suite.py
+comprehensive_test_suite.py
+test_game_data.py
+
+# One-off scripts (not needed in production)
+scripts/
+
+# Local debug / temp files
+uvicorn_debug.log
+*.log

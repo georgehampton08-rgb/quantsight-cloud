@@ -110,6 +110,11 @@ class EscalationEngine:
         
         logger.info(f"🛡️ DE-ESCALATION: {old_mode} -> {target_mode} | Reason: {reason}")
 
+    async def stop(self):
+        """Stop the escalation monitoring loop."""
+        self._running = False
+        logger.info("Escalation Engine STOPPED")
+
 # Singleton
 _escalation_engine = None
 

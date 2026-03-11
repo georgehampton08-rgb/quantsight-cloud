@@ -12,20 +12,25 @@ interface LiveGame {
 
 interface HistoricalGame {
     gameId: string;
+    nbaId?: string;
     homeTeam: string;
     awayTeam: string;
     status: string;
     startTime?: string;
+    hasPbp?: boolean;
+    scoreHome?: number;
+    scoreAway?: number;
 }
 
 interface Props {
     activeGameId: string | null;
     onSelectGame: (gameId: string) => void;
+    onSelectGameFull?: (game: HistoricalGame) => void;
     date?: string;
     isLiveMode?: boolean;
 }
 
-export function LiveGameSelector({ activeGameId, onSelectGame, date, isLiveMode = true }: Props) {
+export function LiveGameSelector({ activeGameId, onSelectGame, onSelectGameFull, date, isLiveMode = true }: Props) {
     const [liveGames, setLiveGames] = useState<LiveGame[]>([]);
     const [historicalGames, setHistoricalGames] = useState<HistoricalGame[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,7 +64,14 @@ export function LiveGameSelector({ activeGameId, onSelectGame, date, isLiveMode 
         ApiContract.executeWeb<{ games: HistoricalGame[] }>({
             path: `v1/games/by-date/${date}`
         }).then(res => {
-            setHistoricalGames(res?.games ?? []);
+            const all = res?.games ?? [];
+            setHistoricalGames(all);
+            // Auto-select first game that has PBP data, so the feed loads immediately
+            const withPbp = all.find((g: HistoricalGame) => g.hasPbp);
+            if (withPbp) {
+                onSelectGame(withPbp.gameId);
+                if (onSelectGameFull) onSelectGameFull(withPbp);
+            }
         }).catch(e => {
             console.error('Failed to fetch historical games:', e);
         }).finally(() => setLoading(false));
@@ -122,13 +134,24 @@ export function LiveGameSelector({ activeGameId, onSelectGame, date, isLiveMode 
                 const label = (g.awayTeam && g.homeTeam)
                     ? `${g.awayTeam} @ ${g.homeTeam}`
                     : g.gameId;
+                const hasScore = g.scoreHome !== undefined && g.scoreAway !== undefined;
                 return (
                     <button
                         key={g.gameId}
-                        className={`game-selector-btn ${isActive ? 'active' : ''}`}
-                        onClick={() => onSelectGame(g.gameId)}
+                        className={`game-selector-btn ${isActive ? 'active' : ''} ${!g.hasPbp ? 'no-pbp' : ''}`}
+                        onClick={() => {
+                            onSelectGame(g.gameId);
+                            if (onSelectGameFull) onSelectGameFull(g);
+                        }}
+                        title={g.hasPbp ? 'Play-by-play available' : 'No play-by-play data for this game'}
                     >
-                        {label}
+                        <span className="game-btn-label">{label}</span>
+                        {hasScore && (
+                            <span className="game-btn-score">
+                                {g.scoreAway}–{g.scoreHome}
+                            </span>
+                        )}
+                        {g.hasPbp && <span className="pbp-available-badge">PBP</span>}
                         {g.status === 'Final' && (
                             <span className="historical-status-badge">FINAL</span>
                         )}

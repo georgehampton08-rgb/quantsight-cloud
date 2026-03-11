@@ -425,6 +425,7 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
         self._last_error: Optional[str] = None
         self._request_count: int = 0
         self._error_count: int = 0
+        self._session_lock = None
 
         # ── TTL cache stores ──────────────────────────────────────────────
         # scoreboard: (value, fetched_at)
@@ -454,16 +455,31 @@ class AsyncNBAApiAdapter(NBAApiAdapter):
 
     async def _get_session(self):
         """Get or create aiohttp session with NBA headers and conservative timeouts."""
-        if self._session is None or self._session.closed:
-            if not self._aiohttp_available:
-                return None
-            import aiohttp
-            # connect=5s prevents slow TCP hangs; read=10s budget per response
-            timeout = aiohttp.ClientTimeout(connect=5, sock_read=10, total=20)
-            self._session = aiohttp.ClientSession(
-                timeout=timeout,
-                headers=self.NBA_HEADERS,
-            )
+        if self._session_lock is None:
+            import asyncio
+            self._session_lock = asyncio.Lock()
+            
+        async with self._session_lock:
+            if self._session is None or self._session.closed:
+                if not self._aiohttp_available:
+                    return None
+                import aiohttp
+                # connect=5s prevents slow TCP hangs; read=10s budget per response
+                timeout = aiohttp.ClientTimeout(connect=5, sock_read=10, total=20)
+                
+                # We limit the connection pool to avoid maxing out CDN connections
+                # and forcefully clear closed FDs to prevent event loop crashes
+                connector = aiohttp.TCPConnector(
+                    limit=10,
+                    keepalive_timeout=15,
+                    enable_cleanup_closed=True
+                )
+                
+                self._session = aiohttp.ClientSession(
+                    timeout=timeout,
+                    headers=self.NBA_HEADERS,
+                    connector=connector
+                )
         return self._session
 
     async def close(self):

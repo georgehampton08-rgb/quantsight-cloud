@@ -44,42 +44,106 @@ async def get_live_games():
         raise HTTPException(status_code=500, detail="Failed to fetch live schedule")
 
 
-# ── NEW: date-based calendar browsing ────────────────────────────────────────
+
+
+# ── Date-based calendar browsing ─────────────────────────────────────────────
+
+def _build_nba_to_espn_map(db, date: str) -> dict:
+    """Build NBA_ID → ESPN_ID lookup from game_id_map for a given date."""
+    try:
+        docs = list(db.collection("game_id_map").where("date", "==", date).stream())
+        result = {}
+        for d in docs:
+            data = d.to_dict()
+            nba = data.get("nba_id", "")
+            espn = data.get("espn_id", "")
+            if nba and espn:
+                result[nba] = espn
+        return result
+    except Exception:
+        return {}
+
+
+def _enrich_with_scores(db, date: str, nba_game_id: str, game: dict) -> dict:
+    """Add scoreHome/scoreAway from pulse_stats FINAL quarter (best effort)."""
+    try:
+        final_q = (
+            db.collection("pulse_stats")
+            .document(date)
+            .collection("games")
+            .document(nba_game_id)
+            .collection("quarters")
+            .document("FINAL")
+            .get()
+        )
+        if final_q.exists:
+            qd = final_q.to_dict()
+            game.setdefault("scoreHome", qd.get("home_score", 0))
+            game.setdefault("scoreAway", qd.get("away_score", 0))
+    except Exception:
+        pass
+    return game
+
 
 @router.get("/by-date/{date}")
 async def get_games_by_date(date: str):
     """
     List all games on a given date (YYYY-MM-DD format).
     Multi-source: calendar → pulse_stats → schedule (for today).
+
+    Each game includes:
+      - gameId: ESPN ID when available (plays stored under ESPN ID), else NBA ID
+      - nbaId: original NBA ID preserved for reference
+      - homeTeam, awayTeam, status
+      - hasPbp (bool): True if ESPN tracking data exists for this game
+      - scoreHome, scoreAway: final scores from pulse_stats FINAL quarter
     """
     try:
         from services.firebase_game_service import FirebaseGameService
-        games = FirebaseGameService.get_games_for_date(date)
+        from firestore_db import get_firestore_db
+        db = get_firestore_db()
 
-        # Source 1 worked
-        if games:
+        raw_games = FirebaseGameService.get_games_for_date(date)
+        games = []
+
+        if raw_games:
+            nba_to_espn = _build_nba_to_espn_map(db, date)
+            for g in raw_games:
+                nba_id = g.get("gameId", "")
+                espn_id = nba_to_espn.get(nba_id, "")
+                g["hasPbp"] = bool(espn_id)
+                if espn_id:
+                    g["gameId"] = espn_id
+                    g["nbaId"] = nba_id
+                g = _enrich_with_scores(db, date, nba_id, g)
+                games.append(g)
             return {"status": "success", "date": date, "count": len(games), "games": games}
 
-        # Source 2: pulse_stats/{date}/games/ (box score data)
+        # Source 2: pulse_stats/{date}/games/
+        nba_to_espn = _build_nba_to_espn_map(db, date)
         try:
-            from firestore_db import get_firestore_db
-            db = get_firestore_db()
-            pulse_docs = db.collection("pulse_stats").document(date).collection("games").stream()
+            pulse_docs = list(db.collection("pulse_stats").document(date).collection("games").stream())
             for doc in pulse_docs:
                 d = doc.to_dict()
-                games.append({
-                    "gameId": doc.id,
+                nba_id = doc.id
+                espn_id = nba_to_espn.get(nba_id, "")
+                game = {
+                    "gameId": espn_id if espn_id else nba_id,
+                    "nbaId": nba_id,
                     "homeTeam": d.get("home_team", ""),
                     "awayTeam": d.get("away_team", ""),
                     "status": "Final",
-                })
+                    "hasPbp": bool(espn_id),
+                }
+                game = _enrich_with_scores(db, date, nba_id, game)
+                games.append(game)
         except Exception as e:
             logger.debug(f"[by-date] pulse_stats fallback: {e}")
 
         if games:
             return {"status": "success", "date": date, "count": len(games), "games": games}
 
-        # Source 3: Schedule API (for today only)
+        # Source 3: Today's schedule
         from datetime import datetime
         today = datetime.utcnow().strftime("%Y-%m-%d")
         if date == today:
@@ -98,6 +162,7 @@ async def get_games_by_date(date: str):
                             "homeTeam": home,
                             "awayTeam": away,
                             "status": status if isinstance(status, str) else "UPCOMING",
+                            "hasPbp": False,
                         })
             except Exception as e:
                 logger.debug(f"[by-date] schedule fallback: {e}")
