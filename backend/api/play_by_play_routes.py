@@ -44,6 +44,85 @@ async def get_live_games():
         raise HTTPException(status_code=500, detail="Failed to fetch live schedule")
 
 
+# ── Injury endpoints (powered by ESPN Injury Poller) ─────────────────────────
+
+@router.get("/injuries/team/{tricode}")
+async def get_team_injuries(tricode: str):
+    """
+    Returns today's injury report for a team tricode (e.g. 'LAL', 'GSW').
+    Data sourced from ESPN game summaries — updated every 10-30 min by the poller.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        db = get_firestore_db()
+        doc = db.collection("team_injuries").document(tricode.upper()).get()
+        if not doc.exists:
+            return {"status": "ok", "tricode": tricode.upper(), "injuries": [], "count": 0}
+        data = doc.to_dict()
+        return {
+            "status":    "ok",
+            "tricode":   tricode.upper(),
+            "date":      data.get("date", ""),
+            "injuries":  data.get("injuries", []),
+            "count":     data.get("count", 0),
+            "updatedAt": data.get("updatedAt", ""),
+        }
+    except Exception as e:
+        logger.error(f"Error fetching team injuries for {tricode}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch team injury report")
+
+
+@router.get("/injuries/player/{player_id}")
+async def get_player_injury(player_id: str):
+    """
+    Returns current injury status for a player by ESPN athlete ID.
+    Returns 200 with status='healthy' if no injury record found.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        db = get_firestore_db()
+        doc = db.collection("player_injuries").document(str(player_id)).get()
+        if not doc.exists:
+            return {"status": "ok", "playerId": player_id, "injuryStatus": "healthy", "record": None}
+        data = doc.to_dict()
+        return {
+            "status":       "ok",
+            "playerId":     player_id,
+            "injuryStatus": data.get("status", "healthy"),
+            "record":       data,
+        }
+    except Exception as e:
+        logger.error(f"Error fetching player injury for {player_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch player injury status")
+
+
+@router.get("/injuries/today")
+async def get_all_injuries_today():
+    """
+    Returns all injury reports for teams playing today.
+    Convenience endpoint for pre-game dashboard widgets.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        from datetime import datetime
+        db = get_firestore_db()
+        today = datetime.now().strftime("%Y-%m-%d")
+        docs = db.collection("team_injuries").where("date", "==", today).stream()
+        result = []
+        for d in docs:
+            data = d.to_dict()
+            result.append({
+                "tricode":   data.get("teamTricode", d.id),
+                "injuries":  data.get("injuries", []),
+                "count":     data.get("count", 0),
+                "updatedAt": data.get("updatedAt", ""),
+            })
+        return {"status": "ok", "date": today, "teams": result}
+    except Exception as e:
+        logger.error(f"Error fetching today's injuries: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch injury data")
+
+
 
 
 # ── Date-based calendar browsing ─────────────────────────────────────────────
@@ -83,6 +162,42 @@ def _enrich_with_scores(db, date: str, nba_game_id: str, game: dict) -> dict:
     except Exception:
         pass
     return game
+
+@router.get("/dates/{date}")
+async def get_games_for_date_direct(date: str):
+    """
+    Direct game_id_map lookup by date. Guaranteed to return backfilled games.
+    Used as a reliable alternative to /by-date/{date}.
+    """
+    try:
+        from firestore_db import get_firestore_db
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        db = get_firestore_db()
+        map_docs = list(
+            db.collection("game_id_map")
+            .where(filter=FieldFilter("date", "==", date))
+            .stream()
+        )
+        games = []
+        seen = set()
+        for doc in map_docs:
+            d = doc.to_dict()
+            espn_id = d.get("espn_id", "")
+            if not espn_id or espn_id in seen:
+                continue
+            seen.add(espn_id)
+            games.append({
+                "gameId":   espn_id,
+                "nbaId":    d.get("nba_id", ""),
+                "homeTeam": d.get("home_team", ""),
+                "awayTeam": d.get("away_team", ""),
+                "status":   "Final",
+                "hasPbp":   True,
+            })
+        return {"status": "success", "date": date, "count": len(games), "games": games}
+    except Exception as e:
+        logger.error(f"[dates-direct] {date}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/by-date/{date}")
@@ -143,7 +258,40 @@ async def get_games_by_date(date: str):
         if games:
             return {"status": "success", "date": date, "count": len(games), "games": games}
 
-        # Source 3: Today's schedule
+        # Source 3: game_id_map direct date query
+        # ─────────────────────────────────────────────────────────────────────
+        # Backfilled games (pre-Feb-28) won't be in pulse_stats but will have
+        # entries in game_id_map written by espn_pbp_backfill.py.
+        try:
+            from google.cloud.firestore_v1.base_query import FieldFilter
+            map_docs = list(
+                db.collection("game_id_map")
+                .where(filter=FieldFilter("date", "==", date))
+                .stream()
+            )
+            seen_espn = set()
+            for doc in map_docs:
+                d = doc.to_dict()
+                espn_id = d.get("espn_id", "")
+                nba_id = d.get("nba_id", "")
+                if not espn_id or espn_id in seen_espn:
+                    continue
+                seen_espn.add(espn_id)
+                games.append({
+                    "gameId":   espn_id,
+                    "nbaId":    nba_id or "",
+                    "homeTeam": d.get("home_team", ""),
+                    "awayTeam": d.get("away_team", ""),
+                    "status":   "Final",
+                    "hasPbp":   True,
+                })
+        except Exception as e:
+            logger.warning(f"[by-date] game_id_map direct source failed: {e}")
+
+        if games:
+            return {"status": "success", "date": date, "count": len(games), "games": games}
+
+        # Source 4: Today's schedule
         from datetime import datetime
         today = datetime.utcnow().strftime("%Y-%m-%d")
         if date == today:

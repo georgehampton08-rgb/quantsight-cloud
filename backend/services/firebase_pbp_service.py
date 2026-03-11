@@ -198,6 +198,40 @@ class FirebasePBPService:
         return None
 
     @staticmethod
+    def _sort_plays_chronologically(plays: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Sort plays into true game-time order: period ASC, clock DESC.
+
+        ESPN occasionally assigns high sequence numbers to late-reviewed/corrected
+        plays that belong to an earlier period or time. Sorting by sequenceNumber
+        alone produces a jumbled feed (e.g. Q3 plays appearing after End of Game).
+
+        Clock format is either "MM:SS" (e.g. "11:32") or a bare seconds float
+        (e.g. "58.0"). Within a period the clock counts DOWN, so higher clock
+        value = earlier in the period.
+
+        Tie-break: sequenceNumber ASC, so simultaneous plays appear in ESPN order.
+        """
+        def _clock_to_secs(clock_str: Any) -> float:
+            try:
+                s = str(clock_str)
+                if ':' in s:
+                    mins, secs = s.split(':', 1)
+                    return int(mins) * 60 + float(secs)
+                return float(s)
+            except (ValueError, TypeError):
+                return 0.0
+
+        return sorted(
+            plays,
+            key=lambda p: (
+                p.get('period', 0),          # period ASC
+                -_clock_to_secs(p.get('clock', '0:00')),  # clock DESC (higher = earlier)
+                p.get('sequenceNumber', 0),  # seq ASC as tie-break
+            )
+        )
+
+    @staticmethod
     def get_cached_plays_v2(
         game_id: str, limit: int = 1500
     ) -> List[Dict[str, Any]]:
@@ -210,7 +244,7 @@ class FirebasePBPService:
           3. Legacy live_games/{game_id}/plays/   (old schema fallback)
 
         Returns:
-            List of play dicts in ascending sequence order.
+            List of play dicts in chronological game order: period ASC, clock DESC.
         """
         db = FirebasePBPService.get_db()
 
@@ -222,7 +256,9 @@ class FirebasePBPService:
         )
         docs = list(new_col.limit(limit).stream())
         if docs:
-            return [d.to_dict() for d in docs]
+            return FirebasePBPService._sort_plays_chronologically(
+                [d.to_dict() for d in docs]
+            )
 
         # 2. Try alternate ID via game_id_map (ESPN ↔ NBA translation)
         alt_id = FirebasePBPService._resolve_game_id(db, game_id)
@@ -235,7 +271,9 @@ class FirebasePBPService:
             )
             alt_docs = list(alt_col.limit(limit).stream())
             if alt_docs:
-                return [d.to_dict() for d in alt_docs]
+                return FirebasePBPService._sort_plays_chronologically(
+                    [d.to_dict() for d in alt_docs]
+                )
 
         # 3. Fallback to legacy path
         logger.warning(
@@ -251,7 +289,9 @@ class FirebasePBPService:
             legacy_docs = list(
                 legacy_col.order_by("sequenceNumber").limit(limit).stream()
             )
-            return [d.to_dict() for d in legacy_docs]
+            return FirebasePBPService._sort_plays_chronologically(
+                [d.to_dict() for d in legacy_docs]
+            )
         except Exception as e:
             logger.error(f"[PBP-v2] Legacy fallback also failed for {game_id}: {e}")
             return []

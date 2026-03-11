@@ -5,6 +5,7 @@ import { InteractiveShotChart } from './InteractiveShotChart';
 import { GameScoreHeader } from './GameScoreHeader';
 import { ConnectionStatus } from './ConnectionStatus';
 import { LiveGameSelector } from './LiveGameSelector';
+import { InjuryPanel } from '../common/InjuryPanel';
 import { ApiContract } from '../../api/client';
 import './PlayByPlay.css';
 
@@ -193,6 +194,11 @@ export function PlayByPlayFeed() {
                         <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.5' }}>
                             Hover or tap a dot for player telemetry.
                         </div>
+
+                        {/* Injury report — live mode only, hides itself when no injuries */}
+                        {isLiveMode && homeTeam !== 'HOME' && awayTeam !== 'AWAY' && (
+                            <InjuryPanel homeTeam={homeTeam} awayTeam={awayTeam} />
+                        )}
                     </div>
 
                     {/* Right: Play feed */}

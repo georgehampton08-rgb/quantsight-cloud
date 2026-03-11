@@ -260,8 +260,10 @@
     gap: 20px;
     width: 100%;
     box-sizing: border-box;
-    /* Let content grow naturally — page scrolls on overflow */
-    min-height: 500px;
+    /* Constrain to viewport so the plays list scrolls internally */
+    height: calc(100vh - 280px);
+    min-height: 480px;
+    max-height: 900px;
 }
 
 /* Left column: score header + court + legend */
@@ -271,6 +273,10 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    overflow-y: auto;
+    /* Thin scrollbar for overflow content */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
 /* Right column: play-by-play feed */
@@ -284,25 +290,29 @@
     background: rgba(15, 23, 42, 0.4);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.06);
+    /* Feed col fills the layout height and scrolls internally */
+    height: 100%;
 }
 
 /* === TABLET: 640–1024px — stack vertically, full width feed === */
 @media (max-width: 1024px) {
     .pbp-feed-layout {
         flex-direction: column;
+        /* Tall but bounded height on tablet — both cols scroll */
+        height: auto;
+        max-height: none;
         min-height: unset;
     }
 
     .chart-col {
         width: 100%;
+        overflow-y: visible;
     }
 
     .feed-col {
         max-width: 100%;
         min-width: 0;
-        /* min-height not fixed height — lets plays list render fully */
-        min-height: 360px;
-        height: auto;
+        height: 420px;        /* Fixed height so feed scrolls on tablet */
         overflow-y: auto;
     }
 }
@@ -314,10 +324,9 @@
     }
 
     .feed-col {
-        /* Remove fixed height on mobile — let list grow and page scrolls */
-        height: auto;
+        height: 360px;        /* Fixed compact height on mobile */
         min-height: 280px;
-        overflow-y: visible;
+        overflow-y: auto;
         border-radius: 8px;
     }
 

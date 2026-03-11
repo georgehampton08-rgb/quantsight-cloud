@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Focus, Activity, Calendar } from 'lucide-react';
 import { ApiContract } from '../../api/client';
 import { API_BASE } from '../../config/apiConfig';
+import { InjuryPanel } from '../common/InjuryPanel';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
@@ -428,6 +429,16 @@ export function BoxScoreViewerContent() {
 
             {/* ── Box score tables area (scrollable) ────────────────────── */}
             <div className="flex-1 min-h-0 overflow-y-auto">
+
+                {/* ⚠️ Injury Panel — today only, shown when a game is selected */}
+                {isToday && boxScores?.game_info && (
+                    <div className="mb-4">
+                        <InjuryPanel
+                            homeTeam={boxScores.game_info.home_team || boxScores.game_info.home || ''}
+                            awayTeam={boxScores.game_info.away_team || boxScores.game_info.away || ''}
+                        />
+                    </div>
+                )}
 
                 {/* Loading — show only for relevant mode */}
                 {((isToday && loading) || (!isToday && histLoading)) && (

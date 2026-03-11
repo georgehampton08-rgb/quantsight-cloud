@@ -200,7 +200,17 @@ async def lifespan(app: FastAPI):
                 logger.info("✅ Auto game tracker started (2min poll)")
             except Exception as e:
                 logger.warning(f"⚠️ Auto game tracker not started: {e}")
-            
+
+            # ── ESPN Injury Poller (isolated — won't affect PBP or pulse) ──────
+            _injury_poller = None
+            try:
+                from services.espn_injury_service import start_injury_poller, stop_injury_poller, get_injury_poller
+                await start_injury_poller()
+                _injury_poller = get_injury_poller()
+                logger.info("✅ ESPN Injury Poller started")
+            except Exception as e:
+                logger.warning(f"⚠️ ESPN Injury Poller not started (non-fatal): {e}")
+                _injury_poller = None
             yield
             
             # Shutdown heartbeat
@@ -218,6 +228,14 @@ async def lifespan(app: FastAPI):
                     await _auto_track_task
                 except asyncio.CancelledError:
                     pass
+
+            # Shutdown injury poller (isolated — safe even if it never started)
+            try:
+                if _injury_poller is not None:
+                    await stop_injury_poller()
+                    logger.info("✅ ESPN Injury Poller stopped")
+            except Exception as e:
+                logger.debug(f"Injury poller stop error (non-fatal): {e}")
             
             # Shutdown
             logger.info("🛑 Cloud Run shutting down...")
@@ -233,13 +251,28 @@ async def lifespan(app: FastAPI):
                 logger.info("✅ Cloud pulse producer started")
             except Exception as e:
                 logger.error(f"❌ Failed to start cloud producer: {e}")
-        
+
+        # ESPN Injury Poller (isolated)
+        _injury_poller_nv = None
+        try:
+            from services.espn_injury_service import start_injury_poller, stop_injury_poller, get_injury_poller
+            await start_injury_poller()
+            _injury_poller_nv = get_injury_poller()
+            logger.info("✅ ESPN Injury Poller started (no-vanguard path)")
+        except Exception as e:
+            logger.warning(f"⚠️ ESPN Injury Poller not started (non-fatal): {e}")
+
         yield
-        
+
         logger.info("🛑 Cloud Run shutting down...")
         if PRODUCER_AVAILABLE:
             await stop_cloud_producer()
             logger.info("✅ Cloud pulse producer stopped")
+        try:
+            if _injury_poller_nv is not None:
+                await stop_injury_poller()
+        except Exception:
+            pass
 
 
 
