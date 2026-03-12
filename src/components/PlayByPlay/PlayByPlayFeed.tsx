@@ -40,7 +40,11 @@ export function PlayByPlayFeed() {
         isLiveMode ? activeGameId : null
     );
 
-    const plays = isLiveMode ? livePlays : historicalPlays;
+    // In live mode: prefer SSE plays; fall back to cached historical plays
+    // when the SSE queue is empty (e.g. game finished before we connected).
+    const plays = isLiveMode
+        ? (livePlays.length > 0 ? livePlays : historicalPlays)
+        : historicalPlays;
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Reset selected game when date changes
@@ -50,9 +54,12 @@ export function PlayByPlayFeed() {
         setSelectedGameMeta(null);
     }, [selectedDate]);
 
-    // Historical: load cached plays when a past game is selected
+    // Load cached plays whenever a game is selected (both historical AND live mode).
+    // In live mode this acts as hydration — SSE appends new plays on top.
+    // For finished-today games where SSE queue is already drained, cached plays
+    // are the only source of data.
     useEffect(() => {
-        if (isLiveMode || !activeGameId) return;
+        if (!activeGameId) return;
         setHistoricalLoading(true);
         setHistoricalPlays([]);
         ApiContract.executeWeb<{ plays: any[] }>({
@@ -60,9 +67,9 @@ export function PlayByPlayFeed() {
         }).then(res => {
             setHistoricalPlays(res?.plays ?? []);
         }).catch(err => {
-            console.error('Failed to load historical plays:', err);
+            console.error('Failed to load cached plays:', err);
         }).finally(() => setHistoricalLoading(false));
-    }, [activeGameId, isLiveMode]);
+    }, [activeGameId]);
 
     // Auto-scroll to latest play in live mode
     useEffect(() => {

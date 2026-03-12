@@ -629,11 +629,15 @@
 .chart-container {
     position: relative;
     width: 100%;
-    max-width: 560px;
+    /* Fluid: fills the column, no fixed cap */
+    max-width: 100%;
+    /* Enforce square aspect ratio so court is never clipped */
+    aspect-ratio: 1 / 1;
     margin: 0 auto;
     background: #1a2235;
     border-radius: 12px;
-    overflow: hidden;
+    /* Must be visible so the SVG scales without clipping */
+    overflow: visible;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 8px;
@@ -642,7 +646,7 @@
 
 .svg-court {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
 }
 
