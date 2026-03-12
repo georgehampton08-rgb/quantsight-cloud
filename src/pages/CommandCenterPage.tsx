@@ -4,15 +4,18 @@ import { ApiContract } from '../api/client'
 import { BoxScoreViewer } from '../components/dashboard/BoxScoreViewer'
 import { PlayByPlayFeed } from '../components/PlayByPlay/PlayByPlayFeed'
 import { API_BASE } from '../config/apiConfig'
+import CornerBrackets from '../components/common/CornerBrackets'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
-    <div className="glass-panel rounded-xl p-4 sm:p-6 flex flex-col gap-4 min-w-0 min-h-[280px] sm:min-h-[350px] lg:min-h-0 lg:h-full hover:border-financial-accent/30 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 group">
-        <div className="flex items-center gap-2 text-slate-400 font-medium tracking-wider text-sm uppercase flex-shrink-0 group-hover:text-financial-accent transition-colors">
-            <Icon className="w-4 h-4 text-financial-accent" />
+    <div className="relative bg-cyber-surface p-4 sm:p-6 flex flex-col gap-4 min-w-0 min-h-[280px] sm:min-h-[350px] lg:min-h-0 lg:h-full transition-colors duration-100 group" style={{ border: '1px solid #1a2332' }}>
+        <CornerBrackets />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-2 text-cyber-muted font-display font-600 tracking-[0.12em] text-[10px] uppercase flex-shrink-0 group-hover:text-cyber-green transition-colors duration-100 relative z-10">
+            <Icon className="w-4 h-4 text-cyber-green" />
             {title}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-500 scrollbar-track-transparent">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-premium relative z-10">
             {children}
         </div>
     </div>
@@ -179,8 +182,8 @@ const InsightsWidget = () => {
             )}
 
             {/* Footer */}
-            <div className="flex items-center justify-between text-[10px] text-slate-600 border-t border-slate-800 pt-2 flex-shrink-0">
-                <span>{insight.ai_powered ? '⚡ Powered by Gemini 2.0' : '📊 Rule-based analysis'}</span>
+            <div className="flex items-center justify-between font-mono tracking-widest text-[9px] uppercase text-cyber-muted border-t border-cyber-border pt-2 flex-shrink-0">
+                <span>{insight.ai_powered ? 'POWERED BY GEMINI' : 'RULE-BASED ANALYSIS'}</span>
                 {insight.generated_at && (
                     <span>{new Date(insight.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 )}
@@ -246,8 +249,7 @@ const ScheduleWidget = () => {
                                     <span className="text-xs text-slate-400">{game.time}</span>
                                 )}
                                 {!isLive && !isFinal && (
-                                    <span className={`text-xs ${hasStarted ? 'text-amber-400' : 'text-slate-400'}`}>
-                                        {hasStarted && <span className="mr-1">▶</span>}
+                                    <span className={`text-xs font-mono uppercase tracking-widest ${hasStarted ? 'text-amber-400' : 'text-slate-400'}`}>
                                         {game.time}
                                     </span>
                                 )}
@@ -271,36 +273,42 @@ export default function CommandCenterPage() {
     const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'BOXSCORE' | 'PLAY_BY_PLAY'>('OVERVIEW');
 
     return (
-        <div className="p-4 sm:p-8 min-h-full overflow-x-hidden w-full flex flex-col font-sans">
-            <header className="mb-6 flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="p-4 sm:p-8 min-h-full overflow-x-hidden w-full flex flex-col font-sans bg-cyber-bg relative z-10">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
+                 style={{
+                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
+                   backgroundSize: '32px 32px',
+                 }} />
+
+            <header className="mb-6 flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative z-10">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center backdrop-blur-sm shadow-inner">
-                            <Activity className="w-6 h-6 text-indigo-400" />
+                    <h1 className="text-3xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-sm border border-cyber-border bg-cyber-surface flex items-center justify-center">
+                            <Activity className="w-5 h-5 text-cyber-green" />
                         </div>
                         Command Center
                     </h1>
-                    <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium tracking-wide">Operational Overview • {new Date().toLocaleDateString()}</p>
+                    <p className="font-mono tracking-[0.2em] text-[10px] text-cyber-muted mt-2 uppercase">Operational Overview • {new Date().toLocaleDateString()}</p>
                 </div>
 
-                <div className="flex bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50 self-start sm:self-auto shadow-inner">
+                <div className="flex gap-4 border-b border-cyber-border self-start sm:self-auto relative z-10 w-full sm:w-auto">
                     <button
                         onClick={() => setActiveTab('OVERVIEW')}
-                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-wider transition-all flex items-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-indigo-500/20 text-indigo-400 shadow-sm border border-indigo-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`py-2 px-1 text-[10px] font-display font-600 tracking-[0.12em] uppercase transition-all duration-100 flex items-center gap-2 border-b-2 ${activeTab === 'OVERVIEW' ? 'border-cyber-green text-cyber-green' : 'border-transparent text-cyber-muted hover:text-cyber-text'}`}
                     >
                         <LayoutDashboard className="w-4 h-4" />
                         <span className="hidden sm:inline">OVERVIEW</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('BOXSCORE')}
-                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-wider transition-all flex items-center gap-2 ${activeTab === 'BOXSCORE' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm border border-emerald-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`py-2 px-1 text-[10px] font-display font-600 tracking-[0.12em] uppercase transition-all duration-100 flex items-center gap-2 border-b-2 ${activeTab === 'BOXSCORE' ? 'border-cyber-green text-cyber-green' : 'border-transparent text-cyber-muted hover:text-cyber-text'}`}
                     >
                         <BarChart3 className="w-4 h-4" />
                         <span className="hidden sm:inline">BOX SCORES</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('PLAY_BY_PLAY')}
-                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-wider transition-all flex items-center gap-2 ${activeTab === 'PLAY_BY_PLAY' ? 'bg-red-500/20 text-red-400 shadow-sm border border-red-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`py-2 px-1 text-[10px] font-display font-600 tracking-[0.12em] uppercase transition-all duration-100 flex items-center gap-2 border-b-2 ${activeTab === 'PLAY_BY_PLAY' ? 'border-cyber-green text-cyber-green' : 'border-transparent text-cyber-muted hover:text-cyber-text'}`}
                     >
                         <Zap className="w-4 h-4" />
                         <span className="hidden sm:inline">PLAY-BY-PLAY</span>

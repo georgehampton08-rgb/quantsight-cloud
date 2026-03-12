@@ -16,7 +16,11 @@ export default function MainCanvas() {
     return (
         <main className="flex-1 min-h-0 flex flex-col bg-slate-900/50 relative overflow-y-auto">
             {/* Background elements (grid, particles) could go here */}
-            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.07] [mask-image:radial-gradient(ellipse_at_center,white_40%,transparent_80%)] pointer-events-none z-0" />
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+                 style={{
+                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
+                   backgroundSize: '32px 32px',
+                 }} />
 
             <div className="flex-1 min-h-0 w-full relative z-10">
                 <Routes>

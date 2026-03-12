@@ -33,14 +33,14 @@ export default function TopBar() {
 
     return (
         <>
-            <div className="flex-shrink-0 sticky top-0 z-[1000] border-b border-slate-700/50 bg-slate-900/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
+            <div className="flex-shrink-0 sticky top-0 z-[1000] border-b border-cyber-border bg-cyber-bg shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
                 {/* Main bar row */}
                 <div className="flex items-center h-14 px-3 gap-2 overflow-hidden">
 
                     {/* Hamburger */}
                     <button
                         onClick={toggleMobileMenu}
-                        className="flex-shrink-0 p-2 rounded-lg hover:bg-white/8 text-slate-400 hover:text-white transition-colors duration-150"
+                        className="flex-shrink-0 p-2 rounded-sm hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors duration-100"
                         title="Menu"
                     >
                         {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -50,7 +50,7 @@ export default function TopBar() {
                     <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={() => navigate(-1)}
-                            className="p-2 rounded-lg hover:bg-white/8 text-slate-400 hover:text-white transition-colors duration-150"
+                            className="p-2 rounded-sm hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors duration-100"
                             title="Go Back"
                         >
                             <ChevronLeft className="w-4 h-4" />

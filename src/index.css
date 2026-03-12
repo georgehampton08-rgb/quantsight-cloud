@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Rajdhani:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -24,6 +24,7 @@ body {
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
+  /* DEPRECATED — remove after Pass 5 */
   .glass-panel {
     @apply bg-slate-800/50 backdrop-blur-sm border border-slate-700/50;
   }
@@ -160,7 +161,7 @@ body {
 .qs-disclaimer-title {
   font-size: 20px;
   font-weight: 700;
-  color: #f1f5f9;
+  @apply text-slate-100;
   margin: 0;
   letter-spacing: 0.01em;
 }
@@ -223,8 +224,7 @@ body {
 
 .qs-disclaimer-footer-note {
   font-size: 13px !important;
-  color: #64748b !important;
-  font-style: italic;
+  @apply text-slate-500 italic !important;
 }
 
 .qs-disclaimer-actions {
@@ -236,8 +236,8 @@ body {
 .qs-disclaimer-btn {
   width: 100%;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #00c282, #00e5a0); /* financial.accent gradient */
-  color: #0a0e17;
+  background: linear-gradient(135deg, theme('colors.qs.green'), theme('colors.financial.accent'));
+  @apply text-cyber-bg;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -245,18 +245,18 @@ body {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 20px rgba(0, 229, 160, 0.25);
+  box-shadow: 0 4px 20px theme('colors.qs.green' / 25%);
 }
 
 .qs-disclaimer-btn:hover {
-  background: linear-gradient(135deg, #00d490, #00f0aa); /* financial.accent hover gradient */
-  box-shadow: 0 6px 28px rgba(0, 229, 160, 0.38);
+  background: linear-gradient(135deg, theme('colors.qs.green'), theme('colors.qs.green'));
+  box-shadow: 0 6px 28px theme('colors.qs.green' / 38%);
   transform: translateY(-1px);
 }
 
 .qs-disclaimer-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 12px rgba(0, 229, 160, 0.2);
+  box-shadow: 0 2px 12px theme('colors.qs.green' / 20%);
 }
 
 /* Mobile: fill most of the screen */
@@ -287,12 +287,7 @@ body {
 /* ── Premium Cyber Panel ──────────────────────────────────────────── */
 @layer components {
   .cyber-panel {
-    @apply bg-slate-900/80 backdrop-blur-md border border-slate-700/40 relative overflow-hidden rounded-xl shadow-lg;
-  }
-
-  .cyber-panel::before {
-    content: '';
-    @apply absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent;
+    @apply relative bg-cyber-surface border border-cyber-border;
   }
 
   /* Premium scrollbar — dark mode */
@@ -309,4 +304,11 @@ body {
   .scrollbar-premium::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-600/80;
   }
+}
+
+.cyber-root {
+  cursor: crosshair;
+}
+.cyber-root input, .cyber-root textarea {
+  cursor: text;
 }

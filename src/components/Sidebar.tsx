@@ -27,7 +27,7 @@ export default function Sidebar() {
     };
 
     return (
-        <div className={`sidebar h-full border-r border-slate-700/50 bg-slate-900/95 backdrop-blur-md flex flex-col p-4 transition-all duration-300 relative`}>
+        <div className={`sidebar h-full border-r border-cyber-border bg-cyber-bg flex flex-col p-4 transition-all duration-300 relative`}>
 
             {/* Close Button - Top Right */}
             <button
@@ -39,10 +39,10 @@ export default function Sidebar() {
             </button>
 
             <div className={`mb-8 flex items-center gap-2 px-2`}>
-                <div className="w-8 h-8 rounded bg-financial-accent/20 flex items-center justify-center text-financial-accent font-bold">
-                    Q
+                <div className="w-8 h-8 rounded-sm border border-cyber-border flex items-center justify-center text-cyber-green font-mono font-bold">
+                    {'>_'}
                 </div>
-                <div className="font-bold text-gray-100 tracking-wider animate-in fade-in duration-300">QUANTSIGHT</div>
+                <div className="font-bold text-cyber-text font-display tracking-[0.08em] uppercase animate-in fade-in duration-300">QUANTSIGHT</div>
             </div>
 
             <div className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
@@ -50,7 +50,7 @@ export default function Sidebar() {
                     <React.Fragment key={item.name}>
                         {/* Admin divider */}
                         {item.path === '/vanguard' && (
-                            <div className="my-1 border-t border-slate-700/50" />
+                            <div className="my-1 border-t border-cyber-border mt-2 pt-2" />
                         )}
                         <NavLink
                             to={item.path}
@@ -62,12 +62,12 @@ export default function Sidebar() {
                                 
                                 const isAdmin = item.path === '/vanguard' || item.path === '/injury-admin';
 
-                                return `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium group
+                                return `flex items-center gap-3 px-3 py-2.5 rounded-sm transition-all text-xs font-display font-600 tracking-[0.08em] uppercase group
                                 ${isActive || isCurrentPath
-                                    ? 'bg-financial-accent/10 text-financial-accent border-l-2 border-financial-accent shadow-[inset_0_0_12px_rgba(0,229,160,0.05)]'
+                                    ? 'bg-cyber-green/5 text-cyber-green border-l-2 border-cyber-green'
                                     : isAdmin
-                                        ? 'text-slate-500 hover:text-amber-400 hover:bg-amber-500/5 border-l-2 border-transparent'
-                                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border-l-2 border-transparent'
+                                        ? 'text-cyber-muted/60 hover:text-qs-gold hover:bg-white/[0.03] border-l-2 border-transparent duration-100'
+                                        : 'text-cyber-muted hover:text-cyber-text hover:bg-white/[0.03] border-l-2 border-transparent duration-100'
                                 }`;
                             }}
                         >

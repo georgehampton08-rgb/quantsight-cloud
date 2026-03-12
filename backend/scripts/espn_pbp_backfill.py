@@ -299,7 +299,26 @@ async def process_date(
 
         # Skip if already have PBP data and not forcing
         if not force and has_pbp(db, espn_id):
-            log.info(f"  ✓ {label} — already stored, skipping")
+            log.info(f"  ✓ {label} — already stored, skipping fetching plays")
+            # STill need to ensure game_id_map is up to date!
+            key = frozenset([home, away])
+            nba_id = pulse_by_teams.get(key, "")
+            
+            db.collection("game_id_map").document(espn_id).set({
+                "espn_id": espn_id,
+                "nba_id": nba_id,
+                "date": date_str,
+                "home_team": home,
+                "away_team": away,
+            }, merge=True)
+            if nba_id:
+                db.collection("game_id_map").document(nba_id).set({
+                    "espn_id": espn_id,
+                    "nba_id": nba_id,
+                    "date": date_str,
+                    "home_team": home,
+                    "away_team": away,
+                }, merge=True)
             results["skipped"] += 1
             continue
 

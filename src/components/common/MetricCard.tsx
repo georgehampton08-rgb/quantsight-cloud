@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { clsx } from 'clsx';
+import CornerBrackets from './CornerBrackets';
 
 interface MetricCardProps {
     title: string;
@@ -21,24 +22,26 @@ export default function MetricCard({
 }: MetricCardProps) {
     return (
         <div className={clsx(
-            "relative p-5 rounded-xl border border-slate-700/40 bg-slate-900/60 backdrop-blur-md overflow-hidden transition-all duration-200 hover:border-financial-accent/30 hover:bg-slate-900/80 group",
+            "relative p-5 bg-cyber-surface transition-colors duration-100 hover:border-cyber-green group",
             className
-        )}>
+        )} style={{ border: '1px solid #1a2332' }}>
             {/* Top Shine Effect */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-500/20 to-transparent opacity-50" />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent pointer-events-none" />
+            
+            <CornerBrackets />
 
-            <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold">{title}</h3>
-                {icon && <div className="text-slate-500 group-hover:text-financial-accent transition-colors">{icon}</div>}
+            <div className="flex justify-between items-start mb-2 relative z-10">
+                <h3 className="text-[10px] font-display font-600 uppercase tracking-[0.12em] text-cyber-muted">{title}</h3>
+                {icon && <div className="text-cyber-muted group-hover:text-cyber-green transition-colors duration-100">{icon}</div>}
             </div>
 
-            <div className="flex justify-between items-end">
+            <div className="flex justify-between items-end relative z-10">
                 <div>
-                    <div className="text-2xl font-mono font-bold text-slate-100 tabular-nums tracking-tight">
+                    <div className="text-2xl font-mono font-bold text-cyber-text tabular-nums tracking-tight group-hover:text-white transition-colors duration-100">
                         {value}
                     </div>
                     {subValue && (
-                        <div className="text-xs text-slate-500 mt-1 font-mono tabular-nums tracking-tight">
+                        <div className="text-[10px] text-cyber-muted mt-1 font-mono tabular-nums tracking-tight">
                             {subValue}
                         </div>
                     )}

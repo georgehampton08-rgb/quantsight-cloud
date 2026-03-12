@@ -173,19 +173,30 @@ def _build_nba_to_espn_map(db, date: str) -> dict:
 def _enrich_with_scores(db, date: str, nba_game_id: str, game: dict) -> dict:
     """Add scoreHome/scoreAway from pulse_stats FINAL quarter (best effort)."""
     try:
-        final_q = (
-            db.collection("pulse_stats")
-            .document(date)
-            .collection("games")
-            .document(nba_game_id)
-            .collection("quarters")
-            .document("FINAL")
-            .get()
-        )
-        if final_q.exists:
-            qd = final_q.to_dict()
-            game.setdefault("scoreHome", qd.get("home_score", 0))
-            game.setdefault("scoreAway", qd.get("away_score", 0))
+        from datetime import datetime, timedelta
+        
+        dates_to_check = [date]
+        try:
+            d = datetime.strptime(date, "%Y-%m-%d")
+            dates_to_check.append((d + timedelta(days=1)).strftime("%Y-%m-%d"))
+        except:
+            pass
+
+        for d_str in dates_to_check:
+            final_q = (
+                db.collection("pulse_stats")
+                .document(d_str)
+                .collection("games")
+                .document(nba_game_id)
+                .collection("quarters")
+                .document("FINAL")
+                .get()
+            )
+            if final_q.exists:
+                qd = final_q.to_dict()
+                game.setdefault("scoreHome", qd.get("home_score", 0))
+                game.setdefault("scoreAway", qd.get("away_score", 0))
+                return game  # found and enriched
     except Exception:
         pass
     return game
@@ -221,14 +232,17 @@ async def get_games_for_date_direct(date: str):
                 if not espn_id or espn_id in seen:
                     continue
                 seen.add(espn_id)
-                games.append({
+                game_dict = {
                     "gameId":   espn_id,
                     "nbaId":    d.get("nba_id", ""),
                     "homeTeam": d.get("home_team", ""),
                     "awayTeam": d.get("away_team", ""),
                     "status":   "Final",
                     "hasPbp":   True,
-                })
+                }
+                if game_dict["nbaId"]:
+                    game_dict = _enrich_with_scores(db, date, game_dict["nbaId"], game_dict)
+                games.append(game_dict)
         except Exception as e:
             logger.warning(f"[dates] game_id_map source failed for {date}: {e}")
 

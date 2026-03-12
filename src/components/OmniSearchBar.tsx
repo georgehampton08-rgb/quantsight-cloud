@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Fuse, { FuseResult } from 'fuse.js'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
 import { PlayerApi } from '../services/playerApi'
+import CornerBrackets from './common/CornerBrackets';
 
 // Player search will be populated from backend API
 interface Player {
@@ -92,17 +93,17 @@ export default function OmniSearchBar() {
         <div className="relative w-full max-w-lg mx-auto">
             {/* Search Input */}
             <div className={`
-        relative flex items-center bg-slate-800/50 rounded-lg border border-slate-600 
-        focus-within:border-financial-accent focus-within:shadow-[0_0_15px_rgba(100,255,218,0.1)]
-        transition-all duration-300 backdrop-blur-sm
+        relative flex items-center bg-cyber-surface rounded-sm border border-cyber-border 
+        focus-within:border-cyber-blue 
+        transition-all duration-100
       `}>
-                <div className="pl-4 text-slate-400">
+                <div className="pl-4 text-cyber-muted">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
                 <input
                     ref={inputRef}
                     type="text"
-                    className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 py-2 px-3 text-sm"
+                    className="w-full bg-transparent border-none focus:ring-0 text-cyber-text placeholder-cyber-muted font-mono py-2 px-3 text-xs"
                     placeholder="Search players, teams, or metrics..."
                     value={query}
                     onChange={(e) => {
@@ -118,8 +119,9 @@ export default function OmniSearchBar() {
 
             {/* Results Dropdown */}
             {isOpen && results.length > 0 && (
-                <div className="absolute top-full mt-2 w-full bg-slate-800/90 border border-slate-700 rounded-lg shadow-2xl backdrop-blur-xl overflow-hidden z-50">
-                    <div className="text-[10px] uppercase text-slate-500 px-3 py-2 font-bold tracking-wider bg-black/20">
+                <div className="absolute top-full mt-2 w-full bg-cyber-bg border border-cyber-border shadow-2xl z-50 rounded-sm relative" style={{ border: '1px solid #1a2332' }}>
+                    <CornerBrackets />
+                    <div className="text-[10px] uppercase text-cyber-muted px-3 py-2 font-display font-600 tracking-[0.12em] bg-white/[0.02]">
                         Players
                     </div>
                     <ul>
@@ -127,21 +129,21 @@ export default function OmniSearchBar() {
                             <li
                                 key={item.id}
                                 className={`
-                  flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors
-                  ${index === selectedIndex ? 'bg-financial-accent/10 border-l-2 border-financial-accent' : 'hover:bg-slate-700/50 border-l-2 border-transparent'}
+                  flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-100
+                  ${index === selectedIndex ? 'bg-cyber-blue/10 border-l-2 border-cyber-blue' : 'hover:bg-white/[0.05] border-l-2 border-transparent'}
                 `}
                                 onMouseEnter={() => setSelectedIndex(index)}
                                 onClick={() => {
                                     handleSelect(item);
                                 }}
                             >
-                                <img src={getPlayerAvatarUrl(item.id)} alt={item.name} className="w-8 h-8 rounded-full border border-slate-600 bg-slate-900 object-cover" />
+                                <img src={getPlayerAvatarUrl(item.id)} alt={item.name} className="w-8 h-8 rounded-sm border border-cyber-border bg-cyber-surface object-cover" />
                                 <div className="flex-1">
-                                    <div className="text-sm font-medium text-slate-200">{item.name}</div>
-                                    <div className="text-xs text-slate-400">{item.team} • {item.position}</div>
+                                    <div className="text-sm font-display font-600 tracking-[0.08em] uppercase text-cyber-text">{item.name}</div>
+                                    <div className="text-[10px] uppercase text-cyber-muted tracking-widest">{item.team} • {item.position}</div>
                                 </div>
                                 {index === selectedIndex && (
-                                    <div className="text-xs text-financial-accent opacity-50">↩</div>
+                                    <div className="text-xs text-cyber-blue opacity-50">↩</div>
                                 )}
                             </li>
                         ))}
