@@ -245,21 +245,45 @@ async def get_games_for_date_direct(date: str):
                 seen.add(game_id)
                 home = g.get("homeTeam", "")
                 away = g.get("awayTeam", "")
-                # homeTeam/awayTeam may be a tricode string or dict
-                if isinstance(home, dict):
-                    home = home.get("tricode", "")
-                if isinstance(away, dict):
-                    away = away.get("tricode", "")
+                if isinstance(home, dict): home = home.get("tricode", "")
+                if isinstance(away, dict): away = away.get("tricode", "")
                 games.append({
                     "gameId":   game_id,
                     "nbaId":    "",
                     "homeTeam": home,
                     "awayTeam": away,
                     "status":   g.get("status", "Final"),
-                    "hasPbp":   True,  # poller writes calendar + pbp_events together
+                    "hasPbp":   True,
                 })
         except Exception as e:
             logger.warning(f"[dates] calendar source failed for {date}: {e}")
+
+        # ── Source 3: pulse_stats/ (live tracking raw data)
+        # Sometimes games only exist here if calendar index failed to update.
+        try:
+            pulse_docs = list(
+                db.collection("pulse_stats").document(date).collection("games").stream()
+            )
+            for doc in pulse_docs:
+                game_id = doc.id
+                if not game_id or game_id in seen:
+                    continue
+                seen.add(game_id)
+                d = doc.to_dict()
+                home = d.get("homeTeam", "")
+                away = d.get("awayTeam", "")
+                if isinstance(home, dict): home = home.get("tricode", "")
+                if isinstance(away, dict): away = away.get("tricode", "")
+                games.append({
+                    "gameId":   game_id,
+                    "nbaId":    "",
+                    "homeTeam": home,
+                    "awayTeam": away,
+                    "status":   d.get("status", "Final"),
+                    "hasPbp":   True,
+                })
+        except Exception as e:
+            logger.warning(f"[dates] pulse_stats source failed for {date}: {e}")
 
         return {"status": "success", "date": date, "count": len(games), "games": games}
 
