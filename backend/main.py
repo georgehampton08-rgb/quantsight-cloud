@@ -24,7 +24,7 @@ os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "1"
 
 from datetime import datetime
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging for Cloud Run (MUST BE FIRST)

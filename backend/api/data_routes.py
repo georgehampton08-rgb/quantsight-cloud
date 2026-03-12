@@ -60,8 +60,9 @@ def _firestore_cache_set(collection: str, doc_id: str, data: dict):
 @router.get("/data/player-hustle/{player_id}")
 async def get_player_hustle(player_id: str):
     """
-    Get hustle stats for a player from NBA API with Firestore caching.
-    Real implementation — calls LeagueHustleStatsPlayer and filters.
+    Get hustle stats for a player. Firestore cache first, NBA API fallback.
+    Returns data_available=false gracefully if NBA API is unreachable
+    (instead of crashing with 502).
     """
     # 1) Check Firestore cache first
     cached = _firestore_cache_get("player_hustle", player_id)
@@ -71,7 +72,7 @@ async def get_player_hustle(player_id: str):
         cached["source"] = "cache"
         return cached
 
-    # 2) Fetch from NBA API
+    # 2) Try NBA API (best-effort — times out from Cloud Run frequently)
     try:
         from nba_api.stats.endpoints import leaguehustlestatsplayer
         time.sleep(0.6)  # rate limit
@@ -79,17 +80,16 @@ async def get_player_hustle(player_id: str):
             season=CURRENT_SEASON,
             season_type_all_star="Regular Season",
             per_mode_time="PerGame",
-            timeout=15,
+            timeout=8,  # Reduced from 15 to fail faster
         )
         df = hustle.get_data_frames()[0]
 
-        # Filter to the requested player
         player_row = df[df["PLAYER_ID"].astype(str) == str(player_id)]
         if player_row.empty:
             return {
                 "player_id": player_id,
                 "data_available": False,
-                "message": f"No hustle stats found for player {player_id} in {CURRENT_SEASON}",
+                "message": f"No hustle stats found for player {player_id}",
             }
 
         row = player_row.iloc[0]
@@ -109,21 +109,19 @@ async def get_player_hustle(player_id: str):
             "data_available": True,
             "source": "nba_api",
         }
-
-        # 3) Cache in Firestore for 24h
         _firestore_cache_set("player_hustle", player_id, result)
-
         return result
 
-    except ImportError:
-        logger.error("[HUSTLE] nba_api not installed")
-        raise HTTPException(status_code=503, detail="NBA API dependency not available")
     except Exception as e:
-        logger.error(f"[HUSTLE] NBA API fetch failed for {player_id}: {e}")
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to fetch hustle stats from NBA API: {str(e)}"
-        )
+        # Graceful degradation — don't crash the frontend with 502
+        logger.warning(f"[HUSTLE] NBA API unavailable for {player_id}: {e}")
+        return {
+            "player_id": player_id,
+            "data_available": False,
+            "message": "Hustle stats temporarily unavailable (NBA API timeout)",
+            "source": "unavailable",
+        }
+
 
 
 # ─── Box Scores (alternate path) ────────────────────────────────────────────
