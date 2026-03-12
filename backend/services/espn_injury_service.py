@@ -146,7 +146,9 @@ class ESPNInjuryPoller:
             return
 
         logger.info(f"[InjuryPoller] Found {len(events)} games today")
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        # Use Eastern Time so date matches /injuries/today query
+        _ET = timezone(timedelta(hours=-4))
+        today_str = datetime.now(_ET).strftime("%Y-%m-%d")
 
         all_injuries: dict[str, list] = {}   # teamTricode -> [injury dicts]
         player_updates: dict[str, dict] = {}  # playerId   -> injury doc

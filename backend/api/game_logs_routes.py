@@ -371,7 +371,9 @@ def get_daily_insights():
     import os, json, requests
     from datetime import datetime, timezone, timedelta
 
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Use Eastern Time — UTC can be next calendar day after 7 PM ET
+    ET = timezone(timedelta(hours=-4))   # EDT (Mar-Nov)
+    today_str = datetime.now(ET).strftime("%Y-%m-%d")
 
     # ── 1. Check Firestore cache ───────────────────────────────────────────
     cached_result = None

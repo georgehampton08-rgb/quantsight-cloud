@@ -203,6 +203,13 @@ Provide specific, actionable insights using the numbers provided. Mention pace i
                 injury_lines.append(f"  - {p} ({t}): {s} — {i}")
             injury_str = "\n".join(injury_lines) if injury_lines else "  No injury data available."
 
+            # Extract tonight's team abbreviations for grounding constraint
+            tonight_teams = set()
+            for g in games:
+                if g.get("home"): tonight_teams.add(g["home"].upper())
+                if g.get("away"): tonight_teams.add(g["away"].upper())
+            teams_str = ", ".join(sorted(tonight_teams)) if tonight_teams else "unknown"
+
             prompt = f"""You are a senior NBA front-office analyst. Today is {date}.
 
 TONIGHT'S SLATE ({len(games)} games):
@@ -236,6 +243,7 @@ TASK: Return a JSON object with EXACTLY these fields:
 RULES:
 - Ground every claim in the data above — no hallucination
 - Use GM-Analyst vocabulary (avoid "In today's ever-changing...")
+- CRITICAL: top_watch.player MUST be a player from one of these teams playing TONIGHT: {teams_str}. Do NOT pick players from teams not on tonight's slate
 - If no injury data, set risk_flag to null
 - If fewer than 2 games, set top_watch to null
 - Return ONLY valid JSON, no markdown, no explanation"""
