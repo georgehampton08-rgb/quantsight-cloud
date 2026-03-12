@@ -52,19 +52,86 @@ def espn_get(url: str, retries: int = 3) -> dict:
 
 
 def parse_stat(val) -> float:
+    """Parse a raw string or number stat value to float."""
     try:
         return float(val) if val and val != '--' else 0.0
     except:
         return 0.0
 
 
+def parse_ma(val: str) -> tuple[int, int]:
+    """Parse 'made-attempted' string like '4-9' → (4, 9). Returns (0,0) on error."""
+    try:
+        if isinstance(val, str) and '-' in val:
+            parts = val.split('-')
+            return int(parts[0]), int(parts[1])
+        # Might be a raw number (e.g. '14' for points)
+        return 0, 0
+    except:
+        return 0, 0
+
+
+def parse_espn_stat_group(stat_names: list, stats_raw: list) -> dict:
+    """
+    ESPN boxscore stat arrays come in a specific order:
+      MIN, FG (X-Y), 3PT (X-Y), FT (X-Y), OREB, DREB, REB, AST, STL, BLK, TO, PF, +/-, PTS
+    Map names to values then derive percentages from the X-Y strings.
+    """
+    stats = {}
+    for i, name in enumerate(stat_names):
+        if i < len(stats_raw):
+            stats[name] = stats_raw[i]
+
+    # FG
+    fg_m, fg_a = parse_ma(stats.get('FG', '0-0'))
+    fg_pct = round(fg_m / fg_a, 3) if fg_a > 0 else 0.0
+
+    # 3PT
+    tp_m, tp_a = parse_ma(stats.get('3PT', '0-0'))
+    tp_pct = round(tp_m / tp_a, 3) if tp_a > 0 else 0.0
+
+    # FT
+    ft_m, ft_a = parse_ma(stats.get('FT', '0-0'))
+    ft_pct = round(ft_m / ft_a, 3) if ft_a > 0 else 0.0
+
+    # MIN: ESPN sometimes returns '33:12' — take only the minutes part
+    min_raw = stats.get('MIN', '0')
+    if isinstance(min_raw, str) and ':' in min_raw:
+        min_val = min_raw  # keep as string, endpoint will handle parsing
+    else:
+        min_val = str(min_raw)
+
+    return {
+        'MIN': min_val,
+        'FGM': fg_m, 'FGA': fg_a, 'FG_PCT': fg_pct,
+        'FG3M': tp_m, 'FG3A': tp_a, 'FG3_PCT': tp_pct,
+        'FTM': ft_m, 'FTA': ft_a, 'FT_PCT': ft_pct,
+        'OREB': int(parse_stat(stats.get('OREB', 0))),
+        'DREB': int(parse_stat(stats.get('DREB', 0))),
+        'REB': int(parse_stat(stats.get('REB', 0))),
+        'AST': int(parse_stat(stats.get('AST', 0))),
+        'STL': int(parse_stat(stats.get('STL', 0))),
+        'BLK': int(parse_stat(stats.get('BLK', 0))),
+        'TOV': int(parse_stat(stats.get('TO', 0))),
+        'PF': int(parse_stat(stats.get('PF', 0))),
+        'PLUS_MINUS': int(parse_stat(stats.get('+/-', 0))),
+        'PTS': int(parse_stat(stats.get('PTS', 0))),
+    }
+
+
 def get_game_ids_for_date_range(db, days_back: int = 14) -> list[dict]:
     """Get all ESPN game IDs for the last N days from game_id_map."""
+    from google.cloud.firestore_v1.base_query import FieldFilter
     today = datetime.now(ET)
     dates = [(today - timedelta(days=d)).strftime("%Y-%m-%d") for d in range(days_back)]
     games = []
     for date in dates:
-        docs = list(db.collection("game_id_map").where("date", "==", date).stream())
+        try:
+            docs = list(db.collection("game_id_map").where(
+                filter=FieldFilter("date", "==", date)
+            ).stream())
+        except Exception:
+            docs = list(db.collection("game_id_map").where("date", "==", date).stream())
         for doc in docs:
             data = doc.to_dict()
             espn_id = data.get("espn_id")
@@ -129,19 +196,21 @@ def process_game(db, game: dict) -> dict:
                 if not espn_player_id or not stats_raw:
                     continue
 
-                # Map stat names to values
-                stats = {}
-                for i, name in enumerate(stat_names):
-                    if i < len(stats_raw):
-                        stats[name] = stats_raw[i]
+                # Parse ESPN stats properly (FG/3PT/FT are 'X-Y' strings)
+                s = parse_espn_stat_group(stat_names, stats_raw)
+
+                # W/L: compare this team's score to opponent
+                team_score = int(team_lookup.get(team_id, {}).get("score", "0") or 0)
+                opp_score = max(
+                    (int(v.get("score", "0") or 0)
+                     for k, v in team_lookup.items() if k != team_id),
+                    default=0
+                )
+                wl = "W" if team_score > opp_score else ("L" if team_score < opp_score else "?")
 
                 # Determine opponent
                 opp = game["away"] if is_home else game["home"]
                 matchup = f"vs {opp}" if is_home else f"@ {opp}"
-
-                # Determine W/L
-                home_score = int(team_lookup.get(team_id, {}).get("score", "0") or 0)
-                wl = "W" if home_score > 0 else "?"  # Will be refined below
 
                 doc = {
                     "espn_player_id": espn_player_id,
@@ -150,18 +219,21 @@ def process_game(db, game: dict) -> dict:
                     "team": team_abbr,
                     "date": date,
                     "matchup": matchup,
-                    "MIN": stats.get("MIN", "0"),
-                    "PTS": int(parse_stat(stats.get("PTS", 0))),
-                    "REB": int(parse_stat(stats.get("REB", 0))),
-                    "AST": int(parse_stat(stats.get("AST", 0))),
-                    "STL": int(parse_stat(stats.get("STL", 0))),
-                    "BLK": int(parse_stat(stats.get("BLK", 0))),
-                    "TOV": int(parse_stat(stats.get("TO", 0))),
-                    "PF": int(parse_stat(stats.get("PF", 0))),
-                    "FG_PCT": parse_stat(stats.get("FG%", 0)) / 100 if "FG%" in stats else 0,
-                    "FG3_PCT": parse_stat(stats.get("3P%", 0)) / 100 if "3P%" in stats else 0,
-                    "FT_PCT": parse_stat(stats.get("FT%", 0)) / 100 if "FT%" in stats else 0,
-                    "PLUS_MINUS": int(parse_stat(stats.get("+/-", 0))),
+                    "MIN": s['MIN'],
+                    "PTS": s['PTS'],
+                    "REB": s['REB'],
+                    "AST": s['AST'],
+                    "STL": s['STL'],
+                    "BLK": s['BLK'],
+                    "TOV": s['TOV'],
+                    "PF": s['PF'],
+                    "FGM": s['FGM'], "FGA": s['FGA'],
+                    "FG_PCT": s['FG_PCT'],
+                    "FG3M": s['FG3M'], "FG3A": s['FG3A'],
+                    "FG3_PCT": s['FG3_PCT'],
+                    "FTM": s['FTM'], "FTA": s['FTA'],
+                    "FT_PCT": s['FT_PCT'],
+                    "PLUS_MINUS": s['PLUS_MINUS'],
                     "WL": wl,
                     "updated_at": now,
                 }

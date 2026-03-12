@@ -508,6 +508,22 @@ async def get_player_game_logs(player_id: str):
             )
             for doc in docs:
                 g = doc.to_dict()
+
+                # Normalize shooting %: some legacy docs store FGM/FG3M raw counts
+                # not decimal percentages. If value > 1 recompute from raw fields.
+                def pct(pct_key, made_key, att_key):
+                    raw = float(g.get(pct_key, 0) or 0)
+                    if raw <= 1.0:
+                        return raw  # already decimal (e.g. 0.375)
+                    # raw is a big number — try to recompute from M/A fields
+                    m = float(g.get(made_key, 0) or 0)
+                    a = float(g.get(att_key, 0) or 0)
+                    if a > 0:
+                        return round(m / a, 3)
+                    # Last resort: if raw looks like a made count (e.g. 2 threes)
+                    # we cannot produce a % without attempts — return 0
+                    return 0.0
+
                 logs.append({
                     "GAME_ID": g.get("GAME_ID", ""),
                     "GAME_DATE": g.get("GAME_DATE", ""),
@@ -521,9 +537,9 @@ async def get_player_game_logs(player_id: str):
                     "BLK": int(g.get("BLK", 0) or 0),
                     "TOV": int(g.get("TOV", 0) or 0),
                     "PF": int(g.get("PF", 0) or 0),
-                    "FG_PCT": float(g.get("FG_PCT", 0) or 0),
-                    "FG3_PCT": float(g.get("FG3_PCT", 0) or 0),
-                    "FT_PCT": float(g.get("FT_PCT", 0) or 0),
+                    "FG_PCT": pct("FG_PCT", "FGM", "FGA"),
+                    "FG3_PCT": pct("FG3_PCT", "FG3M", "FG3A"),
+                    "FT_PCT": pct("FT_PCT", "FTM", "FTA"),
                     "PLUS_MINUS": float(g.get("PLUS_MINUS", 0) or 0),
                 })
         except Exception as e:
