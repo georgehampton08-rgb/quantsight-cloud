@@ -45,6 +45,11 @@ ESPN_SCOREBOARD = (
     "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/"
     "scoreboard?dates={date}&limit=30"
 )
+# Alternate: broader event list via ESPN calendar (catches All-Star + edge cases)
+ESPN_EVENTS_ALT = (
+    "https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/events"
+    "?dates={date}&limit=50"
+)
 ESPN_SUMMARY = (
     "https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={event_id}"
 )
@@ -142,50 +147,61 @@ def has_pbp(db, espn_id: str) -> bool:
 async def get_all_espn_games_for_date(session: aiohttp.ClientSession, date_str: str) -> list:
     """
     Return list of {espn_id, home_team, away_team, status} for every NBA game on date_str.
-    
-    ESPN scoreboard caps at ~6 "featured" games. We use two strategies:
-    1. Primary: scoreboard?dates=YYYYMMDD&limit=30
-    2. Fallback: cdn.espn.com CDN scoreboard (returns full slate)
+
+    Strategy:
+    1. ESPN main scoreboard (most data, caps at ~30)
+    2. ESPN core events API (catches games missing from main scoreboard)
     """
     espn_date = date_str.replace("-", "")
     games = []
+    seen_ids = set()
 
-    # Strategy 1: standard scoreboard
+    # Strategy 1: main scoreboard
     try:
-        url = ESPN_CALENDAR_EVENTS.format(date=espn_date)
-        async with session.get(url, timeout=aiohttp.ClientTimeout(total=12)) as r:
+        url = ESPN_SCOREBOARD.format(date=espn_date)
+        async with session.get(url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as r:
             data = await r.json()
         for e in data.get("events", []):
             g = _parse_espn_event(e)
-            if g:
+            if g and g["espn_id"] not in seen_ids:
                 games.append(g)
+                seen_ids.add(g["espn_id"])
     except Exception as ex:
         log.debug(f"  scoreboard error: {ex}")
 
     if games:
         return games
 
-    # Strategy 2: CDN scoreboard (broader game coverage)
+    # Strategy 2: ESPN core events calendar (broader — catches All-Star weekend etc)
     try:
-        url2 = ESPN_WEB_SCOREBOARD.format(date=espn_date)
-        async with session.get(url2, timeout=aiohttp.ClientTimeout(total=12)) as r:
-            raw = await r.text()
-            import json
-            # CDN response wraps JSON in a callback or as raw JSON
-            if raw.strip().startswith("{"):
-                data2 = json.loads(raw)
-            else:
-                # Strip JSONP wrapper if present
-                start = raw.find("{")
-                data2 = json.loads(raw[start:raw.rfind("}")+1])
-        sports = data2.get("sports", [{}])
-        leagues = sports[0].get("leagues", [{}]) if sports else [{}]
-        for e in leagues[0].get("events", []) if leagues else []:
-            g = _parse_cdn_event(e)
-            if g:
-                games.append(g)
+        url2 = ESPN_EVENTS_ALT.format(date=espn_date)
+        async with session.get(url2, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as r:
+            data2 = await r.json()
+        items = data2.get("items", [])
+        for item in items:
+            ref = item.get("$ref", "")
+            eid = ref.split("/events/")[-1].split("?")[0] if "/events/" in ref else ""
+            if eid and eid not in seen_ids:
+                # Fetch the event summary to get teams
+                try:
+                    async with session.get(
+                        f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={eid}",
+                        headers=HEADERS, timeout=aiohttp.ClientTimeout(total=12)
+                    ) as er:
+                        ed = await er.json()
+                    header = ed.get("header", {})
+                    comps = header.get("competitions", [{}])[0] if header.get("competitions") else {}
+                    teams = comps.get("competitors", [])
+                    away_raw = next((t.get("team", {}).get("abbreviation", "") for t in teams if t.get("homeAway") == "away"), "")
+                    home_raw = next((t.get("team", {}).get("abbreviation", "") for t in teams if t.get("homeAway") == "home"), "")
+                    if away_raw and home_raw:
+                        games.append({"espn_id": eid, "home_team": norm(home_raw), "away_team": norm(away_raw), "score_home": 0, "score_away": 0, "status": "Final"})
+                        seen_ids.add(eid)
+                        await asyncio.sleep(0.3)
+                except Exception:
+                    pass
     except Exception as ex:
-        log.debug(f"  CDN scoreboard error: {ex}")
+        log.debug(f"  events alt error: {ex}")
 
     return games
 

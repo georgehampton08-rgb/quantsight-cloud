@@ -1,5 +1,5 @@
 import React from 'react'
-import { Activity, ShieldCheck, Zap, BarChart3, LayoutDashboard, TrendingUp, AlertTriangle, Star } from 'lucide-react'
+import { Activity, ShieldCheck, Zap, BarChart3, LayoutDashboard, TrendingUp, AlertTriangle, Star, Stethoscope } from 'lucide-react'
 import { ApiContract } from '../api/client'
 import { BoxScoreViewer } from '../components/dashboard/BoxScoreViewer'
 import { PlayByPlayFeed } from '../components/PlayByPlay/PlayByPlayFeed'
@@ -17,6 +17,77 @@ const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, c
         </div>
     </div>
 )
+
+// ─── Today's Injuries Widget ──────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<string, string> = {
+    Out:          'bg-red-500/20 text-red-400 border-red-500/30',
+    Questionable: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    Doubtful:     'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    'Day-To-Day': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
+    Probable:     'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+};
+const statusColor = (s: string) => STATUS_COLORS[s] ?? 'bg-slate-700/40 text-slate-400 border-slate-600/30';
+
+const TodayInjuriesWidget = () => {
+    const [injuries, setInjuries] = React.useState<Record<string, any[]>>({});
+    const [loading, setLoading]   = React.useState(true);
+    const [count, setCount]       = React.useState(0);
+
+    React.useEffect(() => {
+        fetch(`${API_BASE}/v1/games/injuries/today`)
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(d => {
+                // Group by team tricode
+                const byTeam: Record<string, any[]> = {};
+                (d.injuries ?? []).forEach((inj: any) => {
+                    const t = inj.teamTricode ?? inj.team ?? 'UNK';
+                    if (!byTeam[t]) byTeam[t] = [];
+                    byTeam[t].push(inj);
+                });
+                setInjuries(byTeam);
+                setCount(d.injuries?.length ?? 0);
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return <div className="text-xs text-slate-500 animate-pulse">Fetching injury reports...</div>;
+
+    if (count === 0) return (
+        <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-600">
+            <Stethoscope className="w-7 h-7 opacity-30" />
+            <div className="text-xs">No injury reports for today</div>
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col gap-4">
+            {Object.entries(injuries).map(([team, players]) => (
+                <div key={team}>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        {team}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        {players.map((inj: any) => (
+                            <div key={inj.playerId ?? inj.playerName}
+                                className="flex items-center gap-2 px-2 py-1.5 bg-slate-900/50 rounded-lg border border-slate-800/60">
+                                <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${statusColor(inj.status)}`}>
+                                    {inj.status === 'Day-To-Day' ? 'DTD' : (inj.status ?? '?').charAt(0)}
+                                </span>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] font-semibold text-slate-200 truncate leading-tight">{inj.playerName}</span>
+                                    {inj.injuryType && <span className="text-[10px] text-slate-500 truncate leading-tight">{inj.injuryType}</span>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+            <div className="text-[9px] text-slate-700 text-right">via ESPN • updates hourly</div>
+        </div>
+    );
+};
 
 // ─── AI Insights Widget ───────────────────────────────────────────────────────
 
@@ -270,6 +341,11 @@ export default function CommandCenterPage() {
                         {/* Pillar 3: Quick Insights */}
                         <DataCard title="Quick Insights" icon={Activity}>
                             <InsightsWidget />
+                        </DataCard>
+
+                        {/* Pillar 4: Injury Report */}
+                        <DataCard title="Injury Report — Today" icon={Stethoscope}>
+                            <TodayInjuriesWidget />
                         </DataCard>
                     </div>
                 ) : activeTab === 'BOXSCORE' ? (

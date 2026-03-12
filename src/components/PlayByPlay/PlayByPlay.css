@@ -298,7 +298,6 @@
 @media (max-width: 1024px) {
     .pbp-feed-layout {
         flex-direction: column;
-        /* Tall but bounded height on tablet — both cols scroll */
         height: auto;
         max-height: none;
         min-height: unset;
@@ -312,22 +311,35 @@
     .feed-col {
         max-width: 100%;
         min-width: 0;
-        height: 420px;        /* Fixed height so feed scrolls on tablet */
+        height: 480px;        /* Fixed height so feed scrolls internally on tablet */
+        min-height: 320px;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 }
 
-/* === MOBILE: <640px — tighter padding, smaller type === */
+/* === MOBILE: <640px — full-height natural scroll (no nested scroll trap) === */
 @media (max-width: 640px) {
     .pbp-container {
         gap: 10px;
     }
 
     .feed-col {
-        height: 360px;        /* Fixed compact height on mobile */
-        min-height: 280px;
-        overflow-y: auto;
+        /* Let the feed grow to full content height so it scrolls with the page.
+           Nested fixed-height scroll boxes are unreliable on iOS touch. */
+        height: auto !important;
+        min-height: 200px;
+        max-height: none !important;
+        overflow-y: visible !important;
         border-radius: 8px;
+    }
+
+    /* The internal plays list also grows freely */
+    .plays-list-container {
+        overflow-y: visible !important;
+        max-height: none !important;
+        height: auto !important;
+        -webkit-overflow-scrolling: auto;
     }
 
     /* Score header shrinks down */
