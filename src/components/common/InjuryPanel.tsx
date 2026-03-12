@@ -40,11 +40,25 @@ const STATUS_STYLES: Record<string, string> = {
 const statusStyle = (s: string) =>
     STATUS_STYLES[s] ?? 'bg-slate-700/40 text-slate-400 border-slate-600/30';
 
+/** Returns today's date in YYYY-MM-DD using Eastern Time (NBA schedule timezone). */
+function todayET(): string {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date());
+}
+
 async function fetchTeamInjuries(tricode: string): Promise<InjuryRecord[]> {
     try {
         const res = await fetch(`${API_BASE}/v1/games/injuries/team/${tricode}`);
         if (!res.ok) return [];
         const d = await res.json();
+        // Guard: if the stored injury data is not from today (ET), treat it
+        // as stale — don't show yesterday's report for today's match. The
+        // panel self-hides when both teams return empty arrays.
+        if (d.date && d.date !== todayET()) return [];
         return (d.injuries as InjuryRecord[]) ?? [];
     } catch {
         return [];
