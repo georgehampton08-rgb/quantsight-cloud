@@ -274,14 +274,16 @@ async def get_games_for_date_direct(date: str):
                 away = d.get("away_team", d.get("awayTeam", ""))
                 if isinstance(home, dict): home = home.get("tricode", "")
                 if isinstance(away, dict): away = away.get("tricode", "")
-                games.append({
+                game_dict = {
                     "gameId":   game_id,
                     "nbaId":    "",
                     "homeTeam": home,
                     "awayTeam": away,
                     "status":   d.get("status", "Final"),
-                    "hasPbp":   True,
-                })
+                    "hasPbp":   False,
+                }
+                game_dict = _enrich_with_scores(db, date, game_id, game_dict)
+                games.append(game_dict)
         except Exception as e:
             logger.warning(f"[dates] pulse_stats source failed for {date}: {e}")
 

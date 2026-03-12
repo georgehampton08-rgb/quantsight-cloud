@@ -10,14 +10,6 @@ export default function TopBar() {
     const { health } = useHealth();
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [width, setWidth] = useState(window.innerWidth);
-
-    useEffect(() => {
-        const onResize = () => setWidth(window.innerWidth);
-        window.addEventListener('resize', onResize);
-        return () => window.removeEventListener('resize', onResize);
-    }, []);
-
     useEffect(() => {
         const checkSidebar = () => {
             const sidebar = document.querySelector('.sidebar');
@@ -39,64 +31,55 @@ export default function TopBar() {
         window.dispatchEvent(new Event('sidebarToggled'));
     };
 
-    // Treat anything below 680px as "narrow" (catches DevTools-docked viewports)
-    const isNarrow = width < 680;
-
     return (
         <>
-            <div className="flex-shrink-0 sticky top-0 z-[1000] border-b border-slate-700/50 bg-slate-900/95 backdrop-blur-md">
+            <div className="flex-shrink-0 sticky top-0 z-[1000] border-b border-slate-700/50 bg-slate-900/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
                 {/* Main bar row */}
                 <div className="flex items-center h-14 px-3 gap-2 overflow-hidden">
 
-                    {/* Left: Hamburger and Selector */}
-                    <div className="flex-shrink-0 flex items-center gap-2 md:gap-3">
+                    {/* Hamburger */}
+                    <button
+                        onClick={toggleMobileMenu}
+                        className="flex-shrink-0 p-2 rounded-lg hover:bg-white/8 text-slate-400 hover:text-white transition-colors duration-150"
+                        title="Menu"
+                    >
+                        {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    </button>
+
+                    {/* Back + CascadingSelector — hidden on narrow screens */}
+                    <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
                         <button
-                            onClick={toggleMobileMenu}
-                            className="flex-shrink-0 p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                            title="Menu"
+                            onClick={() => navigate(-1)}
+                            className="p-2 rounded-lg hover:bg-white/8 text-slate-400 hover:text-white transition-colors duration-150"
+                            title="Go Back"
                         >
-                            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            <ChevronLeft className="w-4 h-4" />
                         </button>
-
-                        {!isNarrow && (
-                            <>
-                                <button
-                                    onClick={() => navigate(-1)}
-                                    className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                                    title="Go Back"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <CascadingSelector />
-                            </>
-                        )}
+                        <CascadingSelector />
                     </div>
 
-                    {/* Center: Search bar (flex-1 so it fills available space) */}
-                    <div className="flex-1 min-w-0 px-2">
-                        {isNarrow ? (
-                            <div className="flex-1 max-w-[160px] mx-auto">
-                                <CascadingSelector />
-                            </div>
-                        ) : (
-                            <OmniSearchBar />
-                        )}
+                    {/* CascadingSelector only — shown on narrow screens */}
+                    <div className="flex sm:hidden flex-1 max-w-[160px]">
+                        <CascadingSelector />
                     </div>
 
-                    {/* Right: Status LEDs — always visible, compact on narrow */}
-                    <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-3">
+                    {/* Search bar — fills remaining space, hidden on narrow, shown in row below */}
+                    <div className="hidden sm:flex flex-1 min-w-0 px-2">
+                        <OmniSearchBar />
+                    </div>
+
+                    {/* Status LEDs */}
+                    <div className="flex-shrink-0 flex items-center gap-1.5 sm:gap-3">
                         <StatusLed label="NBA" status={health.nba} />
                         <StatusLed label="AI" status={health.gemini} />
                         <StatusLed label="DB" status={health.database} />
                     </div>
                 </div>
 
-                {/* Narrow: Search bar below the main row */}
-                {isNarrow && (
-                    <div className="px-3 pb-2">
-                        <OmniSearchBar />
-                    </div>
-                )}
+                {/* Search bar — shown below on narrow screens */}
+                <div className="sm:hidden px-3 pb-2">
+                    <OmniSearchBar />
+                </div>
             </div>
         </>
     )

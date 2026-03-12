@@ -52,28 +52,21 @@ export default function TeamCentralPage() {
 
         const loadRoster = async (retryCount = 0) => {
             if (retryCount === 0) setLoadingRoster(true);
-            console.log(`[TeamCentral] Loading roster for team: ${selectedTeam}, attempt ${retryCount + 1}`);
             try {
                 const res = await ApiContract.execute<any>('getRoster', { path: `roster/${selectedTeam}` }, [selectedTeam]);
                 const data = res.data;
 
-                console.log(`[TeamCentral] Roster API response:`, data);
-                console.log(`[TeamCentral] data.roster exists:`, !!data?.roster);
-                console.log(`[TeamCentral] data.roster.length:`, data?.roster?.length);
 
                 if (data?.roster && data.roster.length > 0) {
-                    console.log(`[TeamCentral] Setting roster with ${data.roster.length} players`);
                     setRoster(data.roster);
                     setLoadingRoster(false);
                 } else if (data?.players && data.players.length > 0) {
                     // Fallback for old API format
-                    console.log(`[TeamCentral] Using fallback players field with ${data.players.length} players`);
                     setRoster(data.players);
                     setLoadingRoster(false);
                 } else if (retryCount < 3) {
                     // Retry if no data and we haven't exceeded retry limit
                     const delay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
-                    console.log(`[TeamCentral] No roster data, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`);
                     setTimeout(() => loadRoster(retryCount + 1), delay);
                     // Keep loading state true
                 } else {
@@ -85,7 +78,6 @@ export default function TeamCentralPage() {
                 console.error("Failed to load roster:", error);
                 if (retryCount < 3) {
                     const delay = Math.pow(2, retryCount) * 500;
-                    console.log(`[TeamCentral] Fetch error, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`);
                     setTimeout(() => loadRoster(retryCount + 1), delay);
                     // Keep loading state true
                 } else {

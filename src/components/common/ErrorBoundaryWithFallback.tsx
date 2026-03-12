@@ -71,7 +71,6 @@ class ErrorBoundaryWithFallback extends Component<Props, State> {
 
         if (retryCount < delays.length) {
             const delay = delays[retryCount];
-            console.log(`[ErrorBoundary] Auto-retry in ${delay}ms (attempt ${retryCount + 1})`);
 
             const timeout = setTimeout(() => {
                 this.handleRetry();

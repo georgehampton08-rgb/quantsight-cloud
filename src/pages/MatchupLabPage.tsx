@@ -86,7 +86,7 @@ const formIcons: Record<string, string> = {
 // Classification colors
 const classificationStyles: Record<string, { bg: string; text: string; icon: string }> = {
     'TARGET': { bg: '#22c55e20', text: '#22c55e', icon: '🎯' },
-    'FADE': { bg: '#ef444420', text: '#ef4444', icon: '🚫' },
+    'FADE': { bg: 'bg-qs-red/10', text: '#ef4444', icon: '🚫' },
     'NEUTRAL': { bg: '#94a3b820', text: '#94a3b8', icon: '➖' },
 };
 

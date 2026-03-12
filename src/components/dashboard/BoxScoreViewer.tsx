@@ -408,8 +408,8 @@ export function BoxScoreViewerContent() {
                             key={game.game_id}
                             onClick={() => setSelectedHistGame(game.game_id)}
                             className={`flex-shrink-0 px-4 py-3 border rounded-xl flex flex-col items-center gap-1 transition-all min-w-[140px] ${selectedHistGame === game.game_id
-                                ? 'bg-emerald-900/20 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
+                                ? 'bg-qs-green/20 border-qs-green/40 shadow-[0_0_12px_theme(colors.qs.green/15%)]'
+                                : 'bg-slate-800/20 border-slate-700/30 hover:bg-slate-800/80 hover:border-slate-500/50 text-slate-400'
                                 }`}
                         >
                             <div className="flex items-center gap-3 w-full justify-between px-1">

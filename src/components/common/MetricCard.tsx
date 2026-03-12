@@ -21,7 +21,7 @@ export default function MetricCard({
 }: MetricCardProps) {
     return (
         <div className={clsx(
-            "relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/40 backdrop-blur-md overflow-hidden transition-all duration-300 hover:border-financial-accent/30 hover:bg-slate-800/60 group",
+            "relative p-5 rounded-xl border border-slate-700/40 bg-slate-900/60 backdrop-blur-md overflow-hidden transition-all duration-200 hover:border-financial-accent/30 hover:bg-slate-900/80 group",
             className
         )}>
             {/* Top Shine Effect */}
@@ -34,11 +34,11 @@ export default function MetricCard({
 
             <div className="flex justify-between items-end">
                 <div>
-                    <div className="text-2xl font-bold text-slate-100 tabular-nums tracking-tight">
+                    <div className="text-2xl font-mono font-bold text-slate-100 tabular-nums tracking-tight">
                         {value}
                     </div>
                     {subValue && (
-                        <div className="text-xs text-slate-500 mt-1 font-mono">
+                        <div className="text-xs text-slate-500 mt-1 font-mono tabular-nums tracking-tight">
                             {subValue}
                         </div>
                     )}

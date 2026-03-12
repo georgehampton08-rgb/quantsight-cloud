@@ -28,7 +28,6 @@ export default function OmniSearchBar() {
                 const response = await PlayerApi.search('');
 
                 if (response && Array.isArray(response)) {
-                    console.log(`[OmniSearch] Successfully loaded ${response.length} players`);
                     setAllPlayers(response);
                 } else {
                     console.warn('[OmniSearch] Invalid response format:', response);
@@ -39,7 +38,6 @@ export default function OmniSearchBar() {
 
                 // Retry after 2 seconds
                 setTimeout(() => {
-                    console.log('[OmniSearch] Retrying player load...');
                     loadPlayers();
                 }, 2000);
             }
@@ -49,7 +47,6 @@ export default function OmniSearchBar() {
 
     // Initialize Fuse
     const fuse = useMemo(() => {
-        console.log(`Initializing Fuse with ${allPlayers.length} players`);
         return new Fuse(allPlayers, {
             keys: ['name', 'team', 'position'],
             threshold: 0.4, // Relaxed from 0.3 for better typo tolerance
@@ -68,7 +65,6 @@ export default function OmniSearchBar() {
     }, [results])
 
     const handleSelect = (item: Player) => {
-        console.log("Selected Player:", item.name)
         navigate(`/player/${item.id}`)
         setIsOpen(false)
         setQuery('')

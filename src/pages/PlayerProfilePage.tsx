@@ -96,7 +96,6 @@ export default function PlayerProfilePage() {
                         player: data.player_stats,
                         opponent: data.opponent_defense
                     });
-                    console.log('[RADAR] Loaded real dimensions:', data);
                 }
             } catch (e) {
                 console.warn('[RADAR] Failed to load, using defaults:', e);
@@ -115,10 +114,8 @@ export default function PlayerProfilePage() {
         const loadData = async () => {
             // Context Logic: "The One-Truth Rule"
             if (selectedPlayer && selectedPlayer.id === targetId) {
-                console.log(`[OrbitalContext] CACHE HIT: Using global state for player ${targetId}`);
                 setLoading(false);
             } else {
-                console.log(`[OrbitalContext] CACHE MISS: Fetching fresh data for player ${targetId}`);
                 setLoading(true);
                 try {
                     const data = await PlayerApi.getProfile(targetId);

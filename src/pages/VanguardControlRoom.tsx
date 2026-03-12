@@ -240,7 +240,7 @@ function AnalysisModal({
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 shadow-inner">
                             <div>
                                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Occurrences</div>
-                                <div className="text-xl font-mono font-black text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                <div className="text-xl font-mono font-black text-qs-gold drop-shadow-[0_0_8px_theme(colors.qs.gold/50%)]">
                                     {incident.occurrence_count}
                                 </div>
                             </div>
@@ -333,7 +333,7 @@ function AnalysisModal({
                             <div className="rounded-2xl bg-white/5 backdrop-blur-md border border-emerald-500/20 p-5 shadow-lg relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                                 <div className="flex items-center gap-3 mb-3 relative z-10">
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0" />
+                                    <CheckCircle2 className="w-5 h-5 text-qs-green drop-shadow-[0_0_8px_theme(colors.qs.green/50%)] flex-shrink-0" />
                                     <span className="text-white font-black text-sm tracking-wide">Recommended Fixes</span>
                                 </div>
                                 <ul className="space-y-2 relative z-10">
@@ -350,7 +350,7 @@ function AnalysisModal({
                         {/* ── Vaccine Recommendation ── */}
                         {vaccineRec && (
                             <div className={`rounded-2xl border p-5 relative overflow-hidden ${vaccineRec.feasible
-                                ? 'bg-emerald-950/30 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                                ? 'bg-qs-green/20 border-qs-green/30 shadow-[0_0_30px_theme(colors.qs.green/10%)]'
                                 : 'bg-slate-800/40 border-slate-700/40'
                                 }`}>
                                 <div className="flex items-center gap-3 mb-4">
@@ -532,7 +532,7 @@ function IncidentCard({
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5">
-                                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] flex-shrink-0" />
+                                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-qs-gold drop-shadow-[0_0_8px_theme(colors.qs.gold/60%)] flex-shrink-0" />
                                 <span className="text-white font-black text-sm sm:text-base tracking-wide drop-shadow-md break-all">{inc.error_type}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded font-black tracking-widest border shadow-sm ${severityStyle}`}>
                                     {inc.severity?.toUpperCase()}
@@ -559,7 +559,7 @@ function IncidentCard({
                         <button
                             onClick={(e) => { e.stopPropagation(); onResolve(); }}
                             disabled={resolving}
-                            className="px-4 py-2.5 rounded-xl border border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/60 disabled:opacity-50 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
+                            className="px-4 py-2.5 rounded-xl border border-qs-green/40 text-qs-green shadow-[0_0_15px_theme(colors.qs.green/15%)] hover:bg-qs-green/20 hover:text-qs-green hover:border-qs-green/60 disabled:opacity-50 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
                         >
                             {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                             Resolve
@@ -590,7 +590,7 @@ function SubSystemCard({ name, active, subtitle }: { name: string; active: boole
                 <h4 className="text-white font-black text-xs sm:text-sm tracking-widest uppercase">{name}</h4>
                 {subtitle && <p className="text-xs text-slate-400 font-medium mt-1.5">{subtitle}</p>}
             </div>
-            <div className={`w-6 h-6 rounded-full flex justify-center items-center border flex-shrink-0 relative z-10 ${active ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-600/50 text-slate-500 bg-slate-700/20'}`}>
+            <div className={`w-6 h-6 rounded-full flex justify-center items-center border flex-shrink-0 relative z-10 ${active ? 'border-qs-green/50 text-qs-green bg-qs-green/10 shadow-[0_0_15px_theme(colors.qs.green/30%)]' : 'border-slate-600/50 text-slate-500 bg-slate-700/20'}`}>
                 {active ? <CheckCircle2 className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
             </div>
         </div>
@@ -789,9 +789,9 @@ export default function VanguardControlRoom() {
 
                             let colorCls = "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white shadow-lg";
                             if (isActive) {
-                                if (tab === 'HEALTH') colorCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.25)]";
-                                else if (tab === 'INCIDENTS') colorCls = "bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)]";
-                                else if (tab === 'ARCHIVES') colorCls = "bg-blue-500/15 text-blue-400 border-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.2)]";
+                                if (tab === 'HEALTH') colorCls = "bg-qs-green/15 text-qs-green border-qs-green/50 shadow-[0_0_30px_theme(colors.qs.green/25%)]";
+                                else if (tab === 'INCIDENTS') colorCls = "bg-qs-gold/15 text-qs-gold border-qs-gold/50 shadow-[0_0_25px_theme(colors.qs.gold/20%)]";
+                                else if (tab === 'ARCHIVES') colorCls = "bg-qs-blue/15 text-qs-blue border-qs-blue/50 shadow-[0_0_25px_theme(colors.qs.blue/20%)]";
                                 else if (tab === 'LEARNING') colorCls = "bg-cyan-500/15 text-cyan-400 border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.25)]";
                             }
                             return (
@@ -875,9 +875,10 @@ export default function VanguardControlRoom() {
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                                 {[
                                     { label: 'Active Incidents', value: loading ? '—' : String(stats?.active_incidents ?? '—'), color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
-                                    { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
+                                    { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' },
                                     { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
-                                    { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
+                                    { label: 'Cloud SQL', value: stats?.subsystem_health?.cloud_sql ? '✓' : '✗', color: stats?.subsystem_health?.cloud_sql ? 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' : 'text-qs-red drop-shadow-[0_0_10px_theme(colors.qs.red/50%)]' },
+                                    { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' : 'text-qs-red drop-shadow-[0_0_10px_theme(colors.qs.red/50%)]' },
                                 ].map(m => (
                                     <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden group">
                                         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -918,7 +919,7 @@ export default function VanguardControlRoom() {
                             {stats?.hot_endpoints && stats.hot_endpoints.length > 0 && (
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
                                     <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase flex items-center gap-3 opacity-80">
-                                        <AlertTriangle className="w-4 h-4 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                                        <AlertTriangle className="w-4 h-4 text-qs-gold drop-shadow-[0_0_8px_theme(colors.qs.gold/60%)]" />
                                         Hot Endpoints
                                     </h3>
                                     <div className="space-y-3">
@@ -1269,7 +1270,7 @@ export default function VanguardControlRoom() {
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                                         {[
                                             { label: 'Total Resolutions', value: learning?.total_resolutions ?? '—', color: 'text-white' },
-                                            { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' },
+                                            { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' },
                                             { label: 'Pending', value: learning?.pending_verification ?? '—', color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
                                             { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
                                         ].map(m => (

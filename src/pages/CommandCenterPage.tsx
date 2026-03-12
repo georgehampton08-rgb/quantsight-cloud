@@ -201,7 +201,6 @@ const ScheduleWidget = () => {
                 const data = res.data;
 
                 if (data && data.games) {
-                    console.log(`[Schedule] Loaded ${data.games.length} games`);
                     setGames(data.games);
                 } else {
                     console.warn('[Schedule] No games in response:', data);
@@ -325,7 +324,7 @@ export default function CommandCenterPage() {
                             <div className="grid grid-cols-2 gap-4 h-full content-start">
                                 <div className="bg-slate-900/40 p-4 rounded-xl text-center border border-slate-700/30 shadow-inner">
                                     <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1.5 shadow-sm">API Latency</div>
-                                    <div className="text-2xl font-black font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">42ms</div>
+                                    <div className="text-2xl font-black font-mono text-qs-green drop-shadow-[0_0_8px_theme(colors.qs.green/50%)]">42ms</div>
                                 </div>
                                 <div className="bg-slate-900/40 p-4 rounded-xl text-center border border-slate-700/30 shadow-inner">
                                     <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1.5 shadow-sm">Model Drift</div>

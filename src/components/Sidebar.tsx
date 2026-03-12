@@ -1,18 +1,20 @@
+import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useState } from 'react';
 import { ChevronLeft, X } from 'lucide-react';
 
+import { Home, FlaskConical, Swords, Heart, Microscope, Shield, Settings, Info, Lock, Stethoscope } from 'lucide-react';
+
 const NAV_ITEMS = [
-    { name: 'Home', icon: '🏠', path: '/' },
-    { name: 'Player Lab', icon: '🧬', path: '/player' },
-    { name: 'Matchup Engine', icon: '⚔️', path: '/matchup' },
-    { name: 'The Pulse', icon: '❤️', path: '/pulse' },
-    { name: 'Matchup Lab', icon: '🔬', path: '/matchup-lab' },
-    { name: 'Team Central', icon: '🛡️', path: '/team' },
-    { name: 'Settings', icon: '⚙️', path: '/settings' },
-    { name: 'About', icon: 'ℹ️', path: '/about' },
-    { name: 'Vanguard', icon: '🔒', path: '/vanguard' },
-    { name: 'Injury Admin', icon: '⚕️', path: '/injury-admin' },
+    { name: 'Home',           Icon: Home,         path: '/' },
+    { name: 'Player Lab',     Icon: FlaskConical, path: '/player' },
+    { name: 'Matchup Engine', Icon: Swords,        path: '/matchup' },
+    { name: 'The Pulse',      Icon: Heart,         path: '/pulse' },
+    { name: 'Matchup Lab',    Icon: Microscope,    path: '/matchup-lab' },
+    { name: 'Team Central',   Icon: Shield,        path: '/team' },
+    { name: 'Settings',       Icon: Settings,      path: '/settings' },
+    { name: 'About',          Icon: Info,          path: '/about' },
+    { name: 'Vanguard',       Icon: Lock,          path: '/vanguard' },
+    { name: 'Injury Admin',   Icon: Stethoscope,   path: '/injury-admin' },
 ]
 
 export default function Sidebar() {
@@ -44,26 +46,35 @@ export default function Sidebar() {
             </div>
 
             <div className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                {NAV_ITEMS.map((item) => (
-                    <NavLink
-                        key={item.name}
-                        to={item.path}
-                        onClick={closeMobileSidebar}
-                        className={({ isActive }) => {
-                            // For exact matching on home, otherwise check if current path matches
-                            const isCurrentPath = item.path === '/'
-                                ? location.pathname === '/'
-                                : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                {NAV_ITEMS.map((item, index) => (
+                    <React.Fragment key={item.name}>
+                        {/* Admin divider */}
+                        {item.path === '/vanguard' && (
+                            <div className="my-1 border-t border-slate-700/50" />
+                        )}
+                        <NavLink
+                            to={item.path}
+                            onClick={closeMobileSidebar}
+                            className={({ isActive }) => {
+                                const isCurrentPath = item.path === '/'
+                                    ? location.pathname === '/'
+                                    : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                                
+                                const isAdmin = item.path === '/vanguard' || item.path === '/injury-admin';
 
-                            return `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-sm font-medium
-                            ${isActive || isCurrentPath
-                                    ? 'bg-financial-accent/10 text-financial-accent border-l-2 border-financial-accent'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border-l-2 border-transparent'}`;
-                        }}
-                    >
-                        <span className="text-lg">{item.icon}</span>
-                        <span className="whitespace-nowrap">{item.name}</span>
-                    </NavLink>
+                                return `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium group
+                                ${isActive || isCurrentPath
+                                    ? 'bg-financial-accent/10 text-financial-accent border-l-2 border-financial-accent shadow-[inset_0_0_12px_rgba(0,229,160,0.05)]'
+                                    : isAdmin
+                                        ? 'text-slate-500 hover:text-amber-400 hover:bg-amber-500/5 border-l-2 border-transparent'
+                                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border-l-2 border-transparent'
+                                }`;
+                            }}
+                        >
+                            <item.Icon className="w-4 h-4 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{item.name}</span>
+                        </NavLink>
+                    </React.Fragment>
                 ))}
             </div>
 

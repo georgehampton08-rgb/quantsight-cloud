@@ -84,7 +84,7 @@ export default function SettingsPage() {
                 <HealthDepsPanel />
 
                 {/* AI Configuration — Live status */}
-                <section className="p-6 rounded-xl border border-slate-700/50 bg-[#121b2d]">
+                <section className="p-6 rounded-xl border border-slate-700/50 bg-slate-900">
                     <div className="flex items-center justify-between mb-5">
                         <h3 className="text-xs tracking-widest text-[#2ad8a0] font-bold uppercase">AI Configuration</h3>
                         <button

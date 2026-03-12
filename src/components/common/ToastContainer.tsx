@@ -19,9 +19,9 @@ export default function ToastContainer() {
 function HolographicToast({ toast, onDismiss }: { toast: Toast, onDismiss: () => void }) {
     const getStyles = () => {
         switch (toast.type) {
-            case 'success': return 'border-emerald-500/50 bg-emerald-900/40 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
-            case 'error': return 'border-red-500/50 bg-red-900/40 text-red-200 shadow-[0_0_15px_rgba(239,68,68,0.3)]';
-            default: return 'border-blue-500/50 bg-blue-900/40 text-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.3)]';
+            case 'success': return 'border-qs-green/50 bg-qs-green/40 text-qs-green shadow-[0_0_15px_theme(colors.qs.green/30%)]';
+            case 'error': return 'border-qs-red/50 bg-qs-red/40 text-qs-red shadow-[0_0_15px_theme(colors.qs.red/30%)]';
+            default: return 'border-qs-blue/50 bg-qs-blue/40 text-qs-blue shadow-[0_0_15px_theme(colors.qs.blue/30%)]';
         }
     };
 

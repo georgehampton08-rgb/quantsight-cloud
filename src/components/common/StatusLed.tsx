@@ -12,11 +12,11 @@ export default function StatusLed({ status, label, className }: StatusLedProps) 
     const getColors = (s: SystemStatus) => {
         switch (s) {
             case 'healthy':
-                return 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                return 'bg-qs-green shadow-[0_0_8px_theme(colors.qs.green/60%)]';
             case 'warning':
-                return 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]';
+                return 'bg-qs-gold shadow-[0_0_8px_theme(colors.qs.gold/60%)]';
             case 'critical':
-                return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]';
+                return 'bg-qs-red shadow-[0_0_8px_theme(colors.qs.red/60%)]';
         }
     };
 
@@ -34,7 +34,7 @@ export default function StatusLed({ status, label, className }: StatusLedProps) 
     return (
         <div className={twMerge("flex items-center gap-1.5 sm:gap-2", className)} title={`System: ${label} is ${status}`}>
             <div className="hidden sm:flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{label}</span>
+                <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">{label}</span>
             </div>
             <div className="relative flex h-2.5 w-2.5">
                 {/* Ping animation layer for critical */}

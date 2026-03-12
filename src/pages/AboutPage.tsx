@@ -31,7 +31,7 @@ export default function AboutPage() {
                 </div>
 
                 {/* ── Section 1: What Is QuantSight Cloud ─────────────── */}
-                <section className="p-6 rounded-xl border border-slate-700/50 bg-[#121b2d]">
+                <section className="p-6 rounded-xl border border-slate-700/50 bg-slate-900">
                     <h2 className="text-xs tracking-widest text-[#00e5a0] font-bold uppercase mb-5">
                         What Is QuantSight Cloud
                     </h2>
@@ -109,7 +109,7 @@ export default function AboutPage() {
                 </section>
 
                 {/* ── Section 3: Who This Platform Is For ──────────────── */}
-                <section className="p-6 rounded-xl border border-slate-700/50 bg-[#121b2d]">
+                <section className="p-6 rounded-xl border border-slate-700/50 bg-slate-900">
                     <h2 className="text-xs tracking-widest text-[#00e5a0] font-bold uppercase mb-5">
                         Who This Platform Is For
                     </h2>

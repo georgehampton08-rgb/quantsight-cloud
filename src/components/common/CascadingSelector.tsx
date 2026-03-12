@@ -47,7 +47,6 @@ export default function CascadingSelector() {
                 const data = res.data;
 
                 if (data && data.conferences) {
-                    console.log(`[CascadingSelector] Loaded ${data.conferences.length} conferences`);
                     setConferences(data.conferences);
                 }
             } catch (error) {

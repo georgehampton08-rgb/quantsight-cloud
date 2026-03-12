@@ -71,7 +71,6 @@ export default function MatchupEnginePage() {
                                 opponent: radarResult.opponent_defense,
                                 formulas: radarResult.formulas_used || []
                             });
-                            console.log('[RADAR] Loaded real dimensions for opponent:', opponentId, radarResult);
                         }
                     }
                 } catch (radarErr) {
