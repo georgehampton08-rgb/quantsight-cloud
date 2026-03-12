@@ -1,127 +1,86 @@
 """
-Simple Injury Fetcher with NBA API + Rate Limiting
-===================================================
-FREE solution using nba_api with smart rate limiting.
+Simple Injury Fetcher — ESPN-Powered (v2)
+=========================================
+Previously used nba_api.stats.endpoints.commonplayerinfo per player, which:
+  - Returned no actual injury data (just assumed AVAILABLE)
+  - Added 600ms+ latency per player call
+  - Was rate-limited/blocked on Cloud Run
+
+Now: reads from Firestore `player_injuries` collection written by
+ESPNInjuryPoller — no external API calls at runtime, sub-millisecond reads.
 """
-from nba_api.stats.endpoints import commonplayerinfo
-import time
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime
-import sqlite3
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
 class SimpleInjuryFetcher:
-    """Simple, free injury fetcher with rate limiting"""
-    
+    """Injury data via Firestore (written by ESPNInjuryPoller)."""
+
     def __init__(self, db_path: Optional[str] = None):
-        if db_path is None:
-            backend_dir = Path(__file__).parent.parent
-            db_path = backend_dir / 'data' / 'nba_data.db'
-        self.db_path = str(db_path)
-        self.last_request_time = 0
-        self.min_request_interval = 0.6  # 600ms between requests (safe rate limit)
-    
-    def _rate_limit(self):
-        """Smart rate limiting to avoid API errors"""
-        elapsed = time.time() - self.last_request_time
-        if elapsed < self.min_request_interval:
-            time.sleep(self.min_request_interval - elapsed)
-        self.last_request_time = time.time()
-    
+        # db_path kept for signature compatibility — not used (Firestore now)
+        self._db = None
+
+    def _get_db(self):
+        if self._db is None:
+            from firestore_db import get_firestore_db
+            self._db = get_firestore_db()
+        return self._db
+
     def check_player_injury(self, player_id: str) -> Dict:
         """
-        Check if a player is injured using NBA API.
-        Returns injury status with smart defaults.
+        Return injury status for a player from Firestore player_injuries.
+        Falls back to AVAILABLE if no record found — same behaviour as before.
         """
         try:
-            # Apply rate limiting
-            self._rate_limit()
-            
-            # Fetch player info
-            logger.info(f"Fetching injury status for player {player_id}")
-            player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id)
-            
-            # Parse response
-            data = player_info.get_dict()
-            
-            # Check for injury indicators
-            # (NBA API doesn't always have injury data, so assume healthy if no data)
-            return {
-                'player_id': player_id,
-                'status': 'AVAILABLE',
-                'injury_desc': '',
-                'is_available': True,
-                'performance_factor': 1.0,
-                'source': 'nba_api',
-                'checked_at': datetime.now().isoformat()
-            }
-            
+            db = self._get_db()
+            doc = db.collection("player_injuries").document(str(player_id)).get()
+            if doc.exists:
+                data = doc.to_dict()
+                status = data.get("status", "AVAILABLE")
+                is_available = status.upper() not in ("OUT", "DOUBT", "DOUBTFUL")
+                return {
+                    "player_id": player_id,
+                    "status": status,
+                    "injury_desc": data.get("injuryType", ""),
+                    "is_available": is_available,
+                    "performance_factor": 0.5 if not is_available else 1.0,
+                    "source": "espn_firestore",
+                    "checked_at": datetime.now().isoformat(),
+                }
         except Exception as e:
-            logger.warning(f"Could not fetch injury for {player_id}: {e}")
-            # Graceful fallback - assume healthy
-            return {
-                'player_id': player_id,
-                'status': 'AVAILABLE',
-                'injury_desc': '',
-                'is_available': True,
-                'performance_factor': 1.0,
-                'source': 'fallback',
-                'checked_at': datetime.now().isoformat()
-            }
-    
+            logger.warning(f"Firestore injury lookup failed for {player_id}: {e}")
+
+        # Healthy fallback
+        return {
+            "player_id": player_id,
+            "status": "AVAILABLE",
+            "injury_desc": "",
+            "is_available": True,
+            "performance_factor": 1.0,
+            "source": "fallback",
+            "checked_at": datetime.now().isoformat(),
+        }
+
     def get_team_injuries(self, team_abbr: str, roster: List[str]) -> List[Dict]:
-        """
-        Check injuries for entire team roster.
-        Uses smart rate limiting.
-        """
+        """Return injuries for all players in a roster list."""
         injuries = []
-        
-        logger.info(f"Checking injuries for {team_abbr} ({len(roster)} players)")
-        
-        for i, player_id in enumerate(roster):
+        for player_id in roster:
             status = self.check_player_injury(player_id)
-            
-            if not status['is_available']:
+            if not status["is_available"]:
                 injuries.append(status)
-            
-            # Progress logging
-            if (i + 1) % 5 == 0:
-                logger.info(f"  Progress: {i+1}/{len(roster)} players checked")
-        
-        logger.info(f"✅ {team_abbr}: {len(injuries)} injuries found")
+        logger.info(f"[InjuryFetcher] {team_abbr}: {len(injuries)} injured players")
         return injuries
 
 
 # Singleton
 _fetcher = None
 
+
 def get_simple_injury_fetcher() -> SimpleInjuryFetcher:
     global _fetcher
     if _fetcher is None:
         _fetcher = SimpleInjuryFetcher()
     return _fetcher
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    
-    print("="*60)
-    print("SIMPLE INJURY FETCHER TEST")
-    print("="*60)
-    
-    fetcher = get_simple_injury_fetcher()
-    
-    # Test on Stephen Curry
-    print("\n🏀 Testing: Stephen Curry (ID: 201939)")
-    status = fetcher.check_player_injury("201939")
-    
-    print(f"\n   Status: {status['status']}")
-    print(f"   Available: {status['is_available']}")
-    print(f"   Performance: {status['performance_factor']*100}%")
-    print(f"   Source: {status['source']}")
-    
-    print("\n✅ Test complete!")
