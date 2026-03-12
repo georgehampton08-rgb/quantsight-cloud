@@ -11,13 +11,23 @@ export default function HeroSection({ player }: HeroSectionProps) {
             <div className="absolute inset-0 bg-gradient-to-r from-financial-bg via-transparent to-financial-accent/10 opacity-60" />
 
             <div className="relative flex flex-col sm:flex-row items-center p-6 sm:p-8 gap-6 sm:gap-8">
-                {/* Headshot */}
+                {/* Headshot — ESPN CDN primary, avatar fallback */}
                 <div className="relative">
                     <div className="absolute inset-0 bg-financial-accent/20 blur-2xl rounded-full" />
                     <img
-                        src={player.avatar}
+                        src={
+                            (player as any).espnId
+                                ? `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${(player as any).espnId}.png&w=200&h=146&scale=crop&cquality=40&location=origin`
+                                : player.avatar
+                        }
                         alt={player.name}
                         className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-slate-800 bg-slate-900 object-cover shadow-2xl"
+                        onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            if (img.src.includes('espncdn') && player.avatar) {
+                                img.src = player.avatar;
+                            }
+                        }}
                     />
                 </div>
 

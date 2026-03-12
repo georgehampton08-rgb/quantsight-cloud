@@ -29,6 +29,8 @@ export default function MainCanvas() {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/pulse" element={<PulsePage />} />
                     <Route path="/box-scores" element={<BoxScoresPage />} />
+                    <Route path="/boxscores" element={<BoxScoresPage />} />
+                    <Route path="/boxscores/:date" element={<BoxScoresPage />} />
                     <Route path="/about" element={<AboutPage />} />
 
                     {/* Admin-gated routes — show Sign In prompt when not authenticated */}

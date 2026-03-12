@@ -8,6 +8,7 @@
  * Vertical scroll is enabled on the entire card list for mobile.
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLiveStats, LiveGame } from '../hooks/useLiveStats';
 import { API_BASE } from '../config/apiConfig';
 import './MatchupLabPage.css';
@@ -162,8 +163,10 @@ const HistoricalGameCard: React.FC<{ game: HistoricalGame }> = ({ game }) => {
 type TabId = 'today' | 'history';
 
 const BoxScoresPage: React.FC = () => {
-    // ── Tab state ──────────────────────────────────────────────────────────
-    const [activeTab, setActiveTab] = useState<TabId>('today');
+    // ── Tab state — preserved in URL so refresh keeps the right tab ──────
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = (searchParams.get('tab') as TabId) === 'history' ? 'history' : 'today';
+    const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
 
     // ── Live data (Today tab) ──────────────────────────────────────────────
     const {

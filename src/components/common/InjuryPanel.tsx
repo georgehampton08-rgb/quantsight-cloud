@@ -15,6 +15,7 @@ interface InjuryRecord {
     injuryType: string;
     comment?: string;
     teamTricode: string;
+    espnId?: string;
 }
 
 interface TeamInjuries {
@@ -67,12 +68,21 @@ function TeamInjuryList({ team }: { team: TeamInjuries }) {
                         <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${statusStyle(inj.status)}`}>
                             {inj.status === 'Day-To-Day' ? 'DTD' : inj.status.charAt(0)}
                         </span>
-                        {/* Player headshot (tiny) */}
+                        {/* Player headshot — ESPN CDN primary, NBA CDN fallback */}
                         <img
-                            src={`https://cdn.nba.com/headshots/nba/latest/260x190/${inj.playerId}.png`}
+                            src={inj.espnId
+                                ? `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${inj.espnId}.png&w=64&h=46&scale=crop&cquality=40`
+                                : `https://cdn.nba.com/headshots/nba/latest/260x190/${inj.playerId}.png`}
                             alt={inj.playerName}
                             className="w-6 h-5 object-cover rounded flex-shrink-0 opacity-80"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                if (img.src.includes('espncdn') && inj.playerId) {
+                                    img.src = `https://cdn.nba.com/headshots/nba/latest/260x190/${inj.playerId}.png`;
+                                } else {
+                                    img.style.display = 'none';
+                                }
+                            }}
                         />
                         {/* Name + injury */}
                         <div className="flex flex-col min-w-0">
