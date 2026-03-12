@@ -55,7 +55,9 @@ function App() {
                     <HealthProvider>
                         <ToastProvider>
                             <DisclaimerModal />
-                            <div className="flex h-screen w-screen bg-financial-bg text-financial-text overflow-hidden relative">
+                            {/* Root layout: overflow-hidden on desktop to keep fixed panels,
+                                auto-scroll on mobile so content underneath can be reached */}
+                            <div className="flex h-screen w-screen bg-financial-bg text-financial-text overflow-x-hidden overflow-y-hidden sm:overflow-hidden relative">
                                 <ToastContainer />
 
                                 {/* IPC Verification / Dev Mode Tag */}
@@ -65,7 +67,7 @@ function App() {
 
                                 <Sidebar />
 
-                                <div className="flex flex-col flex-1 min-w-0 h-full relative">
+                                <div className="flex flex-col flex-1 min-w-0 min-h-0 relative overflow-y-auto sm:overflow-hidden">
                                     <TopBar />
                                     <MainCanvas />
                                 </div>

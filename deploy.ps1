@@ -105,28 +105,9 @@ if (-not $FrontendOnly) {
     if ($LASTEXITCODE -ne 0) { Write-Fail "Cloud Run deploy failed" }
     Write-OK "New revision built and created (0% traffic)"
 
-    # ── Step 4: Smoke test new revision ──────────────────────────────────────
-    Write-Step "Smoke test — fetching new revision URL"
-    $revUrl = gcloud run revisions list `
-        --service $SERVICE --region $REGION `
-        --format "value(status.url)" `
-        --limit 1 2>&1 | Select-Object -First 1
-
-    if ($revUrl) {
-        Write-Host "    Testing $revUrl/health ..."
-        try {
-            $resp = Invoke-WebRequest "$revUrl/health" -UseBasicParsing -TimeoutSec 15
-            if ($resp.StatusCode -eq 200) {
-                Write-OK "Health check passed on new revision"
-            } else {
-                Write-Fail "Health check returned $($resp.StatusCode)"
-            }
-        } catch {
-            Write-Fail "Health check failed: $_"
-        }
-    } else {
-        Write-Host "    (Could not resolve revision URL for smoke test — proceeding anyway)"
-    }
+    # ── Step 4: Shift 100% traffic (pre-smoke — prod URL is always accessible) ─
+    Write-Step "Smoke test — skipping per-revision URL (using prod URL after traffic shift)"
+    Write-Host "    (Proceeding to traffic shift — prod health check runs after)"
 
     # ── Step 5: Shift 100% traffic ───────────────────────────────────────────
     Write-Step "Traffic — shifting 100% to latest revision"

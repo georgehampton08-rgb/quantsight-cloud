@@ -14,11 +14,11 @@ import AboutPage from '../pages/AboutPage'
 
 export default function MainCanvas() {
     return (
-        <main className="flex-1 min-h-0 flex flex-col bg-slate-900/50 relative overflow-hidden">
+        <main className="flex-1 min-h-0 flex flex-col bg-slate-900/50 relative overflow-y-auto">
             {/* Background elements (grid, particles) could go here */}
             <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none z-0"></div>
 
-            <div className="flex-1 min-h-0 w-full relative z-10 overflow-hidden">
+            <div className="flex-1 min-h-0 w-full relative z-10">
                 <Routes>
                     <Route path="/" element={<CommandCenterPage />} />
                     <Route path="/player" element={<PlayerProfilePage />} />

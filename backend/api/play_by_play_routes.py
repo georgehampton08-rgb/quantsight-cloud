@@ -99,25 +99,52 @@ async def get_player_injury(player_id: str):
 @router.get("/injuries/today")
 async def get_all_injuries_today():
     """
-    Returns all injury reports for teams playing today.
-    Convenience endpoint for pre-game dashboard widgets.
+    Returns all injury reports for teams playing today (ET timezone).
+    Includes both a per-team 'teams' list and a flat 'injuries' list
+    (all players concatenated) for widget convenience.
     """
     try:
         from firestore_db import get_firestore_db
-        from datetime import datetime
+        from datetime import datetime, timezone, timedelta
+        from google.cloud.firestore_v1.base_query import FieldFilter
         db = get_firestore_db()
-        today = datetime.now().strftime("%Y-%m-%d")
-        docs = db.collection("team_injuries").where("date", "==", today).stream()
+
+        # Use Eastern Time — Cloud Run is UTC which can be next calendar day ET
+        et = timezone(timedelta(hours=-4))   # EDT (Mar–Nov); use -5 in EST (Nov–Mar)
+        today = datetime.now(et).strftime("%Y-%m-%d")
+
+        docs = list(db.collection("team_injuries").where(
+            filter=FieldFilter("date", "==", today)
+        ).stream())
+
+        # Fallback: if ET today yields nothing, try yesterday (handles midnight edge case)
+        if not docs:
+            yesterday = (datetime.now(et) - timedelta(days=1)).strftime("%Y-%m-%d")
+            docs = list(db.collection("team_injuries").where(
+                filter=FieldFilter("date", "==", yesterday)
+            ).stream())
+            today = yesterday  # reflect what we're actually returning
+
         result = []
+        flat_injuries = []
         for d in docs:
             data = d.to_dict()
+            inj_list = data.get("injuries", [])
             result.append({
                 "tricode":   data.get("teamTricode", d.id),
-                "injuries":  data.get("injuries", []),
+                "injuries":  inj_list,
                 "count":     data.get("count", 0),
                 "updatedAt": data.get("updatedAt", ""),
             })
-        return {"status": "ok", "date": today, "teams": result}
+            flat_injuries.extend(inj_list)
+
+        return {
+            "status":   "ok",
+            "date":     today,
+            "teams":    result,
+            "injuries": flat_injuries,   # flat list for widget convenience
+            "count":    len(flat_injuries),
+        }
     except Exception as e:
         logger.error(f"Error fetching today's injuries: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch injury data")
