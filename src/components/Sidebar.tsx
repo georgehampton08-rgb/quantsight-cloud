@@ -29,16 +29,16 @@ export default function Sidebar() {
     return (
         <div className={`sidebar h-full border-r border-pro-border bg-pro-bg flex flex-col p-4 transition-all duration-300 relative`}>
 
-            {/* Close Button - Top Right */}
+            {/* Close Button - Top Right (Mobile Only) */}
             <button
                 onClick={closeMobileSidebar}
-                className="absolute top-4 right-4 p-2 rounded-xl bg-pro-surface border border-pro-border hover:bg-white/[0.05] text-pro-muted hover:text-pro-text transition-colors z-10"
+                className="md:hidden absolute top-4 right-4 p-2 rounded-xl bg-pro-surface border border-pro-border hover:bg-white/[0.05] text-pro-muted hover:text-pro-text transition-colors z-10"
                 title="Close Menu"
             >
                 <X size={20} />
             </button>
 
-            <div className={`mb-8 flex items-center gap-2 px-2`}>
+            <div className={`mb-8 flex items-center gap-2 px-2 mt-4`}>
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 font-sans font-bold text-sm">
                     QS
                 </div>

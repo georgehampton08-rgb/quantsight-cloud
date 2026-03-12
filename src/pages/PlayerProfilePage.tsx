@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Search } from 'lucide-react';
 import HeroSection from '../components/profile/HeroSection';
 import NarrativeBlock from '../components/profile/NarrativeBlock';
 import MatchupRadar from '../components/matchup/MatchupRadar';
@@ -187,19 +188,17 @@ export default function PlayerProfilePage() {
 
     // Empty State (No ID or No Player Found)
     if (!targetId || !selectedPlayer) return (
-        <div className="flex flex-col items-center justify-center p-12 space-y-6 relative bg-pro-surface mt-8 max-w-2xl mx-auto" >
-            
-            <div className="relative w-16 h-16 flex items-center justify-center">
-                <div className="absolute inset-0 border border-blue-500 opacity-50 rotate-45" />
-                <span className="text-blue-500 font-mono font-bold tracking-wide animate-pulse">404</span>
+        <div className="flex flex-col items-center justify-center p-12 space-y-4 bg-pro-surface mt-8 max-w-2xl mx-auto rounded-xl border border-pro-border mx-4" >
+            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-2">
+                <Search className="w-8 h-8 text-blue-500" />
             </div>
-            <div className="text-xl font-medium font-bold tracking-normal uppercase text-pro-text">Search Protocol Initiated</div>
-            <div className="text-xs uppercase font-mono tracking-wide text-pro-muted max-w-md text-center leading-relaxed">
-                System is ready. Use the <strong>Search Bar</strong> above to locate any player to begin analysis.
+            <div className="text-xl font-bold tracking-tight text-pro-text">Ready for Search</div>
+            <div className="text-sm text-pro-muted max-w-md text-center leading-relaxed">
+                System is ready. Use the search bar above to locate any player to begin analysis.
             </div>
             <button
                 onClick={() => navigate('/')}
-                className="px-6 py-3 bg-pro-surface hover:bg-white/[0.05] rounded-xl text-xs font-medium font-semibold tracking-wide uppercase text-emerald-500 border border-emerald-500 hover:shadow-[0_0_10px_rgba(0,255,136,0.2)] transition-all duration-100"
+                className="mt-4 px-6 py-2 bg-pro-bg hover:bg-white/[0.05] rounded-xl text-sm font-medium text-emerald-500 border border-emerald-500 transition-colors"
             >
                 Return to Command Center
             </button>

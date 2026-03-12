@@ -37,10 +37,10 @@ export default function TopBar() {
                 {/* Main bar row */}
                 <div className="flex items-center h-14 px-3 gap-2 overflow-hidden">
 
-                    {/* Hamburger */}
+                    {/* Hamburger (Mobile Only) */}
                     <button
                         onClick={toggleMobileMenu}
-                        className="flex-shrink-0 p-2 rounded-sm hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors duration-100"
+                        className="md:hidden flex-shrink-0 p-2 rounded-sm hover:bg-white/[0.05] text-slate-400 hover:text-white transition-colors duration-100"
                         title="Menu"
                     >
                         {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -59,7 +59,7 @@ export default function TopBar() {
                     </div>
 
                     {/* CascadingSelector only — shown on narrow screens */}
-                    <div className="flex sm:hidden flex-1 max-w-[160px]">
+                    <div className="flex sm:hidden flex-1 min-w-0">
                         <CascadingSelector />
                     </div>
 

@@ -92,12 +92,12 @@ export default function MatchupEnginePage() {
             <header className="mb-8 flex-shrink-0 relative z-10">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-medium font-bold tracking-normal uppercase text-pro-text flex items-center gap-3">
+                        <h1 className="text-3xl font-bold tracking-tight text-pro-text flex items-center gap-3">
                             <Swords className="w-8 h-8 text-amber-500" />
                             Matchup Engine
-                            <span className="text-xs bg-amber-500/10 text-amber-500 border border-amber-500 px-2 py-0.5 rounded-xl font-medium font-semibold uppercase tracking-wide shadow-[0_0_8px_rgba(245,158,11,0.2)]">Vertex</span>
+                            <span className="text-xs bg-amber-500/10 text-amber-500 border border-amber-500 px-2 py-0.5 rounded-xl font-semibold tracking-wide shadow-sm">Vertex</span>
                         </h1>
-                        <p className="text-xs text-pro-muted font-mono tracking-wide mt-2 uppercase">
+                        <p className="text-sm text-pro-muted mt-2">
                             {selectedPlayer
                                 ? `Analyzing: ${selectedPlayer.name} ${matchupMode === 'team' ? `vs ${opponentAbbr}` : 'H2H'}`
                                 : "Head-to-Head Analysis • Radar Comparables"
@@ -138,9 +138,9 @@ export default function MatchupEnginePage() {
                                 <div className="flex items-center gap-4 w-full sm:w-auto relative z-10">
                                     <img src={getPlayerAvatarUrl(selectedPlayer?.id)} className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl border border-pro-border object-cover flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <h2 className="text-xl sm:text-2xl font-medium font-bold tracking-normal uppercase text-pro-text truncate">{selectedPlayer?.name || 'Unknown Player'}</h2>
+                                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-pro-text truncate">{selectedPlayer?.name || 'Unknown Player'}</h2>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-pro-muted font-medium font-semibold tracking-wide text-xs sm:text-xs uppercase flex-shrink-0">VS</span>
+                                            <span className="text-pro-muted font-semibold tracking-wide text-xs sm:text-xs min-w-8">VS</span>
                                             <select
                                                 value={opponentId}
                                                 onChange={(e) => {
@@ -168,10 +168,10 @@ export default function MatchupEnginePage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-left sm:text-right w-full sm:w-auto bg-white/[0.02] border border-pro-border p-3 sm:px-4 sm:py-2 rounded-xl relative z-10">
-                                    <div className="text-xs sm:text-xs text-pro-muted font-medium tracking-wide font-semibold uppercase mb-1">System Logic</div>
-                                    <div className="text-amber-500 font-mono tracking-wide text-sm sm:text-sm animate-[data-flicker_3s_ease-in-out_infinite]">
-                                        {loading ? "COMPUTING..." : "LIVE ANALYSIS ACTIVE"}
+                                <div className="text-left sm:text-right w-full sm:w-auto bg-pro-surface border border-pro-border p-3 sm:px-4 sm:py-2 rounded-xl relative z-10 shadow-sm">
+                                    <div className="text-xs sm:text-xs text-pro-muted font-semibold tracking-wide uppercase mb-1">System Logic</div>
+                                    <div className="text-amber-500 text-sm font-medium tracking-wide">
+                                        {loading ? "Computing Analysis..." : "Live Analysis Active"}
                                     </div>
                                 </div>
                             </div>
@@ -277,9 +277,9 @@ export default function MatchupEnginePage() {
             ) : (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-pro-muted bg-pro-surface rounded-xl border border-pro-border relative" >
                     
-                    <Radar className="w-16 h-16 mb-4 opacity-50 text-amber-500 animate-pulse" />
-                    <h2 className="text-xl font-medium font-bold tracking-wide uppercase block text-pro-text mb-2 animate-[data-flicker_3s_ease-in-out_infinite]">Awaiting Contenders</h2>
-                    <p className="text-xs font-mono tracking-wide uppercase">Select a player from the Command Center or Team Central to initialize analysis.</p>
+                    <Radar className="w-16 h-16 mb-4 opacity-30 text-pro-muted" />
+                    <h2 className="text-xl font-bold tracking-tight text-pro-text mb-2">Select Matchup</h2>
+                    <p className="text-sm text-pro-muted">Search for a player to view detailed head-to-head analysis.</p>
                 </div>
             )}
         </div>
