@@ -2,8 +2,9 @@ name: Data Integrity Verification
 
 on:
   schedule:
-    # Run at 10 AM UTC daily (after all US games from the previous night are firmly concluded)
-    - cron: '0 10 * * *'
+    # Run at 14:00 UTC daily (10:00 AM EST, 7:00 AM PST)
+    # This gives ample time for late Pacific games to conclude and for ESPN to fully synthesize box scores.
+    - cron: '0 14 * * *'
   workflow_dispatch:
     inputs:
       days:
