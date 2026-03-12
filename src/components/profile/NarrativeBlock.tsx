@@ -8,15 +8,22 @@ interface NarrativeBlockProps {
 export default function NarrativeBlock({ text }: NarrativeBlockProps) {
     const [displayedText, setDisplayedText] = useState('');
 
+    // Safe text — prevent undefined.length crash in setInterval
+    const safeText = text || '';
+
     // Typewriter Logic
     useEffect(() => {
+        if (!safeText) {
+            setDisplayedText('');
+            return;
+        }
         let i = 0;
         setDisplayedText('');
         const speed = 20; // ms per char
 
         const interval = setInterval(() => {
-            if (i < text.length) {
-                setDisplayedText((prev) => prev + text.charAt(i));
+            if (i < safeText.length) {
+                setDisplayedText((prev) => prev + safeText.charAt(i));
                 i++;
             } else {
                 clearInterval(interval);
@@ -24,7 +31,7 @@ export default function NarrativeBlock({ text }: NarrativeBlockProps) {
         }, speed);
 
         return () => clearInterval(interval);
-    }, [text]);
+    }, [safeText]);
 
     return (
         <div className="relative p-6 rounded-xl border border-financial-accent/20 bg-gradient-to-b from-financial-accent/5 to-transparent backdrop-blur-sm">
