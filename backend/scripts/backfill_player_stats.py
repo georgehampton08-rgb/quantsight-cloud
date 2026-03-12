@@ -147,54 +147,44 @@ def get_game_ids_for_date_range(db, days_back: int = 14) -> list[dict]:
 
 
 def process_game(db, game: dict) -> dict:
-    """Fetch ESPN boxscore and store player box scores + shot data."""
+    """Fetch ESPN summary and store player box scores + shot data."""
     espn_id = game["espn_id"]
     date = game["date"]
     result = {"game_id": espn_id, "players_stored": 0, "shots_stored": 0}
 
-    # ESPN dedicated boxscore endpoint (has historical player stats)
-    boxscore_url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/boxscore?event={espn_id}"
-    data = espn_get(boxscore_url)
-
-    # Fallback: try summary endpoint
-    if not data or not data.get("teams"):
-        summary_url = f"https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={espn_id}"
-        data = espn_get(summary_url)
-        # summary wraps box score under boxScore.players
-        if data.get("boxScore"):
-            # Restructure to match boxscore API format
-            data = {"teams": data.get("boxScore", {}).get("players", [])}
-
+    # ESPN summary endpoint — boxscore.players[] has per-player stats for completed games
+    url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={espn_id}"
+    data = espn_get(url)
     if not data:
         return result
 
     now = datetime.now(timezone.utc).isoformat()
 
-    # ── Header/competitor info from boxscore API ─────────────────────────────
-    # boxscore endpoint structure: { teams: [ {team, statistics: [{names, labels, athletes}] } ] }
-    # competitors: { homeTeam, awayTeam }
-    homeTeam = data.get("homeTeam", {}).get("team", {}).get("abbreviation", game["home"])
-    awayTeam = data.get("awayTeam", {}).get("team", {}).get("abbreviation", game["away"])
-    home_score = int(data.get("homeTeam", {}).get("score", 0) or 0)
-    away_score = int(data.get("awayTeam", {}).get("score", 0) or 0)
+    # Competitor scores from header.competitions[0].competitors
+    header = data.get("header", {})
+    comps = (header.get("competitions") or [{}])[0].get("competitors", [])
+    score_map = {}  # team_abbr → {score, homeAway}
+    for c in comps:
+        abbr = (c.get("team") or {}).get("abbreviation", "")
+        score_map[abbr] = {"score": int(c.get("score", 0) or 0), "homeAway": c.get("homeAway", "")}
+    home_abbr = next((a for a, v in score_map.items() if v["homeAway"] == "home"), game["home"])
+    away_abbr = next((a for a, v in score_map.items() if v["homeAway"] == "away"), game["away"])
+    home_score = score_map.get(home_abbr, {}).get("score", 0)
+    away_score = score_map.get(away_abbr, {}).get("score", 0)
 
-    # teams[] is the primary player data source
-    teams = data.get("teams", [])
+    # Player data is in boxscore.players[] (lowercase 'boxscore')
+    players_data = data.get("boxscore", {}).get("players", [])
 
     player_batch = db.batch()
     player_count = 0
 
-    for team_data in teams:
+    for team_data in players_data:
         team_abbr = (team_data.get("team") or {}).get("abbreviation", "")
-        # ESPN boxscore has homeTeam.team.id and awayTeam.team.id for score lookup
-        team_id = str((team_data.get("team") or {}).get("id", ""))
-        t_score = int(data.get("homeTeam", {}).get("score", 0) if
-                      str(data.get("homeTeam", {}).get("team", {}).get("id", "")) == team_id
-                      else data.get("awayTeam", {}).get("score", 0) or 0)
-        o_score = away_score if t_score == home_score else home_score
+        t_score = score_map.get(team_abbr, {}).get("score", 0)
+        o_score = away_score if team_abbr == home_abbr else home_score
         wl = "W" if t_score > o_score else ("L" if t_score < o_score else "?")
-        is_home = str(data.get("homeTeam", {}).get("team", {}).get("id", "")) == team_id
-        opp = awayTeam if is_home else homeTeam
+        is_home = team_abbr == home_abbr
+        opp = away_abbr if is_home else home_abbr
         matchup = f"vs {opp}" if is_home else f"@ {opp}"
 
         for stat_group in team_data.get("statistics", []):
@@ -207,6 +197,8 @@ def process_game(db, game: dict) -> dict:
                 stats_raw = athlete_entry.get("stats", [])
 
                 if not espn_player_id or not stats_raw:
+                    continue
+                if athlete_entry.get("didNotPlay"):
                     continue
 
                 s = parse_espn_stat_group(stat_names, stats_raw)
