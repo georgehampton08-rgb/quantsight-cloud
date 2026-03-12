@@ -270,8 +270,8 @@ async def get_games_for_date_direct(date: str):
                     continue
                 seen.add(game_id)
                 d = doc.to_dict()
-                home = d.get("homeTeam", "")
-                away = d.get("awayTeam", "")
+                home = d.get("home_team", d.get("homeTeam", ""))
+                away = d.get("away_team", d.get("awayTeam", ""))
                 if isinstance(home, dict): home = home.get("tricode", "")
                 if isinstance(away, dict): away = away.get("tricode", "")
                 games.append({
