@@ -147,45 +147,58 @@ def get_game_ids_for_date_range(db, days_back: int = 14) -> list[dict]:
 
 
 def process_game(db, game: dict) -> dict:
-    """Fetch ESPN summary and store player box scores + shot data."""
+    """Fetch ESPN boxscore and store player box scores + shot data."""
     espn_id = game["espn_id"]
     date = game["date"]
     result = {"game_id": espn_id, "players_stored": 0, "shots_stored": 0}
 
-    url = f"https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={espn_id}"
-    data = espn_get(url)
+    # ESPN dedicated boxscore endpoint (has historical player stats)
+    boxscore_url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/boxscore?event={espn_id}"
+    data = espn_get(boxscore_url)
+
+    # Fallback: try summary endpoint
+    if not data or not data.get("teams"):
+        summary_url = f"https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={espn_id}"
+        data = espn_get(summary_url)
+        # summary wraps box score under boxScore.players
+        if data.get("boxScore"):
+            # Restructure to match boxscore API format
+            data = {"teams": data.get("boxScore", {}).get("players", [])}
+
     if not data:
         return result
 
     now = datetime.now(timezone.utc).isoformat()
 
-    # ── Box Scores ───────────────────────────────────────────────────────────
-    box_score = data.get("boxScore", {})
-    header = data.get("header", {})
+    # ── Header/competitor info from boxscore API ─────────────────────────────
+    # boxscore endpoint structure: { teams: [ {team, statistics: [{names, labels, athletes}] } ] }
+    # competitors: { homeTeam, awayTeam }
+    homeTeam = data.get("homeTeam", {}).get("team", {}).get("abbreviation", game["home"])
+    awayTeam = data.get("awayTeam", {}).get("team", {}).get("abbreviation", game["away"])
+    home_score = int(data.get("homeTeam", {}).get("score", 0) or 0)
+    away_score = int(data.get("awayTeam", {}).get("score", 0) or 0)
 
-    # Determine home/away team from header
-    competitions = header.get("competitions", [{}])
-    competitors = competitions[0].get("competitors", []) if competitions else []
-    team_lookup = {}  # espn_team_id → {abbreviation, home_away, score}
-    for comp in competitors:
-        team_lookup[str(comp.get("id", ""))] = {
-            "abbr": comp.get("team", {}).get("abbreviation", ""),
-            "home_away": comp.get("homeAway", ""),
-            "score": comp.get("score", ""),
-        }
+    # teams[] is the primary player data source
+    teams = data.get("teams", [])
 
     player_batch = db.batch()
     player_count = 0
 
-    for team_data in box_score.get("players", []):
-        team_id = str(team_data.get("team", {}).get("id", ""))
+    for team_data in teams:
         team_abbr = (team_data.get("team") or {}).get("abbreviation", "")
-        is_home = team_lookup.get(team_id, {}).get("home_away", "") == "home"
+        # ESPN boxscore has homeTeam.team.id and awayTeam.team.id for score lookup
+        team_id = str((team_data.get("team") or {}).get("id", ""))
+        t_score = int(data.get("homeTeam", {}).get("score", 0) if
+                      str(data.get("homeTeam", {}).get("team", {}).get("id", "")) == team_id
+                      else data.get("awayTeam", {}).get("score", 0) or 0)
+        o_score = away_score if t_score == home_score else home_score
+        wl = "W" if t_score > o_score else ("L" if t_score < o_score else "?")
+        is_home = str(data.get("homeTeam", {}).get("team", {}).get("id", "")) == team_id
+        opp = awayTeam if is_home else homeTeam
+        matchup = f"vs {opp}" if is_home else f"@ {opp}"
 
-        for stat_group in team_data.get("statistics", [{}]):
-            # Find standard stats category
+        for stat_group in team_data.get("statistics", []):
             stat_names = stat_group.get("names", [])
-            # Common ESPN stat order: MIN, FG, 3PT, FT, OREB, DREB, REB, AST, STL, BLK, TO, PF, +/-, PTS
 
             for athlete_entry in stat_group.get("athletes", []):
                 athlete = athlete_entry.get("athlete", {})
@@ -196,21 +209,9 @@ def process_game(db, game: dict) -> dict:
                 if not espn_player_id or not stats_raw:
                     continue
 
-                # Parse ESPN stats properly (FG/3PT/FT are 'X-Y' strings)
                 s = parse_espn_stat_group(stat_names, stats_raw)
-
-                # W/L: compare this team's score to opponent
-                team_score = int(team_lookup.get(team_id, {}).get("score", "0") or 0)
-                opp_score = max(
-                    (int(v.get("score", "0") or 0)
-                     for k, v in team_lookup.items() if k != team_id),
-                    default=0
-                )
-                wl = "W" if team_score > opp_score else ("L" if team_score < opp_score else "?")
-
-                # Determine opponent
-                opp = game["away"] if is_home else game["home"]
-                matchup = f"vs {opp}" if is_home else f"@ {opp}"
+                if s['PTS'] == 0 and s['REB'] == 0 and s['AST'] == 0:
+                    continue  # skip DNP rows
 
                 doc = {
                     "espn_player_id": espn_player_id,
@@ -245,7 +246,6 @@ def process_game(db, game: dict) -> dict:
                 player_batch.set(ref, doc)
                 player_count += 1
 
-                # Commit in batches of 450
                 if player_count % 450 == 0:
                     player_batch.commit()
                     player_batch = db.batch()
@@ -254,6 +254,7 @@ def process_game(db, game: dict) -> dict:
         player_batch.commit()
 
     result["players_stored"] = player_count
+
 
     # ── Shot Chart Attempts ──────────────────────────────────────────────────
     plays = data.get("plays", [])
