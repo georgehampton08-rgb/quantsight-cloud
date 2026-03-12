@@ -5,8 +5,8 @@ async function reportSchemaMismatch(endpoint: string, zError: z.ZodError) {
     try {
         const base = import.meta.env?.VITE_API_URL || 'https://quantsight-cloud-458498663186.us-central1.run.app';
 
-        // Use the CI ingestion endpoint for silent system incidents
-        await fetch(`${base}/vanguard/admin/incidents/ingest`, {
+        // Use the public telemetry endpoint (no auth required)
+        await fetch(`${base}/vanguard/telemetry/ingest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -442,6 +442,57 @@ except Exception as e:
 if not VANGUARD_AVAILABLE:
     logger.warning("⚠️ Vanguard core unavailable — only admin routes attempted via fallback")
 
+# ── Public telemetry ingest (no auth) — for frontend schema mismatch reports ──
+@app.post("/vanguard/telemetry/ingest", tags=["telemetry"])
+async def public_telemetry_ingest(request: Request):
+    """
+    Unauthenticated telemetry endpoint for frontend error reports.
+    Only accepts FRONTEND_SCHEMA_MISMATCH and FRONTEND_ERROR incident types.
+    Silently drops any other type to prevent abuse.
+    """
+    try:
+        body = await request.json()
+        error_type = str(body.get("error_type", ""))[:100]
+        # Only accept frontend telemetry types
+        if error_type not in ("FRONTEND_SCHEMA_MISMATCH", "FRONTEND_ERROR"):
+            return {"success": False, "message": "Only frontend telemetry types accepted"}
+
+        fingerprint = str(body.get("fingerprint", ""))[:200]
+        severity = str(body.get("severity", "YELLOW"))[:10]
+        error_message = str(body.get("error_message", ""))[:500]
+
+        if not fingerprint or not error_message:
+            return {"success": False, "message": "Missing required fields"}
+
+        try:
+            from vanguard.archivist.storage import get_incident_storage
+            from datetime import datetime, timezone
+            storage = get_incident_storage()
+            incident = {
+                "fingerprint": fingerprint,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "severity": severity.upper(),
+                "status": "ACTIVE",
+                "error_type": error_type,
+                "error_message": error_message,
+                "endpoint": "Frontend Telemetry",
+                "request_id": f"telemetry-{error_type.lower()}",
+                "context_vector": {
+                    "source": "frontend",
+                    "incident_type": error_type,
+                    "metadata": body.get("metadata", {}),
+                },
+                "remediation_log": [],
+                "resolved_at": None,
+            }
+            stored = await storage.store(incident)
+            return {"success": bool(stored), "fingerprint": fingerprint}
+        except Exception as e:
+            logger.debug(f"Telemetry storage failed: {e}")
+            return {"success": False, "message": "Storage unavailable"}
+    except Exception:
+        return {"success": False}
+
 
 
 # Vanguard Middleware Stack
