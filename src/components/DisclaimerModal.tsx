@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import CornerBrackets from './common/CornerBrackets';
 
 const SESSION_KEY = 'qs_disclaimer_acknowledged';
 
@@ -51,26 +52,35 @@ export default function DisclaimerModal() {
          * backdrop are captured and swallowed (no dismiss on outside click).
          */
         <div
-            className="qs-disclaimer-overlay"
+            className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 font-sans"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="disclaimer-title"
         >
-            <div className="qs-disclaimer-card">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
+                 style={{
+                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
+                   backgroundSize: '32px 32px',
+                 }} />
+            <div className="bg-cyber-surface border border-cyber-border rounded-none p-6 sm:p-8 max-w-2xl w-full relative z-10 animate-in fade-in zoom-in-95 duration-200" style={{ border: '1px solid #1a2332' }}>
+                <CornerBrackets />
+
                 {/* Top accent bar */}
-                <div className="qs-disclaimer-accent-bar" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-cyber-gold opacity-50" />
 
                 {/* Header */}
-                <div className="qs-disclaimer-header">
-                    <div className="qs-disclaimer-icon">⚠️</div>
-                    <h2 id="disclaimer-title" className="qs-disclaimer-title">
+                <div className="flex items-center gap-3 border-b border-cyber-border/50 pb-4 mb-6 relative z-10">
+                    <div className="text-cyber-gold font-mono font-bold animate-pulse">
+                        [!]
+                    </div>
+                    <h2 id="disclaimer-title" className="text-xl sm:text-2xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text">
                         Important Disclaimer
                     </h2>
                 </div>
 
                 {/* Scrollable body */}
-                <div className="qs-disclaimer-body">
+                <div className="text-cyber-muted font-mono text-xs sm:text-sm leading-relaxed space-y-4 max-h-[60vh] overflow-y-auto scrollbar-premium pr-2 relative z-10">
                     <p>
                         QuantSight Cloud is an independent sports analytics platform provided
                         for informational and research purposes only.
@@ -92,34 +102,37 @@ export default function DisclaimerModal() {
                         any information presented.
                     </p>
 
-                    <p>By using this platform, you acknowledge and agree that:</p>
+                    <p className="text-cyber-text font-bold">By using this platform, you acknowledge and agree that:</p>
 
-                    <ul className="qs-disclaimer-list">
-                        <li>You are using this platform entirely at your own risk</li>
-                        <li>
-                            QuantSight Cloud is not responsible for any decisions made
-                            based on information presented here
+                    <ul className="list-none space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-cyber-gold mt-0.5">{'>'}</span>
+                            You are using this platform entirely at your own risk
                         </li>
-                        <li>
-                            No content on this platform should be interpreted as a
-                            recommendation to place any wager, bet, or financial transaction
+                        <li className="flex items-start gap-2">
+                            <span className="text-cyber-gold mt-0.5">{'>'}</span>
+                            QuantSight Cloud is not responsible for any decisions made based on information presented here
                         </li>
-                        <li>
-                            You are solely responsible for complying with all applicable
-                            laws and regulations in your jurisdiction
+                        <li className="flex items-start gap-2">
+                            <span className="text-cyber-gold mt-0.5">{'>'}</span>
+                            No content on this platform should be interpreted as a recommendation to place any wager, bet, or financial transaction
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-cyber-gold mt-0.5">{'>'}</span>
+                            You are solely responsible for complying with all applicable laws and regulations in your jurisdiction
                         </li>
                     </ul>
 
-                    <p className="qs-disclaimer-footer-note">
+                    <p className="border border-cyber-border/50 bg-white/[0.02] p-3 mt-6 text-center text-cyber-gold/80 italic">
                         If you do not agree to these terms, please do not use this platform.
                     </p>
                 </div>
 
                 {/* Acknowledgment button */}
-                <div className="qs-disclaimer-actions">
+                <div className="mt-8 flex justify-end relative z-10">
                     <button
                         id="disclaimer-acknowledge-btn"
-                        className="qs-disclaimer-btn"
+                        className="bg-cyber-gold/10 hover:bg-cyber-gold/20 border border-cyber-gold text-cyber-gold font-display font-600 tracking-[0.1em] uppercase px-6 py-3 rounded-none transition-all duration-100 w-full sm:w-auto text-xs"
                         onClick={handleAcknowledge}
                     >
                         I Understand and Agree

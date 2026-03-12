@@ -229,12 +229,18 @@ async def get_games_for_date_direct(date: str):
             for doc in map_docs:
                 d = doc.to_dict()
                 espn_id = d.get("espn_id", "")
-                if not espn_id or espn_id in seen:
+                nba_id = d.get("nba_id", "")
+                
+                # Check BOTH ids to securely avoid dupes if data overlaps
+                if (espn_id and espn_id in seen) or (nba_id and nba_id in seen):
                     continue
-                seen.add(espn_id)
+                
+                if espn_id: seen.add(espn_id)
+                if nba_id: seen.add(nba_id)
+                
                 game_dict = {
                     "gameId":   espn_id,
-                    "nbaId":    d.get("nba_id", ""),
+                    "nbaId":    nba_id,
                     "homeTeam": d.get("home_team", ""),
                     "awayTeam": d.get("away_team", ""),
                     "status":   "Final",

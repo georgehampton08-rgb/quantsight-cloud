@@ -4,8 +4,8 @@
  * Uses SSE-based useLiveStats hook with gold pulse animation on stat increases.
  */
 import React from 'react';
-import './MatchupLabPage.css'; // Reusing glass card styles
 import { useLiveStats, usePlayerPulse, LivePlayerStat, LiveGame } from '../hooks/useLiveStats';
+import CornerBrackets from '../components/common/CornerBrackets';
 
 // Player row with pulse animation
 interface PlayerRowProps {
@@ -19,24 +19,23 @@ const PlayerRow: React.FC<PlayerRowProps> = ({ player, rank, changedPlayerIds })
 
     return (
         <tr
-            className={`border-b border-white/5 hover:bg-white/5 transition-colors ${rank === 1 ? 'bg-yellow-500/10' : ''
+            className={`border-b border-cyber-border/50 hover:bg-white/[0.03] transition-colors duration-100 ${rank === 1 ? 'bg-cyber-gold/5' : ''
                 } ${isPulsing ? 'animate-gold-pulse' : ''}`}
             style={isPulsing ? {
-                boxShadow: '0 0 15px rgba(255, 215, 0, 0.5)',
-                backgroundColor: 'rgba(255, 215, 0, 0.1)'
+                boxShadow: '0 0 15px rgba(245, 158, 11, 0.2)', // cyber-gold
+                backgroundColor: 'rgba(245, 158, 11, 0.05)'
             } : undefined}
         >
-            <td className="p-2 sm:p-4 font-mono text-gray-500 text-xs sm:text-sm">#{rank}</td>
-            <td className="p-2 sm:p-4 font-bold text-white flex items-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
+            <td className="p-2 sm:p-4 font-mono text-cyber-muted tracking-widest text-xs sm:text-xs">{String(rank).padStart(2, '0')}</td>
+            <td className="p-2 sm:p-4 font-display font-600 tracking-[0.05em] uppercase text-cyber-text flex items-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
                 {player.name}
-                {rank === 1 && <span className="text-yellow-400 animate-pulse text-sm">👑</span>}
-                {isPulsing && <span className="text-yellow-400 text-sm">✨</span>}
+                {isPulsing && <span className="text-cyber-gold text-xs font-mono font-bold tabular-nums ml-2 animate-[data-flicker_3s_ease-in-out_infinite]">+</span>}
             </td>
-            <td className="p-2 sm:p-4 text-gray-400 text-xs sm:text-sm hidden sm:table-cell">{player.team}</td>
-            <td className="p-2 sm:p-4 text-right font-mono text-gray-300 text-sm sm:text-base font-bold">{player.stats.pts}</td>
-            <td className="p-2 sm:p-4 text-right font-mono text-gray-300 text-xs sm:text-sm hidden md:table-cell">{player.stats.reb}</td>
-            <td className="p-2 sm:p-4 text-right font-mono text-gray-300 text-xs sm:text-sm hidden md:table-cell">{player.stats.ast}</td>
-            <td className="p-2 sm:p-4 text-right font-mono font-bold text-yellow-400 text-sm sm:text-base">
+            <td className="p-2 sm:p-4 text-cyber-muted font-display tracking-widest text-xs sm:text-xs hidden sm:table-cell">{player.team}</td>
+            <td className="p-2 sm:p-4 text-right font-mono text-cyber-text text-sm sm:text-base tabular-nums font-bold">{player.stats.pts}</td>
+            <td className="p-2 sm:p-4 text-right font-mono text-cyber-muted text-xs sm:text-sm tabular-nums hidden md:table-cell">{player.stats.reb}</td>
+            <td className="p-2 sm:p-4 text-right font-mono text-cyber-muted text-xs sm:text-sm tabular-nums hidden md:table-cell">{player.stats.ast}</td>
+            <td className="p-2 sm:p-4 text-right font-mono font-bold text-cyber-gold text-sm sm:text-base tabular-nums">
                 {(player.pie * 100).toFixed(1)}%
             </td>
         </tr>
@@ -52,24 +51,24 @@ const GameChip: React.FC<{ game: LiveGame; isActive?: boolean; onClick?: () => v
     return (
         <div
             onClick={onClick}
-            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-all hover:scale-105 ${isActive ? 'ring-2 ring-cyan-500/60 bg-cyan-500/10 shadow-lg shadow-cyan-500/10' :
-                    isLive ? 'bg-red-500/20 border border-red-500/30 hover:bg-red-500/30' :
-                        'bg-white/5 hover:bg-white/10'
+            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-sm border cursor-pointer transition-all duration-100 ${isActive ? 'border-cyber-blue bg-cyber-blue/10 shadow-[0_0_10px_rgba(34,211,238,0.2)]' :
+                    isLive ? 'bg-cyber-green/5 border-cyber-green/40 hover:bg-cyber-green/10 text-cyber-green' :
+                        'bg-cyber-surface border-cyber-border hover:bg-white/[0.05] text-cyber-muted hover:text-cyber-text'
                 }`}
         >
-            {isLive && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-            <span className="text-gray-400">{game.away_team}</span>
-            <span className="font-mono font-bold text-white">
+            {isLive && <span className="w-1.5 h-1.5 bg-cyber-green opacity-80 rounded-none animate-pulse" />}
+            <span className="font-display font-600 tracking-widest text-[10px] uppercase">{game.away_team}</span>
+            <span className="font-mono font-bold text-cyber-text text-sm">
                 {game.away_score}-{game.home_score}
             </span>
-            <span className="text-gray-400">{game.home_team}</span>
+            <span className="font-display font-600 tracking-widest text-[10px] uppercase">{game.home_team}</span>
             {isLive && game.period > 0 && (
-                <span className="text-[10px] text-red-400 font-mono font-bold ml-1 bg-red-500/10 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-cyber-green font-mono font-bold ml-1 bg-cyber-green/10 px-1.5 py-0.5 border border-cyber-green">
                     {periodLabel} {game.clock}
                 </span>
             )}
             {isFinal && (
-                <span className="text-[10px] text-gray-500 font-mono ml-1">FNL</span>
+                <span className="text-[10px] text-cyber-muted font-mono ml-1">FNL</span>
             )}
         </div>
     );
@@ -100,34 +99,39 @@ const PulsePage: React.FC = () => {
         : games.find(g => g.status === 'LIVE' || g.status === 'HALFTIME') || games.find(g => g.status === 'UPCOMING');
 
     return (
-        <div className="matchup-lab-page h-full flex flex-col p-4 sm:p-8">
-            <header className="lab-header mb-6 sm:mb-8 flex-shrink-0">
+        <div className="h-full flex flex-col p-4 sm:p-8 bg-cyber-bg relative z-10 w-full">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
+                 style={{
+                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
+                   backgroundSize: '32px 32px',
+                 }} />
+
+            <header className="mb-6 sm:mb-8 flex-shrink-0 relative z-10">
                 <div className="header-content">
                     <div className="header-title flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="lab-icon text-red-500 animate-pulse">❤️</span>
-                            <h1 className="text-2xl sm:text-3xl">The Pulse</h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-3xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text">The Pulse</h1>
                         </div>
-                        <span className={`ai-badge ${isConnected
-                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                        <span className={`px-2.5 py-1 text-[10px] font-display font-600 tracking-[0.2em] uppercase border whitespace-nowrap ${isConnected
+                            ? 'bg-cyber-green/5 text-cyber-green border-cyber-green'
                             : isConnecting
-                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                : 'bg-red-500/20 text-red-400 border-red-500/30'
-                            } border text-xs whitespace-nowrap`}>
-                            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+                                ? 'bg-cyber-gold/5 text-cyber-gold border-cyber-gold'
+                                : 'bg-cyber-red/5 text-cyber-red border-cyber-red'
+                            }`}>
+                            <span className={`inline-block w-1.5 h-1.5 rounded-none mr-1.5 ${isConnected ? 'bg-cyber-green' : isConnecting ? 'bg-cyber-gold animate-pulse' : 'bg-cyber-red'
                                 }`} />
                             {isConnected ? 'LIVE FEED' : isConnecting ? 'CONNECTING...' : 'DISCONNECTED'}
                         </span>
                     </div>
                     {lastUpdate && (
-                        <div className="text-xs text-gray-500 mt-2 text-center sm:text-right w-full sm:w-auto">
+                        <div className="text-[10px] uppercase font-mono tracking-widest text-cyber-muted mt-2 text-center sm:text-right w-full sm:w-auto">
                             Last update: {new Date(lastUpdate).toLocaleTimeString()}
                         </div>
                     )}
                 </div>
             </header>
 
-            <div className="flex-1 min-h-0 flex flex-col w-full max-w-7xl mx-auto">
+            <div className="flex-1 min-h-0 flex flex-col w-full max-w-7xl mx-auto relative z-10">
                 {/* Game Ticker */}
                 {games.length > 0 && (
                     <div className="flex gap-3 overflow-x-auto pb-4 mb-4 sm:mb-6 flex-shrink-0 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
@@ -148,79 +152,84 @@ const PulsePage: React.FC = () => {
 
                     {/* LEFT COLUMN: Featured Live Game */}
                     <div className="lg:col-span-4 flex flex-col gap-6">
-                        <div className="glass-card p-6 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-50" />
+                        <div className="relative bg-cyber-surface p-6 overflow-hidden animate-[stagger-reveal_0.2s_cubic-bezier(0.2,0,0,1)_forwards]" style={{ border: '1px solid #1a2332' }}>
+                            <CornerBrackets />
+                            <div className="absolute inset-x-0 top-0 h-px bg-cyber-green/20 animate-[scan-line_4s_linear_infinite]" />
 
-                            <div className="flex justify-between items-center mb-6">
-                                <span className="text-gray-400 font-mono text-sm">
+                            <div className="flex justify-between items-center mb-6 relative z-10 border-b border-cyber-border/50 pb-3">
+                                <span className="text-cyber-muted font-mono tracking-widest text-[10px] uppercase">
                                     {liveCount} LIVE GAME{liveCount !== 1 ? 'S' : ''}
                                 </span>
-                                <span className="live-pill px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                <span className="px-3 py-1 bg-cyber-green/10 text-cyber-green text-[10px] font-display font-600 tracking-[0.2em] uppercase border border-cyber-green flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-cyber-green rounded-none shadow-[0_0_8px_rgba(0,255,136,0.8)] animate-[signal-pulse_2s_ease-in-out_infinite]" />
                                     LIVE POLL
                                 </span>
                             </div>
 
                             {featuredGame ? (
-                                <>
+                                <div className="relative z-10">
                                     <div className="text-center mb-8">
-                                        <div className="text-5xl font-bold font-mono tracking-tighter text-white mb-2">
+                                        <div className="text-5xl font-bold font-mono tabular-nums tracking-tighter text-cyber-text mb-2">
                                             {featuredGame.clock}
                                         </div>
-                                        <div className="text-gray-400 text-sm tracking-widest uppercase">
+                                        <div className="text-cyber-muted text-[10px] font-display font-600 tracking-[0.2em] uppercase">
                                             {featuredGame.status === 'UPCOMING' ? 'STARTING SOON' : `Q${featuredGame.period}`}
                                         </div>
                                     </div>
 
                                     <div className="flex justify-between items-center px-4 mb-8">
                                         <div className="text-center">
-                                            <div className="text-4xl font-bold text-white mb-1">{featuredGame.status === 'UPCOMING' ? '-' : featuredGame.home_score}</div>
-                                            <div className="text-lg text-gray-400 font-bold">{featuredGame.home_team}</div>
+                                            <div className="text-4xl font-bold font-mono tabular-nums text-cyber-green mb-1">{featuredGame.status === 'UPCOMING' ? '-' : featuredGame.home_score}</div>
+                                            <div className="text-lg font-display font-700 tracking-[0.08em] uppercase text-cyber-muted">{featuredGame.home_team}</div>
                                         </div>
-                                        <div className="text-2xl font-mono text-gray-600">vs</div>
+                                        <div className="text-2xl font-mono text-cyber-muted">VS</div>
                                         <div className="text-center">
-                                            <div className="text-4xl font-bold text-white mb-1">{featuredGame.status === 'UPCOMING' ? '-' : featuredGame.away_score}</div>
-                                            <div className="text-lg text-gray-400 font-bold">{featuredGame.away_team}</div>
+                                            <div className="text-4xl font-bold font-mono tabular-nums text-cyber-green mb-1">{featuredGame.status === 'UPCOMING' ? '-' : featuredGame.away_score}</div>
+                                            <div className="text-lg font-display font-700 tracking-[0.08em] uppercase text-cyber-muted">{featuredGame.away_team}</div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-white/5 rounded-lg p-4 text-center">
-                                        <div className="text-xs text-gray-500 uppercase mb-1">{featuredGame.status === 'UPCOMING' ? 'Status' : 'Differential'}</div>
-                                        <div className={`text-2xl font-bold font-mono ${featuredGame.status !== 'UPCOMING' && Math.abs(featuredGame.home_score - featuredGame.away_score) <= 5
-                                            ? 'text-yellow-400 animate-pulse'
-                                            : 'text-white'
+                                    <div className="border border-cyber-border bg-white/[0.02] p-4 text-center">
+                                        <div className="text-[10px] text-cyber-muted font-display tracking-[0.2em] font-600 uppercase mb-1">{featuredGame.status === 'UPCOMING' ? 'Status' : 'Differential'}</div>
+                                        <div className={`text-2xl font-bold font-mono tabular-nums tracking-widest ${featuredGame.status !== 'UPCOMING' && Math.abs(featuredGame.home_score - featuredGame.away_score) <= 5
+                                            ? 'text-cyber-gold animate-[data-flicker_3s_ease-in-out_infinite]'
+                                            : 'text-cyber-text'
                                             }`}>
-                                            {featuredGame.status === 'UPCOMING' ? 'UPCOMING' : `${Math.abs(featuredGame.home_score - featuredGame.away_score)} PTS`}
+                                            {featuredGame.status === 'UPCOMING' ? 'UPCOMING' : `${Math.abs(featuredGame.home_score - featuredGame.away_score)}`}
                                         </div>
                                     </div>
-                                </>
+                                </div>
                             ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                    <div className="text-4xl mb-4">🏀</div>
-                                    <div>No live games right now</div>
+                                <div className="text-center py-8 text-cyber-muted flex flex-col items-center justify-center gap-4 relative z-10">
+                                    <div className="relative w-12 h-12 flex items-center justify-center">
+                                        <CornerBrackets color="#1a2332" size={14} />
+                                        <span className="font-mono text-[10px] tracking-[0.3em]">NULL</span>
+                                    </div>
+                                    <div className="font-display font-600 text-xs tracking-[0.15em] uppercase">No live games right now</div>
                                 </div>
                             )}
                         </div>
 
                         {/* Connection Status Card */}
-                        <div className="glass-card p-4 opacity-75">
-                            <div className="text-xs text-gray-500 font-mono mb-2 uppercase border-b border-white/5 pb-2">
+                        <div className="relative bg-cyber-surface p-4 opacity-75 transition-opacity" style={{ border: '1px solid #1a2332' }}>
+                            <CornerBrackets />
+                            <div className="text-[10px] text-cyber-muted font-display font-600 tracking-[0.2em] uppercase border-b border-cyber-border pb-2 mb-3">
                                 Connection Status
                             </div>
                             <div className="text-sm space-y-1">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Stream:</span>
-                                    <span className={isConnected ? 'text-green-400' : 'text-red-400'}>
+                                <div className="flex justify-between font-mono tracking-widest uppercase text-[10px]">
+                                    <span className="text-cyber-muted">Stream:</span>
+                                    <span className={isConnected ? 'text-cyber-green' : 'text-cyber-red'}>
                                         {isConnected ? 'Connected' : 'Disconnected'}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Games Cached:</span>
-                                    <span className="text-gray-300">{games.length}</span>
+                                <div className="flex justify-between font-mono tracking-widest uppercase text-[10px]">
+                                    <span className="text-cyber-muted">Games Cached:</span>
+                                    <span className="text-cyber-text tabular-nums">{games.length}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Leaders Tracked:</span>
-                                    <span className="text-gray-300">{leaders.length}</span>
+                                <div className="flex justify-between font-mono tracking-widest uppercase text-[10px]">
+                                    <span className="text-cyber-muted">Leaders Tracked:</span>
+                                    <span className="text-cyber-text tabular-nums">{leaders.length}</span>
                                 </div>
                             </div>
                         </div>
@@ -228,28 +237,28 @@ const PulsePage: React.FC = () => {
 
                     {/* RIGHT COLUMN: Live Alpha Leaderboard */}
                     <div className="lg:col-span-8">
-                        <div className="glass-card h-full flex flex-col">
-                            <div className="card-header p-6 border-b border-white/10 flex justify-between items-center">
+                        <div className="relative bg-cyber-surface h-full flex flex-col" style={{ border: '1px solid #1a2332' }}>
+                            <CornerBrackets />
+                            <div className="p-6 border-b border-cyber-border flex justify-between items-center relative z-10">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-2xl">⚡</span>
-                                    <h2 className="text-xl font-bold text-white">Live Alpha Leaderboard</h2>
+                                    <h2 className="text-xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text">Live Alpha Leaderboard</h2>
                                 </div>
-                                <div className="text-xs text-gray-400 bg-white/5 px-3 py-1 rounded-full">
-                                    SORTED BY: <span className="text-yellow-400 font-bold">IN-GAME PIE</span>
+                                <div className="text-[10px] text-cyber-muted bg-white/[0.02] px-3 py-1 font-display tracking-[0.2em] font-600 uppercase border border-cyber-border">
+                                    SORTED BY: <span className="text-cyber-gold ml-1 animate-[data-flicker_3s_ease-in-out_infinite]">IN-GAME PIE</span>
                                 </div>
                             </div>
 
-                            <div className="p-0 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 w-full">
+                            <div className="p-0 overflow-x-auto scrollbar-premium w-full relative z-10">
                                 <table className="w-full text-left border-collapse min-w-full">
                                     <thead>
-                                        <tr className="border-b border-white/5 text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider">
-                                            <th className="p-2 sm:p-4 font-medium">Rank</th>
-                                            <th className="p-2 sm:p-4 font-medium sticky left-0 z-10 bg-slate-900/90 backdrop-blur shadow-[4px_0_8px_rgba(0,0,0,0.1)]">Player</th>
-                                            <th className="p-2 sm:p-4 font-medium hidden sm:table-cell">Team</th>
-                                            <th className="p-2 sm:p-4 font-medium text-right">PTS</th>
-                                            <th className="p-2 sm:p-4 font-medium text-right hidden md:table-cell">REB</th>
-                                            <th className="p-2 sm:p-4 font-medium text-right hidden md:table-cell">AST</th>
-                                            <th className="p-2 sm:p-4 font-medium text-right text-yellow-500">PIE %</th>
+                                        <tr className="border-b border-cyber-border/50 text-cyber-muted text-[10px] font-display font-600 tracking-[0.2em] uppercase">
+                                            <th className="p-2 sm:p-4">Rank</th>
+                                            <th className="p-2 sm:p-4 sticky left-0 z-10 bg-cyber-surface shadow-[4px_0_12px_rgba(0,0,0,0.5)]">Player</th>
+                                            <th className="p-2 sm:p-4 hidden sm:table-cell">Team</th>
+                                            <th className="p-2 sm:p-4 text-right">PTS</th>
+                                            <th className="p-2 sm:p-4 text-right hidden md:table-cell">REB</th>
+                                            <th className="p-2 sm:p-4 text-right hidden md:table-cell">AST</th>
+                                            <th className="p-2 sm:p-4 text-right text-cyber-gold">PIE %</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
@@ -263,7 +272,7 @@ const PulsePage: React.FC = () => {
                                         ))}
                                         {leaders.length === 0 && (
                                             <tr>
-                                                <td colSpan={7} className="p-8 text-center text-gray-500">
+                                                <td colSpan={7} className="p-8 text-center text-cyber-muted font-display font-600 tracking-[0.1em] uppercase text-xs">
                                                     {isConnected
                                                         ? 'Waiting for live game data...'
                                                         : 'Feed not connected'}

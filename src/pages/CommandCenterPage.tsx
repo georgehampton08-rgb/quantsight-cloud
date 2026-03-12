@@ -8,14 +8,14 @@ import CornerBrackets from '../components/common/CornerBrackets'
 
 // Placeholder components - in a real app these would be their own widgets
 const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
-    <div className="relative bg-cyber-surface p-4 sm:p-6 flex flex-col gap-4 min-w-0 min-h-[280px] sm:min-h-[350px] lg:min-h-0 lg:h-full transition-colors duration-100 group" style={{ border: '1px solid #1a2332' }}>
+    <div className="relative bg-cyber-surface p-4 sm:p-6 flex flex-col gap-4 min-w-0 min-h-[280px] sm:min-h-[350px] lg:min-h-0 lg:h-full transition-colors duration-100 group shadow-none" style={{ border: '1px solid #1a2332' }}>
         <CornerBrackets />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyber-border to-transparent pointer-events-none" />
         <div className="flex items-center gap-2 text-cyber-muted font-display font-600 tracking-[0.12em] text-[10px] uppercase flex-shrink-0 group-hover:text-cyber-green transition-colors duration-100 relative z-10">
             <Icon className="w-4 h-4 text-cyber-green" />
             {title}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-premium relative z-10">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-premium relative z-10 font-sans">
             {children}
         </div>
     </div>
@@ -24,13 +24,13 @@ const DataCard = ({ title, icon: Icon, children }: { title: string, icon: any, c
 // ─── Today's Injuries Widget ──────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-    Out:          'bg-red-500/20 text-red-400 border-red-500/30',
-    Questionable: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    Doubtful:     'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    'Day-To-Day': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
-    Probable:     'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+    Out:          'bg-cyber-red/10 text-cyber-red border-cyber-red/30',
+    Questionable: 'bg-cyber-gold/10 text-cyber-gold border-cyber-gold/30',
+    Doubtful:     'bg-orange-500/10 text-orange-400 border-orange-500/30',
+    'Day-To-Day': 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
+    Probable:     'bg-cyber-green/10 text-cyber-green border-cyber-green/30',
 };
-const statusColor = (s: string) => STATUS_COLORS[s] ?? 'bg-slate-700/40 text-slate-400 border-slate-600/30';
+const statusColor = (s: string) => STATUS_COLORS[s] ?? 'bg-white/[0.02] text-cyber-muted border-cyber-border/50';
 
 const TodayInjuriesWidget = () => {
     const [injuries, setInjuries] = React.useState<Record<string, any[]>>({});
@@ -55,12 +55,12 @@ const TodayInjuriesWidget = () => {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <div className="text-xs text-slate-500 animate-pulse">Fetching injury reports...</div>;
+    if (loading) return <div className="text-[10px] font-mono text-cyber-muted uppercase tracking-widest animate-pulse">Fetching injury reports...</div>;
 
     if (count === 0) return (
-        <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-600">
-            <Stethoscope className="w-7 h-7 opacity-30" />
-            <div className="text-xs">No injury reports for today</div>
+        <div className="flex flex-col items-center justify-center h-full gap-2 text-cyber-muted">
+            <Stethoscope className="w-7 h-7 opacity-30 text-cyber-blue" />
+            <div className="text-[10px] font-mono uppercase tracking-widest">No injury reports for today</div>
         </div>
     );
 
@@ -68,26 +68,26 @@ const TodayInjuriesWidget = () => {
         <div className="flex flex-col gap-4">
             {Object.entries(injuries).map(([team, players]) => (
                 <div key={team}>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                    <div className="text-[10px] font-display font-700 text-cyber-text uppercase tracking-[0.1em] mb-1.5 border-b border-cyber-border/50 pb-1">
                         {team}
                     </div>
                     <div className="flex flex-col gap-1">
                         {players.map((inj: any) => (
                             <div key={inj.playerId ?? inj.playerName}
-                                className="flex items-center gap-2 px-2 py-1.5 bg-slate-900/50 rounded-lg border border-slate-800/60">
-                                <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${statusColor(inj.status)}`}>
+                                className="flex items-center gap-2 px-2 py-1.5 bg-white/[0.02] rounded-none border border-cyber-border/50 relative">
+                                <span className={`flex-shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-none border uppercase tracking-widest ${statusColor(inj.status)}`}>
                                     {inj.status === 'Day-To-Day' ? 'DTD' : (inj.status ?? '?').charAt(0)}
                                 </span>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-[11px] font-semibold text-slate-200 truncate leading-tight">{inj.playerName}</span>
-                                    {inj.injuryType && <span className="text-[10px] text-slate-500 truncate leading-tight">{inj.injuryType}</span>}
+                                    <span className="text-[10px] font-mono text-cyber-text uppercase tracking-wider truncate leading-tight">{inj.playerName}</span>
+                                    {inj.injuryType && <span className="text-[9px] font-mono text-cyber-blue uppercase tracking-widest opacity-80 truncate leading-tight">{inj.injuryType}</span>}
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
             ))}
-            <div className="text-[9px] text-slate-700 text-right">via ESPN • updates hourly</div>
+            <div className="text-[8px] font-mono text-cyber-muted uppercase tracking-widest text-right">via ESPN • updates hourly</div>
         </div>
     );
 };
@@ -119,64 +119,64 @@ const InsightsWidget = () => {
 
     if (loading) return (
         <div className="space-y-3 animate-pulse">
-            <div className="h-4 bg-slate-700/60 rounded-full w-3/4" />
-            <div className="h-3 bg-slate-700/60 rounded-full w-full" />
-            <div className="h-3 bg-slate-700/60 rounded-full w-5/6" />
-            <div className="h-3 bg-slate-700/60 rounded-full w-4/6" />
+            <div className="h-4 bg-cyber-border/50 rounded-none w-3/4" />
+            <div className="h-3 bg-cyber-border/30 rounded-none w-full" />
+            <div className="h-3 bg-cyber-border/30 rounded-none w-5/6" />
+            <div className="h-3 bg-cyber-border/30 rounded-none w-4/6" />
         </div>
     );
 
     if (error || !insight) return (
-        <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2 text-center">
-            <AlertTriangle className="w-8 h-8 opacity-40 text-amber-500" />
-            <div className="text-xs">Insights offline — refreshes in 30 min</div>
+        <div className="flex flex-col items-center justify-center h-full text-cyber-muted gap-2 text-center">
+            <AlertTriangle className="w-8 h-8 opacity-40 text-cyber-red" />
+            <div className="text-[10px] font-mono uppercase tracking-widest">Insights offline — refreshes in 30 min</div>
         </div>
     );
 
-    const severityColor = insight.risk_flag?.severity === 'HIGH' ? 'text-red-400 bg-red-500/10 border-red-500/20'
-        : insight.risk_flag?.severity === 'MEDIUM' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-            : 'text-slate-400 bg-slate-700/30 border-slate-600/20';
+    const severityColor = insight.risk_flag?.severity === 'HIGH' ? 'text-cyber-red bg-cyber-red/10 border-cyber-red/30'
+        : insight.risk_flag?.severity === 'MEDIUM' ? 'text-cyber-gold bg-cyber-gold/10 border-cyber-gold/30'
+            : 'text-cyber-muted bg-white/[0.02] border-cyber-border/50';
 
     return (
-        <div className="flex flex-col gap-3 h-full text-sm">
+        <div className="flex flex-col gap-4 h-full text-sm">
             {/* Headline */}
-            <div className="text-indigo-300 font-semibold leading-snug drop-shadow-[0_0_8px_rgba(165,180,252,0.3)]">
+            <div className="text-cyber-blue font-display font-600 uppercase tracking-[0.05em] leading-snug glitch-text" data-text={insight.headline}>
                 {insight.headline}
             </div>
 
             {/* Bullets */}
-            <div className="space-y-1.5 flex-1">
+            <div className="space-y-2 flex-1">
                 {(insight.bullets || []).map((b, i) => (
-                    <div key={i} className="flex gap-2 items-start">
-                        <span className="text-[10px] font-black font-mono text-emerald-500 mt-0.5 flex-shrink-0">
+                    <div key={i} className="flex gap-2 items-start border-l border-cyber-border/30 pl-2">
+                        <span className="text-[9px] font-black font-mono text-cyber-green mt-0.5 flex-shrink-0">
                             {String(i + 1).padStart(2, '0')}
                         </span>
-                        <span className="text-slate-300 text-xs leading-relaxed">{b}</span>
+                        <span className="text-cyber-text text-[11px] font-sans leading-relaxed">{b}</span>
                     </div>
                 ))}
             </div>
 
             {/* Top Watch */}
             {insight.top_watch && (
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                    <Star className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-none bg-cyber-green/5 border border-cyber-green/30 relative">
+                    <Star className="w-3 h-3 text-cyber-green flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-baseline gap-x-1">
-                            <span className="text-emerald-400 text-xs font-bold">{insight.top_watch.player}</span>
-                            <span className="text-slate-400 text-xs">({insight.top_watch.team}) — {insight.top_watch.stat}</span>
+                            <span className="text-cyber-green text-[11px] font-mono tracking-wider uppercase font-bold">{insight.top_watch.player}</span>
+                            <span className="text-cyber-muted text-[10px] font-mono uppercase tracking-widest">({insight.top_watch.team}) — {insight.top_watch.stat}</span>
                         </div>
-                        <div className="text-slate-400 text-[11px] leading-relaxed mt-0.5">{insight.top_watch.reason}</div>
+                        <div className="text-cyber-text text-[10px] leading-relaxed mt-1 opacity-90">{insight.top_watch.reason}</div>
                     </div>
                 </div>
             )}
 
             {/* Risk Flag */}
             {insight.risk_flag && (
-                <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${severityColor}`}>
+                <div className={`flex items-start gap-2 px-3 py-2.5 rounded-none border ${severityColor} relative`}>
                     <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                        <span className="text-xs font-bold">{insight.risk_flag.player}</span>
-                        <div className="text-[11px] leading-relaxed mt-0.5 opacity-90">{insight.risk_flag.reason}</div>
+                        <span className="text-[11px] font-mono tracking-wider uppercase font-bold">{insight.risk_flag.player}</span>
+                        <div className="text-[10px] text-cyber-text leading-relaxed mt-1 opacity-90">{insight.risk_flag.reason}</div>
                     </div>
                 </div>
             )}
@@ -216,11 +216,11 @@ const ScheduleWidget = () => {
         load();
     }, []);
 
-    if (loading) return <div className="text-xs text-slate-500 animate-pulse">Scanning League Data...</div>;
-    if (games.length === 0) return <div className="text-xs text-slate-500">No games scheduled.</div>;
+    if (loading) return <div className="text-[10px] font-mono text-cyber-muted uppercase tracking-widest animate-pulse">Scanning League Data...</div>;
+    if (games.length === 0) return <div className="text-[10px] font-mono text-cyber-muted uppercase tracking-widest">No games scheduled.</div>;
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {games.map((game, idx) => {
                 const isLive = game.status === 'LIVE';
                 const isFinal = game.status === 'FINAL';
@@ -228,28 +228,28 @@ const ScheduleWidget = () => {
                 const hasScores = hasStarted && (game.home_score > 0 || game.away_score > 0);
 
                 return (
-                    <div key={idx} className={`p-3 bg-slate-900/50 rounded border-l-2 ${isLive ? 'border-red-500' : game.volatility === 'High' ? 'border-green-500' : 'border-slate-700'}`}>
+                    <div key={idx} className={`p-3 bg-white/[0.02] rounded-none border border-cyber-border/50 border-l-2 relative ${isLive ? 'border-l-cyber-red' : game.volatility === 'High' ? 'border-l-cyber-green' : 'border-l-cyber-border'}`}>
                         <div className="flex justify-between items-center mb-1">
                             {hasScores ? (
-                                <span className="font-bold text-white">
-                                    {game.away} <span className="text-financial-accent">{game.away_score}</span> @ {game.home} <span className="text-financial-accent">{game.home_score}</span>
+                                <span className="font-mono text-[11px] font-bold text-cyber-text uppercase tracking-wider">
+                                    {game.away} <span className="text-cyber-blue font-black">{game.away_score}</span> <span className="text-cyber-muted mx-1">@</span> {game.home} <span className="text-cyber-blue font-black">{game.home_score}</span>
                                 </span>
                             ) : (
-                                <span className="font-bold text-white">{game.away} @ {game.home}</span>
+                                <span className="font-mono text-[11px] font-bold text-cyber-text uppercase tracking-wider">{game.away} <span className="text-cyber-muted mx-1">@</span> {game.home}</span>
                             )}
                             <div className="flex items-center gap-2">
                                 {/* Status indicator */}
                                 {isLive && (
-                                    <span className="text-xs text-red-400 animate-pulse flex items-center gap-1">
-                                        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                                    <span className="text-[9px] font-mono tracking-widest uppercase text-cyber-red animate-pulse flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 bg-cyber-red rounded-none animate-pulse"></span>
                                         {game.time}
                                     </span>
                                 )}
                                 {isFinal && (
-                                    <span className="text-xs text-slate-400">{game.time}</span>
+                                    <span className="text-[9px] font-mono tracking-widest uppercase text-cyber-muted">{game.time}</span>
                                 )}
                                 {!isLive && !isFinal && (
-                                    <span className={`text-xs font-mono uppercase tracking-widest ${hasStarted ? 'text-amber-400' : 'text-slate-400'}`}>
+                                    <span className={`text-[9px] font-mono uppercase tracking-widest ${hasStarted ? 'text-cyber-gold' : 'text-cyber-muted'}`}>
                                         {game.time}
                                     </span>
                                 )}
@@ -257,10 +257,10 @@ const ScheduleWidget = () => {
                         </div>
                         {/* Additional game info */}
                         {isLive && (
-                            <div className="text-xs text-red-400/80">Live Game • High Volatility</div>
+                            <div className="text-[9px] font-mono text-cyber-red/80 uppercase tracking-widest mt-1">Live Game • High Volatility</div>
                         )}
                         {hasStarted && !isLive && !isFinal && (
-                            <div className="text-xs text-amber-400/80">Started • Check for updates</div>
+                            <div className="text-[9px] font-mono text-cyber-gold/80 uppercase tracking-widest mt-1">Started • Check for updates</div>
                         )}
                     </div>
                 );
@@ -273,12 +273,7 @@ export default function CommandCenterPage() {
     const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'BOXSCORE' | 'PLAY_BY_PLAY'>('OVERVIEW');
 
     return (
-        <div className="p-4 sm:p-8 min-h-full overflow-x-hidden w-full flex flex-col font-sans bg-cyber-bg relative z-10">
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
-                 style={{
-                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
-                   backgroundSize: '32px 32px',
-                 }} />
+        <div className="p-4 sm:p-8 min-h-full overflow-x-hidden w-full flex flex-col font-sans bg-cyber-bg relative z-10 bg-scanline">
 
             <header className="mb-6 flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 relative z-10">
                 <div>
@@ -318,10 +313,7 @@ export default function CommandCenterPage() {
 
             <div className="flex-1 min-h-0 flex flex-col min-w-0 w-full">
                 {activeTab === 'OVERVIEW' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-auto animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                        {/* Dramatic glow hidden behind the card */}
-                        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
-
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-auto animate-in fade-in slide-in-from-bottom-4 duration-500 relative bg-cyber-bg">
                         {/* Pillar 1: Today's Matchups */}
                         <DataCard title="Today's Matchups" icon={Zap}>
                             <ScheduleWidget />
@@ -330,17 +322,17 @@ export default function CommandCenterPage() {
                         {/* Pillar 2: System Health Matrix */}
                         <DataCard title="System Health Matrix" icon={ShieldCheck}>
                             <div className="grid grid-cols-2 gap-4 h-full content-start">
-                                <div className="bg-slate-900/40 p-4 rounded-xl text-center border border-slate-700/30 shadow-inner">
-                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1.5 shadow-sm">API Latency</div>
-                                    <div className="text-2xl font-black font-mono text-qs-green drop-shadow-[0_0_8px_theme(colors.qs.green/50%)]">42ms</div>
+                                <div className="bg-white/[0.02] p-4 rounded-none text-center border border-cyber-border/50 relative">
+                                    <div className="text-[9px] text-cyber-muted uppercase font-mono tracking-widest mb-1.5 shadow-none">API Latency</div>
+                                    <div className="text-2xl font-black font-mono text-cyber-green glitch-text" data-text="42ms">42ms</div>
                                 </div>
-                                <div className="bg-slate-900/40 p-4 rounded-xl text-center border border-slate-700/30 shadow-inner">
-                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1.5 shadow-sm">Model Drift</div>
-                                    <div className="text-2xl font-black font-mono text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]">0.03%</div>
+                                <div className="bg-white/[0.02] p-4 rounded-none text-center border border-cyber-border/50 relative">
+                                    <div className="text-[9px] text-cyber-muted uppercase font-mono tracking-widest mb-1.5 shadow-none">Model Drift</div>
+                                    <div className="text-2xl font-black font-mono text-cyber-blue glitch-text" data-text="0.03%">0.03%</div>
                                 </div>
-                                <div className="col-span-2 bg-emerald-950/20 p-4 rounded-xl text-center border border-emerald-500/30 relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                    <div className="text-sm text-emerald-400 uppercase font-black tracking-widest relative z-10">All Systems Operational</div>
+                                <div className="col-span-2 bg-cyber-green/5 p-4 rounded-none text-center border border-cyber-green/30 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-cyber-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="text-[10px] text-cyber-green font-mono uppercase font-black tracking-[0.15em] relative z-10">All Systems Operational</div>
                                 </div>
                             </div>
                         </DataCard>

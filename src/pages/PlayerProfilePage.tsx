@@ -21,6 +21,7 @@ import ProjectionMatrix from '../components/aegis/ProjectionMatrix';
 import PlayTypeEfficiency from '../components/aegis/PlayTypeEfficiency';
 import EnrichedPlayerCard from '../components/profile/EnrichedPlayerCard';
 import { useSimulation } from '../hooks/useSimulation';
+import CornerBrackets from '../components/common/CornerBrackets';
 
 export default function PlayerProfilePage() {
     const { id } = useParams<{ id: string }>();
@@ -183,19 +184,23 @@ export default function PlayerProfilePage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-financial-accent animate-pulse">Initializing Neural Link...</div>;
+    if (loading) return <div className="p-8 text-cyber-green font-mono tracking-widest uppercase animate-[data-flicker_3s_ease-in-out_infinite]">Initializing Neural Link...</div>;
 
     // Empty State (No ID or No Player Found)
     if (!targetId || !selectedPlayer) return (
-        <div className="flex flex-col items-center justify-center p-12 space-y-6 border border-slate-800 rounded-2xl bg-slate-900/50 mt-8 max-w-2xl mx-auto">
-            <div className="text-4xl">🔍</div>
-            <div className="text-xl font-mono text-white">Search Protocol Initiated</div>
-            <div className="text-sm text-slate-500 max-w-md text-center">
+        <div className="flex flex-col items-center justify-center p-12 space-y-6 relative bg-cyber-surface mt-8 max-w-2xl mx-auto" style={{ border: '1px solid #1a2332' }}>
+            <CornerBrackets />
+            <div className="relative w-16 h-16 flex items-center justify-center">
+                <div className="absolute inset-0 border border-cyber-blue opacity-50 rotate-45" />
+                <span className="text-cyber-blue font-mono font-bold tracking-[0.2em] animate-pulse">404</span>
+            </div>
+            <div className="text-xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text">Search Protocol Initiated</div>
+            <div className="text-[10px] uppercase font-mono tracking-widest text-cyber-muted max-w-md text-center leading-relaxed">
                 System is ready. Use the <strong>Search Bar</strong> above to locate any player to begin analysis.
             </div>
             <button
                 onClick={() => navigate('/')}
-                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-financial-accent border border-slate-700 hover:border-financial-accent transition-all"
+                className="px-6 py-3 bg-cyber-surface hover:bg-white/[0.05] rounded-none text-[10px] font-display font-600 tracking-[0.2em] uppercase text-cyber-green border border-cyber-green hover:shadow-[0_0_10px_rgba(0,255,136,0.2)] transition-all duration-100"
             >
                 Return to Command Center
             </button>
@@ -205,33 +210,32 @@ export default function PlayerProfilePage() {
     const profile = selectedPlayer; // Alias for easier refactor compatibility
 
     const tabs = [
-        { id: 'Overview', label: 'Overview', icon: '📊' },
-        { id: 'Projection', label: 'Monte Carlo', icon: '🎲' },
-        { id: 'Matchup', label: 'Matchup Intelligence', icon: '⚔️' },
-        { id: 'GameLogs', label: 'Game Logs', icon: '📋' },
-        { id: 'Advanced', label: 'Advanced Stats', icon: '📈' },
-        { id: 'ShotChart', label: 'Shot Chart', icon: '🎯' }
+        { id: 'Overview', label: 'Overview' },
+        { id: 'Projection', label: 'Monte Carlo' },
+        { id: 'Matchup', label: 'Matchup Intelligence' },
+        { id: 'GameLogs', label: 'Game Logs' },
+        { id: 'Advanced', label: 'Advanced Stats' },
+        { id: 'ShotChart', label: 'Shot Chart' }
     ] as const;
 
     return (
-        <div className="h-full overflow-y-auto flex flex-col">
-            <div className="max-w-7xl mx-auto w-full pb-12 p-4 sm:p-6 flex-1 min-h-0 flex flex-col">
+        <div className="h-full overflow-y-auto flex flex-col bg-cyber-bg relative z-10 w-full">
+            <div className="max-w-7xl mx-auto w-full pb-12 p-4 sm:p-6 flex-1 min-h-0 flex flex-col relative z-10">
                 <div className="flex-shrink-0">
                     <HeroSection player={profile} />
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex-shrink-0 flex gap-1 sm:gap-2 border-b border-slate-800 pb-4 mb-6 sm:mb-8 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                <div className="flex-shrink-0 flex gap-4 border-b border-cyber-border pb-2 mb-6 sm:mb-8 overflow-x-auto scrollbar-premium">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm tracking-widest uppercase font-bold px-3 sm:px-6 py-2 sm:py-3 border-b-2 transition-all whitespace-nowrap shrink-0 ${activeTab === tab.id
-                                ? 'border-financial-accent text-financial-accent bg-financial-accent/5'
-                                : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'
+                            className={`flex items-center gap-2 text-[10px] font-display font-600 tracking-[0.12em] uppercase py-2 border-b-2 transition-all duration-100 whitespace-nowrap shrink-0 ${activeTab === tab.id
+                                ? 'border-cyber-green text-cyber-green'
+                                : 'border-transparent text-cyber-muted hover:text-cyber-text'
                                 }`}
                         >
-                            <span>{tab.icon}</span>
                             <span className="hidden sm:inline">{tab.label}</span>
                             <span className="sm:hidden">{tab.id}</span>
                         </button>
@@ -265,15 +269,15 @@ export default function PlayerProfilePage() {
                         <div className="space-y-6">
                             <GameLogsViewer playerId={targetId} />
 
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                                 {/* H2H Viewer with context from Matchup/Projection (currentOpponent) */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-bold text-slate-400">Target Opponent</h3>
+                                <div className="relative bg-cyber-surface p-6" style={{ border: '1px solid #1a2332' }}>
+                                    <CornerBrackets />
+                                    <div className="flex items-center justify-between mb-4 relative z-10 border-b border-cyber-border/50 pb-3">
+                                        <h3 className="text-[10px] font-display font-600 tracking-[0.2em] uppercase text-cyber-muted">Target Opponent</h3>
                                         <select
                                             value={currentOpponent}
                                             onChange={(e) => setCurrentOpponent(e.target.value)}
-                                            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm"
+                                            className="bg-cyber-bg border border-cyber-border rounded-none px-3 py-1.5 text-cyber-text text-[10px] font-display tracking-widest uppercase focus:border-cyber-blue outline-none"
                                         >
                                             {teams.map((team) => (
                                                 <option key={team.team_id} value={team.team_id}>
@@ -284,7 +288,6 @@ export default function PlayerProfilePage() {
                                     </div>
                                     <H2HHistoryPanel playerId={targetId} opponentId={currentOpponent} />
                                 </div>
-                            </div>
                         </div>
                     )}
 
@@ -298,17 +301,18 @@ export default function PlayerProfilePage() {
                             />
 
                             <div className="space-y-4">
-                                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
-                                    <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
-                                        <span>⚡</span>
+                                <div className="relative bg-cyber-surface border border-cyber-border p-6 shadow-none" style={{ border: '1px solid #1a2332' }}>
+                                    <CornerBrackets />
+                                    <h3 className="text-[10px] font-display font-600 tracking-[0.2em] uppercase text-cyber-text mb-4 flex items-center gap-2 relative z-10 border-b border-cyber-border/50 pb-2">
+                                        <span className="w-1.5 h-1.5 bg-cyber-green animate-pulse" />
                                         Quick Sim
                                     </h3>
-                                    <div className="space-y-3">
-                                        <label className="block text-sm text-slate-400">Opponent Team</label>
+                                    <div className="space-y-3 relative z-10">
+                                        <label className="block text-[10px] font-display tracking-widest uppercase text-cyber-muted">Opponent Team</label>
                                         <select
                                             value={currentOpponent}
                                             onChange={(e) => setCurrentOpponent(e.target.value)}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"
+                                            className="w-full bg-cyber-bg border border-cyber-border rounded-none p-3 text-cyber-text text-sm font-display tracking-wider focus:border-cyber-blue outline-none transition-colors"
                                         >
                                             {teams.length > 0 ? (
                                                 teams.map((team) => (
@@ -329,9 +333,9 @@ export default function PlayerProfilePage() {
                                         <button
                                             onClick={() => runSimulation(currentOpponent)}
                                             disabled={simLoading}
-                                            className="w-full py-3 bg-financial-accent/20 hover:bg-financial-accent/30 border border-financial-accent text-financial-accent rounded-lg transition-all disabled:opacity-50"
+                                            className="w-full py-3 bg-cyber-green/10 hover:bg-cyber-green/20 border border-cyber-green text-cyber-green font-display font-600 tracking-[0.1em] uppercase rounded-none transition-all duration-100 disabled:opacity-50 disabled:bg-cyber-surface"
                                         >
-                                            {simLoading ? 'Running...' : '🚀 Run 50,000 Simulations'}
+                                            {simLoading ? 'EXECUTING...' : 'RUN 50,000 SIMULATIONS'}
                                         </button>
                                     </div>
                                 </div>
@@ -428,24 +432,25 @@ export default function PlayerProfilePage() {
                                 <MetricCard title="BPM" value="+6.8" subValue="Box Plus/Minus" />
                                 <MetricCard title="VORP" value="4.3" subValue="Value Over Replacement" />
 
-                                <div className="md:col-span-2 lg:col-span-3 bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
-                                    <h3 className="text-lg font-bold text-slate-200 mb-4">Advanced Metrics Breakdown</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                        <div className="bg-slate-900/50 p-3 rounded">
-                                            <div className="text-xs text-slate-500 uppercase mb-1">AST%</div>
-                                            <div className="text-lg font-mono text-blue-400">32.1%</div>
+                                <div className="md:col-span-2 lg:col-span-3 relative bg-cyber-surface border border-cyber-border p-6 shadow-none" style={{ border: '1px solid #1a2332' }}>
+                                    <CornerBrackets />
+                                    <h3 className="text-[10px] font-display font-700 tracking-[0.2em] uppercase text-cyber-text mb-4 border-b border-cyber-border/50 pb-2 relative z-10">Advanced Metrics Breakdown</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm relative z-10">
+                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
+                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">AST%</div>
+                                            <div className="text-lg font-mono tabular-nums text-cyber-blue animate-[data-flicker_4s_ease-in-out_infinite]">32.1%</div>
                                         </div>
-                                        <div className="bg-slate-900/50 p-3 rounded">
-                                            <div className="text-xs text-slate-500 uppercase mb-1">REB%</div>
-                                            <div className="text-lg font-mono text-green-400">18.5%</div>
+                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
+                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">REB%</div>
+                                            <div className="text-lg font-mono tabular-nums text-cyber-green">18.5%</div>
                                         </div>
-                                        <div className="bg-slate-900/50 p-3 rounded">
-                                            <div className="text-xs text-slate-500 uppercase mb-1">STL%</div>
-                                            <div className="text-lg font-mono text-yellow-400">2.3%</div>
+                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
+                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">STL%</div>
+                                            <div className="text-lg font-mono tabular-nums text-cyber-gold">2.3%</div>
                                         </div>
-                                        <div className="bg-slate-900/50 p-3 rounded">
-                                            <div className="text-xs text-slate-500 uppercase mb-1">BLK%</div>
-                                            <div className="text-lg font-mono text-red-400">1.8%</div>
+                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
+                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">BLK%</div>
+                                            <div className="text-lg font-mono tabular-nums text-cyber-red">1.8%</div>
                                         </div>
                                     </div>
                                 </div>

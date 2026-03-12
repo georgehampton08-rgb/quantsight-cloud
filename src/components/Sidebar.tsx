@@ -32,7 +32,7 @@ export default function Sidebar() {
             {/* Close Button - Top Right */}
             <button
                 onClick={closeMobileSidebar}
-                className="absolute top-4 right-4 p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors z-10"
+                className="absolute top-4 right-4 p-2 rounded-none bg-cyber-surface border border-cyber-border hover:bg-white/[0.05] text-cyber-muted hover:text-cyber-text transition-colors z-10"
                 title="Close Menu"
             >
                 <X size={20} />
@@ -45,12 +45,12 @@ export default function Sidebar() {
                 <div className="font-bold text-cyber-text font-display tracking-[0.08em] uppercase animate-in fade-in duration-300">QUANTSIGHT</div>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+            <div className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-premium pr-2">
                 {NAV_ITEMS.map((item, index) => (
                     <React.Fragment key={item.name}>
                         {/* Admin divider */}
                         {item.path === '/vanguard' && (
-                            <div className="my-1 border-t border-cyber-border mt-2 pt-2" />
+                            <div className="my-1 border-t border-cyber-border/50 mt-2 pt-2" />
                         )}
                         <NavLink
                             to={item.path}
@@ -59,14 +59,14 @@ export default function Sidebar() {
                                 const isCurrentPath = item.path === '/'
                                     ? location.pathname === '/'
                                     : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-                                
+
                                 const isAdmin = item.path === '/vanguard' || item.path === '/injury-admin';
 
-                                return `flex items-center gap-3 px-3 py-2.5 rounded-sm transition-all text-xs font-display font-600 tracking-[0.08em] uppercase group
+                                return `flex items-center gap-3 px-3 py-2.5 rounded-none transition-all text-xs font-display font-600 tracking-[0.08em] uppercase group
                                 ${isActive || isCurrentPath
                                     ? 'bg-cyber-green/5 text-cyber-green border-l-2 border-cyber-green'
                                     : isAdmin
-                                        ? 'text-cyber-muted/60 hover:text-qs-gold hover:bg-white/[0.03] border-l-2 border-transparent duration-100'
+                                        ? 'text-cyber-red/60 hover:text-cyber-red hover:bg-cyber-red/5 border-l-2 border-transparent duration-100'
                                         : 'text-cyber-muted hover:text-cyber-text hover:bg-white/[0.03] border-l-2 border-transparent duration-100'
                                 }`;
                             }}
