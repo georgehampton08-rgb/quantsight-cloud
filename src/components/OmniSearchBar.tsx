@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Fuse, { FuseResult } from 'fuse.js'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
 import { PlayerApi } from '../services/playerApi'
-import CornerBrackets from './common/CornerBrackets';
 
 // Player search will be populated from backend API
 interface Player {
@@ -93,17 +92,17 @@ export default function OmniSearchBar() {
         <div className="relative w-full max-w-lg mx-auto">
             {/* Search Input */}
             <div className={`
-        relative flex items-center bg-cyber-surface rounded-none border border-cyber-border 
-        focus-within:border-cyber-blue 
-        transition-all duration-100 shadow-none
+        relative flex items-center bg-pro-surface rounded-xl border border-pro-border 
+        focus-within:border-blue-500 
+        transition-all duration-100 shadow-sm
       `}>
-                <div className="pl-4 text-cyber-muted">
+                <div className="pl-4 text-pro-muted">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
                 <input
                     ref={inputRef}
                     type="text"
-                    className="w-full bg-transparent border-none focus:ring-0 text-cyber-text placeholder-cyber-muted font-mono py-2 px-3 text-xs"
+                    className="w-full bg-transparent border-none focus:ring-0 text-pro-text placeholder-pro-muted font-sans py-2 px-3 text-sm"
                     placeholder="Search players, teams, or metrics..."
                     value={query}
                     onChange={(e) => {
@@ -118,9 +117,9 @@ export default function OmniSearchBar() {
 
             {/* Results Dropdown */}
             {isOpen && results.length > 0 && (
-                <div className="absolute top-full mt-2 w-full bg-cyber-bg border border-cyber-border shadow-none z-50 rounded-none relative" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
-                    <div className="text-[10px] uppercase text-cyber-muted px-3 py-2 font-display font-600 tracking-[0.12em] bg-white/[0.02]">
+                <div className="absolute top-full mt-2 w-full bg-pro-bg border border-pro-border shadow-sm z-50 rounded-xl relative" >
+                    
+                    <div className="text-xs uppercase text-pro-muted px-3 py-2 font-semibold tracking-normal bg-white/[0.02]">
                         Players
                     </div>
                     <ul>
@@ -129,20 +128,20 @@ export default function OmniSearchBar() {
                                 key={item.id}
                                 className={`
                   flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-100
-                  ${index === selectedIndex ? 'bg-cyber-blue/10 border-l-2 border-cyber-blue' : 'hover:bg-white/[0.05] border-l-2 border-transparent'}
+                  ${index === selectedIndex ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'hover:bg-white/[0.05] border-l-2 border-transparent'}
                 `}
                                 onMouseEnter={() => setSelectedIndex(index)}
                                 onClick={() => {
                                     handleSelect(item);
                                 }}
                             >
-                                <img src={getPlayerAvatarUrl(item.id)} alt={item.name} className="w-8 h-8 rounded-none border border-cyber-border bg-cyber-surface object-cover" />
+                                <img src={getPlayerAvatarUrl(item.id)} alt={item.name} className="w-8 h-8 rounded-xl border border-pro-border bg-pro-surface object-cover" />
                                 <div className="flex-1">
-                                    <div className="text-sm font-display font-600 tracking-[0.08em] uppercase text-cyber-text">{item.name}</div>
-                                    <div className="text-[10px] uppercase text-cyber-muted tracking-widest">{item.team} • {item.position}</div>
+                                    <div className="text-sm font-semibold tracking-normal uppercase text-pro-text">{item.name}</div>
+                                    <div className="text-xs uppercase text-pro-muted tracking-wide">{item.team} • {item.position}</div>
                                 </div>
                                 {index === selectedIndex && (
-                                    <div className="text-xs text-cyber-blue opacity-50 font-mono tracking-widest">{'>'}</div>
+                                    <div className="text-xs text-blue-500 opacity-50 font-mono tracking-wide">{'>'}</div>
                                 )}
                             </li>
                         ))}

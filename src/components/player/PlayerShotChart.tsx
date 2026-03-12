@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SectionErrorBoundary } from '../common/SectionErrorBoundary';
 import { Activity, Target } from 'lucide-react';
-import CornerBrackets from '../common/CornerBrackets';
 
 interface ShotAttempt {
     sequenceNumber?: number;
@@ -131,21 +130,21 @@ function PlayerShotChartContent({ playerId }: PlayerShotChartProps) {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center py-16 space-y-4 border border-cyber-border rounded-none bg-cyber-surface relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                <CornerBrackets />
-                <Activity className="w-8 h-8 text-cyber-blue animate-spin" />
-                <div className="text-[10px] text-cyber-muted font-mono tracking-widest uppercase">LOADING SHOT VECTORS...</div>
+            <div className="flex flex-col items-center justify-center py-16 space-y-4 border border-pro-border rounded-xl bg-pro-surface relative shadow-sm" >
+                
+                <Activity className="w-8 h-8 text-blue-500 animate-spin" />
+                <div className="text-xs text-pro-muted font-mono tracking-wide uppercase">LOADING SHOT VECTORS...</div>
             </div>
         );
     }
 
     if (error || shots.length === 0) {
         return (
-            <div className="p-8 text-center border border-cyber-border rounded-none bg-cyber-surface text-cyber-muted relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                <CornerBrackets />
-                <Target className="w-10 h-10 mx-auto mb-4 opacity-50 text-cyber-red" />
-                <p className="text-sm font-display font-600 uppercase tracking-[0.08em] text-cyber-text mb-1">No Shot Chart Data Available</p>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-cyber-muted">
+            <div className="p-8 text-center border border-pro-border rounded-xl bg-pro-surface text-pro-muted relative shadow-sm" >
+                
+                <Target className="w-10 h-10 mx-auto mb-4 opacity-50 text-red-500" />
+                <p className="text-sm font-medium font-semibold uppercase tracking-normal text-pro-text mb-1">No Shot Chart Data Available</p>
+                <p className="text-xs font-mono uppercase tracking-wide text-pro-muted">
                     {error || 'Shot data will populate automatically as games are tracked. Data may also be available from historical NBA records.'}
                 </p>
             </div>
@@ -179,13 +178,13 @@ function PlayerShotChartContent({ playerId }: PlayerShotChartProps) {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-                <h3 className="text-lg font-display font-700 tracking-[0.08em] uppercase text-cyber-text flex items-center gap-2">
-                    <Target className="w-5 h-5 text-cyber-blue" /> Shot Chart
-                    <span className="text-[10px] text-cyber-muted font-mono ml-2 tracking-widest uppercase">{filteredShots.length} shots</span>
+                <h3 className="text-lg font-medium font-bold tracking-normal uppercase text-pro-text flex items-center gap-2">
+                    <Target className="w-5 h-5 text-blue-500" /> Shot Chart
+                    <span className="text-xs text-pro-muted font-mono ml-2 tracking-wide uppercase">{filteredShots.length} shots</span>
                     {source && (
-                        <span className={`text-[9px] px-2 py-0.5 rounded-none border font-mono uppercase tracking-widest ml-2 ${source === 'firestore' ? 'bg-cyber-green/10 text-cyber-green border-cyber-green/50' :
-                                source === 'nba_api' ? 'bg-cyber-blue/10 text-cyber-blue border-cyber-blue/50' :
-                                    'bg-white/[0.02] text-cyber-muted border-cyber-border'
+                        <span className={`text-xs px-2 py-0.5 rounded-xl border font-mono uppercase tracking-wide ml-2 ${source === 'firestore' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/50' :
+                                source === 'nba_api' ? 'bg-blue-500/10 text-blue-500 border-blue-500/50' :
+                                    'bg-white/[0.02] text-pro-muted border-pro-border'
                             }`}>
                             {source === 'firestore' ? 'LIVE' : source === 'nba_api' ? 'NBA API' : source}
                         </span>
@@ -194,7 +193,7 @@ function PlayerShotChartContent({ playerId }: PlayerShotChartProps) {
                 <select
                     value={selectedGame || ''}
                     onChange={(e) => setSelectedGame(e.target.value || null)}
-                    className="bg-cyber-bg border border-cyber-border rounded-none px-3 py-1.5 text-cyber-text text-[10px] font-mono uppercase tracking-widest focus:border-cyber-blue outline-none cursor-pointer"
+                    className="bg-pro-bg border border-pro-border rounded-xl px-3 py-1.5 text-pro-text text-xs font-mono uppercase tracking-wide focus:border-blue-500 outline-none cursor-pointer"
                 >
                     <option value="">All Games ({shots.length} shots)</option>
                     {games.map(g => (
@@ -206,8 +205,8 @@ function PlayerShotChartContent({ playerId }: PlayerShotChartProps) {
             </div>
 
             {/* Court SVG with clustering */}
-            <div className="bg-cyber-surface border border-cyber-border rounded-none p-4 overflow-hidden relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                <CornerBrackets />
+            <div className="bg-pro-surface border border-pro-border rounded-xl p-4 overflow-hidden relative shadow-sm" >
+                
                 <div className="aspect-[500/470] max-w-2xl mx-auto relative z-10">
                     <svg viewBox={`0 0 ${COURT_W} ${COURT_H}`} className="w-full h-full" style={{ background: 'linear-gradient(135deg, #0b1120, #080d16)' }}>
                         {/* Court markings */}
@@ -264,47 +263,47 @@ function PlayerShotChartContent({ playerId }: PlayerShotChartProps) {
                 </div>
 
                 {/* Legend */}
-                <div className="flex items-center justify-center gap-6 mt-4 text-[9px] text-cyber-muted font-mono uppercase tracking-widest relative z-10">
+                <div className="flex items-center justify-center gap-6 mt-4 text-xs text-pro-muted font-mono uppercase tracking-wide relative z-10">
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-none" style={{ background: '#00e5a0' }} /> Hot (60%+)
+                        <div className="w-2 h-2 rounded-xl" style={{ background: '#00e5a0' }} /> Hot (60%+)
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-none" style={{ background: '#f59e0b' }} /> Avg (35-45%)
+                        <div className="w-2 h-2 rounded-xl" style={{ background: '#f59e0b' }} /> Avg (35-45%)
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-none" style={{ background: '#ef4444' }} /> Cold (&lt;20%)
+                        <div className="w-2 h-2 rounded-xl" style={{ background: '#ef4444' }} /> Cold (&lt;20%)
                     </div>
                     <div className="flex items-center gap-1 opacity-60">
-                        <span className="border border-cyber-border/50 px-1 py-0.5">3</span> = shot count
+                        <span className="border border-pro-border/50 px-1 py-0.5">3</span> = shot count
                     </div>
                 </div>
             </div>
 
             {/* Zone Breakdown */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-cyber-surface border border-cyber-border rounded-none p-4 text-center relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
-                    <div className="text-[10px] text-cyber-muted font-display font-600 uppercase tracking-widest mb-1 relative z-10">Overall FG%</div>
-                    <div className="text-2xl font-mono text-cyber-text relative z-10">{fgPct}%</div>
-                    <div className="text-[10px] text-cyber-blue font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{madeShots.length}/{filteredShots.length}</div>
+                <div className="bg-pro-surface border border-pro-border rounded-xl p-4 text-center relative shadow-sm" >
+                    
+                    <div className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-1 relative z-10">Overall FG%</div>
+                    <div className="text-2xl font-mono text-pro-text relative z-10">{fgPct}%</div>
+                    <div className="text-xs text-blue-500 font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{madeShots.length}/{filteredShots.length}</div>
                 </div>
-                <div className="bg-cyber-surface border border-cyber-border rounded-none p-4 text-center relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
-                    <div className="text-[10px] text-cyber-muted font-display font-600 uppercase tracking-widest mb-1 relative z-10">Paint (&lt;8ft)</div>
-                    <div className={`text-2xl font-mono relative z-10 ${parseFloat(paintPct) >= 50 ? 'text-cyber-green' : 'text-cyber-text'}`}>{paintPct}%</div>
-                    <div className="text-[10px] text-cyber-blue font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{paintShots.filter(s => s.made).length}/{paintShots.length}</div>
+                <div className="bg-pro-surface border border-pro-border rounded-xl p-4 text-center relative shadow-sm" >
+                    
+                    <div className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-1 relative z-10">Paint (&lt;8ft)</div>
+                    <div className={`text-2xl font-mono relative z-10 ${parseFloat(paintPct) >= 50 ? 'text-emerald-500' : 'text-pro-text'}`}>{paintPct}%</div>
+                    <div className="text-xs text-blue-500 font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{paintShots.filter(s => s.made).length}/{paintShots.length}</div>
                 </div>
-                <div className="bg-cyber-surface border border-cyber-border rounded-none p-4 text-center relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
-                    <div className="text-[10px] text-cyber-muted font-display font-600 uppercase tracking-widest mb-1 relative z-10">Mid-Range</div>
-                    <div className="text-2xl font-mono text-cyber-text relative z-10">{midPct}%</div>
-                    <div className="text-[10px] text-cyber-blue font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{midShots.filter(s => s.made).length}/{midShots.length}</div>
+                <div className="bg-pro-surface border border-pro-border rounded-xl p-4 text-center relative shadow-sm" >
+                    
+                    <div className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-1 relative z-10">Mid-Range</div>
+                    <div className="text-2xl font-mono text-pro-text relative z-10">{midPct}%</div>
+                    <div className="text-xs text-blue-500 font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{midShots.filter(s => s.made).length}/{midShots.length}</div>
                 </div>
-                <div className="bg-cyber-surface border border-cyber-border rounded-none p-4 text-center relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
-                    <div className="text-[10px] text-cyber-muted font-display font-600 uppercase tracking-widest mb-1 relative z-10">3-Point</div>
-                    <div className={`text-2xl font-mono relative z-10 ${parseFloat(threePct) >= 36 ? 'text-cyber-green' : 'text-cyber-text'}`}>{threePct}%</div>
-                    <div className="text-[10px] text-cyber-blue font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{threeShots.filter(s => s.made).length}/{threeShots.length}</div>
+                <div className="bg-pro-surface border border-pro-border rounded-xl p-4 text-center relative shadow-sm" >
+                    
+                    <div className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-1 relative z-10">3-Point</div>
+                    <div className={`text-2xl font-mono relative z-10 ${parseFloat(threePct) >= 36 ? 'text-emerald-500' : 'text-pro-text'}`}>{threePct}%</div>
+                    <div className="text-xs text-blue-500 font-mono mt-0.5 opacity-80 uppercase tracking-wider relative z-10">{threeShots.filter(s => s.made).length}/{threeShots.length}</div>
                 </div>
             </div>
         </div>

@@ -110,7 +110,7 @@ export function VanguardLearningExportContent() {
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden relative">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-6 py-4 border-b border-slate-700/50 bg-slate-900/50">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide px-6 py-4 border-b border-slate-700/50 bg-slate-900/50">
                     Recent Exports
                 </h4>
 
@@ -128,7 +128,7 @@ export function VanguardLearningExportContent() {
                                     <div className="text-xs text-slate-500 mt-1">{new Date(log.timestamp).toLocaleString()}</div>
                                 </div>
                                 <div className="flex items-center gap-4 text-sm mt-2 sm:mt-0">
-                                    <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
+                                    <span className="text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
                                         {log.record_count} Records
                                     </span>
                                     <span className="text-slate-400 font-mono">

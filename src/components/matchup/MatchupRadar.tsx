@@ -57,7 +57,7 @@ export default function MatchupRadar({ playerStats, opponentDefense }: MatchupRa
             </ResponsiveContainer>
 
             {/* Legend Overlay */}
-            <div className="absolute top-2 right-2 flex flex-col gap-1 text-[10px]">
+            <div className="absolute top-2 right-2 flex flex-col gap-1 text-xs">
                 <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-financial-accent/50 rounded-full"></div>
                     <span className="text-slate-400">Player Strength</span>

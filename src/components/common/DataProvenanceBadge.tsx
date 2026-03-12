@@ -40,8 +40,8 @@ export default function DataProvenanceBadge({
                 </span>
 
                 {/* Source Badge */}
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${source === 'live'
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold tracking-wider ${source === 'live'
+                    ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
                     : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'
                     }`}>
                     {source === 'live' ? 'LIVE' : 'CACHED'}

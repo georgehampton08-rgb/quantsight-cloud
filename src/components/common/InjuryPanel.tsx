@@ -34,7 +34,7 @@ const STATUS_STYLES: Record<string, string> = {
     Questionable:'bg-amber-500/20 text-amber-400 border-amber-500/30',
     Doubtful:    'bg-orange-500/20 text-orange-400 border-orange-500/30',
     'Day-To-Day':'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
-    Probable:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+    Probable:    'bg-emerald-500/15 text-emerald-500 border-emerald-500/25',
 };
 
 const statusStyle = (s: string) =>
@@ -69,7 +69,7 @@ function TeamInjuryList({ team }: { team: TeamInjuries }) {
     if (!team.injuries.length) return null;
     return (
         <div className="flex flex-col gap-1.5">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
                 {team.tricode} Injuries
             </div>
             <div className="flex flex-col gap-1">
@@ -79,7 +79,7 @@ function TeamInjuryList({ team }: { team: TeamInjuries }) {
                         className="flex items-center gap-2 px-2 py-1.5 bg-slate-900/50 rounded-lg border border-slate-800/60"
                     >
                         {/* Status badge */}
-                        <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${statusStyle(inj.status)}`}>
+                        <span className={`flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${statusStyle(inj.status)}`}>
                             {inj.status === 'Day-To-Day' ? 'DTD' : inj.status.charAt(0)}
                         </span>
                         {/* Player headshot — ESPN CDN primary, NBA CDN fallback */}
@@ -104,7 +104,7 @@ function TeamInjuryList({ team }: { team: TeamInjuries }) {
                                 {inj.playerName}
                             </span>
                             {inj.injuryType && (
-                                <span className="text-[10px] text-slate-500 truncate leading-tight">
+                                <span className="text-xs text-slate-500 truncate leading-tight">
                                     {inj.injuryType}
                                 </span>
                             )}
@@ -141,10 +141,10 @@ export function InjuryPanel({ homeTeam, awayTeam }: Props) {
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm">🏥</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
                     Injury Report
                 </span>
-                <span className="text-[9px] text-slate-600 ml-auto">via ESPN</span>
+                <span className="text-xs text-slate-600 ml-auto">via ESPN</span>
             </div>
 
             {/* Two-column or single-column list */}

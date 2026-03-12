@@ -239,22 +239,22 @@ function AnalysisModal({
                         {/* Incident Meta/Context Metrics Strip */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4 shadow-inner">
                             <div>
-                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Occurrences</div>
+                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1 shadow-sm">Occurrences</div>
                                 <div className="text-xl font-mono font-black text-qs-gold drop-shadow-[0_0_8px_theme(colors.qs.gold/50%)]">
                                     {incident.occurrence_count}
                                 </div>
                             </div>
                             <div className="col-span-1 sm:col-span-2">
-                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 shadow-sm">Timeline</div>
-                                <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">First</span> {incident.first_seen ? new Date(incident.first_seen).toLocaleString() : '—'}</div>
-                                <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-widest text-[9px] mr-2">Last</span> {incident.last_seen ? new Date(incident.last_seen).toLocaleString() : '—'}</div>
+                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1 shadow-sm">Timeline</div>
+                                <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-wide text-xs mr-2">First</span> {incident.first_seen ? new Date(incident.first_seen).toLocaleString() : '—'}</div>
+                                <div className="text-xs font-mono font-bold text-slate-300"><span className="text-slate-500 uppercase tracking-wide text-xs mr-2">Last</span> {incident.last_seen ? new Date(incident.last_seen).toLocaleString() : '—'}</div>
                             </div>
                             {/* Middleware tags — now fully typed via incident.labels */}
                             <div className="col-span-2 sm:col-span-1 border-t border-slate-700/50 sm:border-0 pt-2 sm:pt-0">
-                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5 shadow-sm">Middleware Tags</div>
+                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1.5 shadow-sm">Middleware Tags</div>
                                 <div className="flex flex-wrap gap-1.5">
                                     {Object.entries(incident.labels || {}).slice(0, 3).map(([k, v]) => (
-                                        <span key={k} className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/30 whitespace-nowrap font-bold tracking-wider">
+                                        <span key={k} className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/30 whitespace-nowrap font-bold tracking-wider">
                                             {String(v)}
                                         </span>
                                     ))}
@@ -269,8 +269,8 @@ function AnalysisModal({
                         {summary && (
                             <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
                                 <div className="flex items-center gap-2 mb-2.5">
-                                    <AlertTriangle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                    <span className="text-emerald-400 font-bold text-sm">Impact</span>
+                                    <AlertTriangle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                    <span className="text-emerald-500 font-bold text-sm">Impact</span>
                                 </div>
                                 <p className="text-slate-300 text-sm leading-relaxed">{summary}</p>
                             </div>
@@ -302,13 +302,13 @@ function AnalysisModal({
                         {timelineAnalysis && (
                             <div className="rounded-xl bg-slate-800/40 border border-slate-700/40 p-4">
                                 <div className="flex items-center gap-2 mb-2.5">
-                                    <Clock className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                    <span className="text-blue-400 font-bold text-sm">Timeline Analysis</span>
+                                    <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                    <span className="text-blue-500 font-bold text-sm">Timeline Analysis</span>
                                 </div>
                                 <p className="text-slate-300 text-sm leading-relaxed">{timelineAnalysis}</p>
                                 {readyReasoning && (
                                     <div className="mt-2 pt-2 border-t border-slate-700/30">
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full mr-2 ${data?.ready_to_resolve ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full mr-2 ${data?.ready_to_resolve ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-400'}`}>
                                             {data?.ready_to_resolve ? '✓ Ready to Resolve' : '⌛ Not Yet Ready'}
                                         </span>
                                         <span className="text-slate-500 text-xs">{readyReasoning}</span>
@@ -356,19 +356,19 @@ function AnalysisModal({
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${vaccineRec.feasible ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-slate-700/50 border border-slate-600/30'
                                         }`}>
-                                        <ShieldCheck className={`w-4 h-4 ${vaccineRec.feasible ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                        <ShieldCheck className={`w-4 h-4 ${vaccineRec.feasible ? 'text-emerald-500' : 'text-slate-500'}`} />
                                     </div>
                                     <div className="flex-1">
                                         <span className={`font-black text-sm tracking-wide ${vaccineRec.feasible ? 'text-emerald-300' : 'text-slate-400'}`}>
                                             💉 Vaccine Recommendation
                                         </span>
                                         <div className="flex items-center gap-2 mt-0.5">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.feasible ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${vaccineRec.feasible ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-700 text-slate-500'
                                                 }`}>
                                                 {vaccineRec.feasible ? '✓ FEASIBLE' : '✗ NOT FEASIBLE'}
                                             </span>
                                             {vaccineRec.patch_risk && vaccineRec.feasible && (
-                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${vaccineRec.patch_risk === 'low' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${vaccineRec.patch_risk === 'low' ? 'bg-emerald-500/10 text-emerald-500' :
                                                     vaccineRec.patch_risk === 'medium' ? 'bg-amber-500/20 text-amber-400' :
                                                         'bg-red-500/20 text-red-400'
                                                     }`}>
@@ -383,7 +383,7 @@ function AnalysisModal({
                                     <div className="space-y-3">
                                         {vaccineRec.target_file && (
                                             <div>
-                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Target File</div>
+                                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1">Target File</div>
                                                 <code className="text-xs text-emerald-300 bg-black/30 px-2 py-1 rounded font-mono block">
                                                     {vaccineRec.target_file}
                                                     {vaccineRec.target_function ? ` :: ${vaccineRec.target_function}` : ''}
@@ -393,7 +393,7 @@ function AnalysisModal({
                                         )}
                                         {vaccineRec.change_description && (
                                             <div>
-                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Proposed Change</div>
+                                                <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1">Proposed Change</div>
                                                 <p className="text-slate-200 text-sm leading-relaxed bg-black/20 rounded-lg px-3 py-2">
                                                     {vaccineRec.change_description}
                                                 </p>
@@ -534,12 +534,12 @@ function IncidentCard({
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5">
                                 <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-qs-gold drop-shadow-[0_0_8px_theme(colors.qs.gold/60%)] flex-shrink-0" />
                                 <span className="text-white font-black text-sm sm:text-base tracking-wide drop-shadow-md break-all">{inc.error_type}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded font-black tracking-widest border shadow-sm ${severityStyle}`}>
+                                <span className={`text-xs px-2 py-0.5 rounded font-black tracking-wide border shadow-sm ${severityStyle}`}>
                                     {inc.severity?.toUpperCase()}
                                 </span>
                             </div>
                             <div className="text-slate-400 font-mono text-xs sm:text-sm ml-6 sm:ml-8 truncate">{inc.endpoint}</div>
-                            <div className="text-slate-500 text-[10px] sm:text-xs ml-6 sm:ml-8 mt-2 flex flex-wrap gap-3 font-semibold">
+                            <div className="text-slate-500 text-xs sm:text-xs ml-6 sm:ml-8 mt-2 flex flex-wrap gap-3 font-semibold">
                                 <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> {inc.occurrence_count} Occurrences</span>
                                 <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(inc.last_seen).toLocaleString()}</span>
                             </div>
@@ -550,7 +550,7 @@ function IncidentCard({
                     <div className="flex gap-2 sm:gap-3 ml-9 sm:ml-0 flex-shrink-0 mt-1 sm:mt-0">
                         <button
                             onClick={(e) => { e.stopPropagation(); setShowAnalysisModal(true); }}
-                            className="px-4 py-2.5 rounded-xl border border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/60 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
+                            className="px-4 py-2.5 rounded-xl border border-purple-500/40 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/60 transition-all text-xs font-black tracking-wide flex items-center gap-2 backdrop-blur-sm"
                         >
                             <Brain className="w-4 h-4" />
                             <span className="hidden sm:inline">AI Analysis</span>
@@ -559,7 +559,7 @@ function IncidentCard({
                         <button
                             onClick={(e) => { e.stopPropagation(); onResolve(); }}
                             disabled={resolving}
-                            className="px-4 py-2.5 rounded-xl border border-qs-green/40 text-qs-green shadow-[0_0_15px_theme(colors.qs.green/15%)] hover:bg-qs-green/20 hover:text-qs-green hover:border-qs-green/60 disabled:opacity-50 transition-all text-xs font-black tracking-widest flex items-center gap-2 backdrop-blur-sm"
+                            className="px-4 py-2.5 rounded-xl border border-qs-green/40 text-qs-green shadow-[0_0_15px_theme(colors.qs.green/15%)] hover:bg-qs-green/20 hover:text-qs-green hover:border-qs-green/60 disabled:opacity-50 transition-all text-xs font-black tracking-wide flex items-center gap-2 backdrop-blur-sm"
                         >
                             {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                             Resolve
@@ -587,7 +587,7 @@ function SubSystemCard({ name, active, subtitle }: { name: string; active: boole
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-5 flex justify-between items-start shadow-xl relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div>
-                <h4 className="text-white font-black text-xs sm:text-sm tracking-widest uppercase">{name}</h4>
+                <h4 className="text-white font-black text-xs sm:text-sm tracking-wide uppercase">{name}</h4>
                 {subtitle && <p className="text-xs text-slate-400 font-medium mt-1.5">{subtitle}</p>}
             </div>
             <div className={`w-6 h-6 rounded-full flex justify-center items-center border flex-shrink-0 relative z-10 ${active ? 'border-qs-green/50 text-qs-green bg-qs-green/10 shadow-[0_0_15px_theme(colors.qs.green/30%)]' : 'border-slate-600/50 text-slate-500 bg-slate-700/20'}`}>
@@ -746,7 +746,7 @@ export default function VanguardControlRoom() {
     });
 
     const scoreColor = stats
-        ? stats.health_score >= 80 ? 'text-emerald-400' : stats.health_score >= 50 ? 'text-amber-400' : 'text-red-500'
+        ? stats.health_score >= 80 ? 'text-emerald-500' : stats.health_score >= 50 ? 'text-amber-400' : 'text-red-500'
         : 'text-slate-500';
 
     return (
@@ -765,7 +765,7 @@ export default function VanguardControlRoom() {
                         <div>
                             <h1 className="text-xl sm:text-3xl font-extrabold text-white flex items-center gap-2 sm:gap-3">
                                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center backdrop-blur-sm">
-                                    <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                                    <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
                                 </div>
                                 Vanguard Control Room
                             </h1>
@@ -774,7 +774,7 @@ export default function VanguardControlRoom() {
                         <button
                             onClick={() => loadData(true)}
                             disabled={refreshing}
-                            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide backdrop-blur-sm"
+                            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20 disabled:opacity-50 transition-all text-xs sm:text-sm font-semibold tracking-wide backdrop-blur-sm"
                         >
                             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                             Refresh
@@ -785,7 +785,7 @@ export default function VanguardControlRoom() {
                     <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 flex-shrink-0">
                         {(['HEALTH', 'INCIDENTS', 'ARCHIVES', 'LEARNING'] as const).map(tab => {
                             const isActive = activeTab === tab;
-                            const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm tracking-widest font-black transition-all duration-300 flex items-center justify-center gap-2.5 border backdrop-blur-xl group relative overflow-hidden";
+                            const baseCls = "flex-shrink-0 sm:flex-1 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm tracking-wide font-black transition-all duration-300 flex items-center justify-center gap-2.5 border backdrop-blur-xl group relative overflow-hidden";
 
                             let colorCls = "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 hover:text-white shadow-lg";
                             if (isActive) {
@@ -845,7 +845,7 @@ export default function VanguardControlRoom() {
                             {/* Score Breakdown Bars */}
                             {stats?.health_breakdown && (
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                                    <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase opacity-80">Score Breakdown</h3>
+                                    <h3 className="text-sm font-black text-white mb-6 tracking-wide uppercase opacity-80">Score Breakdown</h3>
                                     <div className="space-y-5">
                                         {[
                                             { label: 'Incidents', score: stats.health_breakdown.incident_score, weight: '40%', color: 'bg-amber-500' },
@@ -855,7 +855,7 @@ export default function VanguardControlRoom() {
                                             <div key={b.label}>
                                                 <div className="flex justify-between items-baseline mb-1.5">
                                                     <span className="text-sm font-semibold text-slate-300">{b.label} <span className="text-slate-600 text-xs">({b.weight})</span></span>
-                                                    <span className={`text-sm font-bold font-mono ${b.score >= 80 ? 'text-emerald-400' : b.score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                                                    <span className={`text-sm font-bold font-mono ${b.score >= 80 ? 'text-emerald-500' : b.score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
                                                         {b.score.toFixed(1)}
                                                     </span>
                                                 </div>
@@ -876,13 +876,13 @@ export default function VanguardControlRoom() {
                                 {[
                                     { label: 'Active Incidents', value: loading ? '—' : String(stats?.active_incidents ?? '—'), color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
                                     { label: 'Resolved', value: loading ? '—' : String(stats?.resolved_incidents ?? '—'), color: 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' },
-                                    { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
+                                    { label: 'Storage Used', value: loading ? '—' : `${stats?.storage_mb?.toFixed(2) ?? '0.00'} MB`, color: 'text-blue-500 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
                                     { label: 'Cloud SQL', value: stats?.subsystem_health?.cloud_sql ? '✓' : '✗', color: stats?.subsystem_health?.cloud_sql ? 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' : 'text-qs-red drop-shadow-[0_0_10px_theme(colors.qs.red/50%)]' },
                                     { label: 'Redis', value: stats?.subsystem_health?.redis ? '✓' : '✗', color: stats?.subsystem_health?.redis ? 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' : 'text-qs-red drop-shadow-[0_0_10px_theme(colors.qs.red/50%)]' },
                                 ].map(m => (
                                     <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden group">
                                         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
+                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-3">{m.label}</div>
                                         <div className={`text-3xl sm:text-4xl font-black font-mono ${m.color}`}>{m.value}</div>
                                     </div>
                                 ))}
@@ -918,7 +918,7 @@ export default function VanguardControlRoom() {
                             {/* Hot Endpoints */}
                             {stats?.hot_endpoints && stats.hot_endpoints.length > 0 && (
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                                    <h3 className="text-sm font-black text-white mb-6 tracking-widest uppercase flex items-center gap-3 opacity-80">
+                                    <h3 className="text-sm font-black text-white mb-6 tracking-wide uppercase flex items-center gap-3 opacity-80">
                                         <AlertTriangle className="w-4 h-4 text-qs-gold drop-shadow-[0_0_8px_theme(colors.qs.gold/60%)]" />
                                         Hot Endpoints
                                     </h3>
@@ -1050,7 +1050,7 @@ export default function VanguardControlRoom() {
                                         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/50 bg-slate-900/50">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                                 </div>
                                                 <div>
                                                     <h3 className="text-white font-bold text-base">Resolved Incidents</h3>
@@ -1116,7 +1116,7 @@ export default function VanguardControlRoom() {
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="flex items-center gap-2 mb-1">
                                                                                 <span className="font-bold text-sm text-slate-300 truncate">{inc.error_type}</span>
-                                                                                <span className="text-[9px] px-2 py-0.5 rounded border uppercase font-bold tracking-widest flex-shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
+                                                                                <span className="text-xs px-2 py-0.5 rounded border uppercase font-bold tracking-wide flex-shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
                                                                                     RESOLVED
                                                                                 </span>
                                                                             </div>
@@ -1154,14 +1154,14 @@ export default function VanguardControlRoom() {
                                                                                         <div><span className="text-slate-500">Last Seen:</span> <span className="text-slate-300">{new Date(inc.last_seen).toLocaleString()}</span></div>
                                                                                     )}
                                                                                     {inc.resolved_at && (
-                                                                                        <div><span className="text-slate-500">Resolved:</span> <span className="text-emerald-400">{new Date(inc.resolved_at).toLocaleString()}</span></div>
+                                                                                        <div><span className="text-slate-500">Resolved:</span> <span className="text-emerald-500">{new Date(inc.resolved_at).toLocaleString()}</span></div>
                                                                                     )}
                                                                                 </div>
                                                                                 {/* Labels */}
                                                                                 {inc.labels && Object.keys(inc.labels).length > 0 && (
                                                                                     <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-700/40">
                                                                                         {Object.entries(inc.labels).map(([k, v]) => (
-                                                                                            <span key={k} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 font-mono">
+                                                                                            <span key={k} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 font-mono">
                                                                                                 {k}: {String(v)}
                                                                                             </span>
                                                                                         ))}
@@ -1172,7 +1172,7 @@ export default function VanguardControlRoom() {
                                                                             {/* Resolution Notes */}
                                                                             {inc.resolution_notes && (
                                                                                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-                                                                                    <p className="text-xs font-bold text-emerald-400 mb-1">Resolution Notes</p>
+                                                                                    <p className="text-xs font-bold text-emerald-500 mb-1">Resolution Notes</p>
                                                                                     <p className="text-xs text-slate-300">{inc.resolution_notes}</p>
                                                                                 </div>
                                                                             )}
@@ -1196,7 +1196,7 @@ export default function VanguardControlRoom() {
                                                                             {/* Post-Resolution Summary (After) */}
                                                                             {resSummary && (
                                                                                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-                                                                                    <p className="text-xs font-bold text-blue-400 mb-2">✅ Resolution Summary</p>
+                                                                                    <p className="text-xs font-bold text-blue-500 mb-2">✅ Resolution Summary</p>
                                                                                     <div className="grid grid-cols-2 gap-2 text-xs">
                                                                                         {resSummary.duration_active && (
                                                                                             <div><span className="text-slate-500">Active Duration:</span> <span className="text-slate-300">{resSummary.duration_active}</span></div>
@@ -1229,7 +1229,7 @@ export default function VanguardControlRoom() {
 
                                                                             {/* Metadata footer + Undo button */}
                                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-700/30">
-                                                                                <div className="flex items-center gap-4 text-[10px] text-slate-600 overflow-hidden">
+                                                                                <div className="flex items-center gap-4 text-xs text-slate-600 overflow-hidden">
                                                                                     {inc.resolved_by && <span>Resolved by: {inc.resolved_by}</span>}
                                                                                     <span className="font-mono truncate max-w-[180px]" title={inc.fingerprint}>{inc.fingerprint}</span>
                                                                                 </div>
@@ -1272,10 +1272,10 @@ export default function VanguardControlRoom() {
                                             { label: 'Total Resolutions', value: learning?.total_resolutions ?? '—', color: 'text-white' },
                                             { label: 'Verified', value: learning?.verified_resolutions ?? '—', color: 'text-qs-green drop-shadow-[0_0_10px_theme(colors.qs.green/50%)]' },
                                             { label: 'Pending', value: learning?.pending_verification ?? '—', color: 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' },
-                                            { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
+                                            { label: 'Success Patterns', value: learning?.successful_patterns ?? '—', color: 'text-blue-500 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]' },
                                         ].map(m => (
                                             <div key={m.label} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-xl text-center">
-                                                <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">{m.label}</div>
+                                                <div className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-3">{m.label}</div>
                                                 <div className={`text-3xl sm:text-4xl font-black ${m.color}`}>{String(m.value)}</div>
                                             </div>
                                         ))}
@@ -1330,7 +1330,7 @@ export default function VanguardControlRoom() {
 
                     {undoTarget && (
                         <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3 overflow-hidden">
-                            <p className="text-[10px] text-slate-500 font-mono break-all leading-relaxed">{undoTarget}</p>
+                            <p className="text-xs text-slate-500 font-mono break-all leading-relaxed">{undoTarget}</p>
                             {(() => {
                                 const inc = incidents.find(i => i.fingerprint === undoTarget);
                                 return inc ? (

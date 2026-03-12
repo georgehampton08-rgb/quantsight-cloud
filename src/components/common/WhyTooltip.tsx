@@ -109,9 +109,9 @@ const WhyTooltip: React.FC<WhyTooltipProps> = ({
                                     >
                                         <div className="flex flex-col">
                                             <span className="component-name text-slate-200 font-medium">{comp.name}</span>
-                                            <span className="component-reason text-[10px] text-slate-500">{comp.reason}</span>
+                                            <span className="component-reason text-xs text-slate-500">{comp.reason}</span>
                                         </div>
-                                        <span className={`component-value font-mono font-bold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        <span className={`component-value font-mono font-bold ${comp.isPositive ? 'text-emerald-500' : 'text-red-400'}`}>
                                             {comp.isPositive ? '+' : ''}{comp.value.toFixed(1)}
                                         </span>
                                     </div>

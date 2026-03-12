@@ -61,7 +61,7 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
         return (
             <div className="flex flex-col items-center justify-center py-12 space-y-4 border border-slate-800 rounded-xl bg-slate-900/30">
                 <Activity className="w-8 h-8 text-slate-500 animate-spin" />
-                <div className="text-sm text-slate-400 font-mono tracking-widest">PULLING GAME LOGS...</div>
+                <div className="text-sm text-slate-400 font-mono tracking-wide">PULLING GAME LOGS...</div>
             </div>
         );
     }
@@ -96,13 +96,13 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
     }
 
     const getStatColor = (val: number, good: number, elite: number) => {
-        if (val >= elite) return 'text-emerald-400 font-bold';
+        if (val >= elite) return 'text-emerald-500 font-bold';
         if (val >= good) return 'text-emerald-500/80';
         return 'text-slate-300';
     };
 
     const getPlusMinusColor = (val: number) => {
-        if (val > 0) return 'text-emerald-400';
+        if (val > 0) return 'text-emerald-500';
         if (val < 0) return 'text-red-400';
         return 'text-slate-500';
     };
@@ -149,15 +149,15 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
             <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                 {[
                     { label: 'PPG', val: avg('PTS'), color: 'text-amber-400' },
-                    { label: 'RPG', val: avg('REB'), color: 'text-blue-400' },
+                    { label: 'RPG', val: avg('REB'), color: 'text-blue-500' },
                     { label: 'APG', val: avg('AST'), color: 'text-purple-400' },
-                    { label: 'STL', val: avg('STL'), color: 'text-emerald-400' },
+                    { label: 'STL', val: avg('STL'), color: 'text-emerald-500' },
                     { label: 'BLK', val: avg('BLK'), color: 'text-cyan-400' },
                     { label: 'TOV', val: avg('TOV'), color: 'text-red-400' },
                     { label: 'FG%', val: `${(Number(avg('FG_PCT')) * 100).toFixed(1)}%`, color: 'text-slate-200' },
                 ].map(s => (
                     <div key={s.label} className="bg-slate-800/60 rounded-lg p-2.5 text-center border border-slate-700/40">
-                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{s.label}</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{s.label}</div>
                         <div className={`text-base font-bold font-mono ${s.color}`}>{s.val}</div>
                     </div>
                 ))}
@@ -167,7 +167,7 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
             <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl overflow-hidden shadow-2xl">
                 <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
                     <table className="w-full text-sm text-left whitespace-nowrap min-w-[600px]">
-                        <thead className="text-[10px] uppercase bg-slate-800/80 text-slate-400 border-b border-slate-700/50">
+                        <thead className="text-xs uppercase bg-slate-800/80 text-slate-400 border-b border-slate-700/50">
                             <tr>
                                 <th className="px-3 py-2.5 font-semibold tracking-wider sticky left-0 z-20 bg-slate-800/95 backdrop-blur-sm min-w-[130px]">
                                     Date / Matchup
@@ -194,7 +194,7 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                                         <div className="flex flex-col">
                                             <div className="flex items-center gap-1.5">
                                                 {log.WL && (
-                                                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${log.WL === 'W' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${log.WL === 'W' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-400'}`}>
                                                         {log.WL}
                                                     </span>
                                                 )}
@@ -202,7 +202,7 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                                                     {log.MATCHUP}
                                                 </span>
                                             </div>
-                                            <span className="text-[10px] text-slate-500 tracking-widest">
+                                            <span className="text-xs text-slate-500 tracking-wide">
                                                 {log.GAME_DATE
                                                     ? new Date(log.GAME_DATE).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                                     : '—'}
@@ -224,13 +224,13 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                                     <td className="px-3 py-2.5 text-center text-slate-400 text-xs">
                                         <span className={log.STL > 1 ? 'text-amber-400 font-bold' : ''}>{log.STL}</span>
                                         <span className="mx-0.5 opacity-40">/</span>
-                                        <span className={log.BLK > 1 ? 'text-blue-400 font-bold' : ''}>{log.BLK}</span>
+                                        <span className={log.BLK > 1 ? 'text-blue-500 font-bold' : ''}>{log.BLK}</span>
                                     </td>
                                     <td className={`px-3 py-2.5 text-center text-xs ${log.TOV >= 4 ? 'text-red-400' : 'text-slate-400'}`}>
                                         {log.TOV}
                                     </td>
                                     <td className="px-3 py-2.5 text-center text-xs">
-                                        <span className={log.FG_PCT >= 0.5 ? 'text-emerald-400' : 'text-slate-400'}>
+                                        <span className={log.FG_PCT >= 0.5 ? 'text-emerald-500' : 'text-slate-400'}>
                                             {(log.FG_PCT * 100).toFixed(1)}%
                                         </span>
                                     </td>
@@ -249,7 +249,7 @@ export function GameLogsViewerContent({ playerId }: { playerId: string }) {
                 </div>
             </div>
 
-            <div className="text-[10px] text-slate-600 text-right font-mono">
+            <div className="text-xs text-slate-600 text-right font-mono">
                 {allLogs.length} games available · showing last {logs.length}
             </div>
         </div>

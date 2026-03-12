@@ -64,7 +64,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     const statusConfig = {
         connected: {
             icon: <Wifi size={14} />,
-            color: 'text-emerald-400',
+            color: 'text-emerald-500',
             bgColor: 'bg-emerald-500/20',
             label: 'Connected'
         },

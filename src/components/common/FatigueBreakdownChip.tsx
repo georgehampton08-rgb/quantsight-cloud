@@ -21,7 +21,7 @@ export default function FatigueBreakdownChip({
         label = 'Back-to-Back';
         Icon = Timer;
     } else if (daysRest >= 3) {
-        statusColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        statusColor = 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30';
         label = 'Well Rested';
         Icon = Zap;
     } else {

@@ -33,7 +33,7 @@ export default function TopBar() {
 
     return (
         <>
-            <div className="flex-shrink-0 sticky top-0 z-[1000] border-b border-cyber-border bg-cyber-bg shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
+            <div className="flex-shrink-0 sticky top-0 z-[1000] border-b border-pro-border bg-pro-bg shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
                 {/* Main bar row */}
                 <div className="flex items-center h-14 px-3 gap-2 overflow-hidden">
 

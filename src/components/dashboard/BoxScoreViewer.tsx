@@ -89,35 +89,35 @@ const renderPlayerRow = (p: BoxScorePlayer) => {
     const tov = p.tov ?? p.to ?? 0;
     const fg3a = p.fg3a ?? 0;
     const efficiency = dnp ? 0 : (p.pts + p.reb + p.ast + p.stl + p.blk - (p.fga - p.fgm) - (p.fta - p.ftm) - tov);
-    const getPtsColor = (pts: number) => pts >= 30 ? 'text-emerald-400 font-bold' : pts >= 20 ? 'text-emerald-500/80 font-bold' : 'text-slate-300';
+    const getPtsColor = (pts: number) => pts >= 30 ? 'text-emerald-500 font-bold' : pts >= 20 ? 'text-emerald-500/80 font-bold' : 'text-slate-300';
     const playerName = p.player_name || p.name || '';
-    const tsColor = p.ts_pct && p.ts_pct > 0.6 ? 'text-emerald-400' : p.ts_pct && p.ts_pct > 0.5 ? 'text-slate-300' : 'text-red-400/70';
+    const tsColor = p.ts_pct && p.ts_pct > 0.6 ? 'text-emerald-500' : p.ts_pct && p.ts_pct > 0.5 ? 'text-slate-300' : 'text-red-400/70';
 
     return (
         <tr key={p.player_id} className="bg-slate-900/40 hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 group">
             <td className="px-2 py-2 sm:px-4 sm:py-3 whitespace-nowrap sticky left-0 z-10 bg-slate-900/90 group-hover:bg-slate-800/90 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] transition-colors border-r border-slate-800/30">
                 <div className="flex items-center gap-2">
-                    {p.start_position && <span className="text-[10px] bg-slate-800 text-slate-400 px-1 py-0.5 rounded font-bold w-6 text-center">{p.start_position}</span>}
+                    {p.start_position && <span className="text-xs bg-slate-800 text-slate-400 px-1 py-0.5 rounded font-bold w-6 text-center">{p.start_position}</span>}
                     <span className={`text-xs sm:text-sm font-bold ${dnp ? 'text-slate-500' : 'text-slate-200'} truncate max-w-[100px] sm:max-w-none`}>{playerName}</span>
                 </div>
             </td>
             {dnp ? (
-                <td colSpan={9} className="px-2 py-3 text-[10px] sm:text-xs text-slate-500 italic text-center uppercase tracking-widest whitespace-nowrap">
+                <td colSpan={9} className="px-2 py-3 text-xs sm:text-xs text-slate-500 italic text-center uppercase tracking-wide whitespace-nowrap">
                     Did Not Play
                 </td>
             ) : (
                 <>
-                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono">{minStr}</td>
+                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-xs text-slate-400 font-mono">{minStr}</td>
                     <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm ${getPtsColor(p.pts)}`}>{p.pts}</td>
                     <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.reb}</td>
                     <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-sm text-slate-300">{p.ast}</td>
-                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden md:table-cell">{p.fgm}/{p.fga}</td>
-                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs text-slate-400 font-mono hidden lg:table-cell">{p.fg3m}/{fg3a}</td>
-                    <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs font-bold ${p.plus_minus > 0 ? 'text-emerald-400' : p.plus_minus < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-xs text-slate-400 font-mono hidden md:table-cell">{p.fgm}/{p.fga}</td>
+                    <td className="px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-xs text-slate-400 font-mono hidden lg:table-cell">{p.fg3m}/{fg3a}</td>
+                    <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-xs font-bold ${p.plus_minus > 0 ? 'text-emerald-500' : p.plus_minus < 0 ? 'text-red-400' : 'text-slate-500'}`}>
                         {p.plus_minus > 0 ? `+${p.plus_minus}` : p.plus_minus}
                     </td>
                     {p.ts_pct !== undefined ? (
-                        <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-[10px] sm:text-xs font-mono hidden sm:table-cell ${tsColor}`}>
+                        <td className={`px-1 py-2 sm:px-4 sm:py-3 text-center text-xs sm:text-xs font-mono hidden sm:table-cell ${tsColor}`}>
                             {(p.ts_pct * 100).toFixed(0)}%
                         </td>
                     ) : (
@@ -130,7 +130,7 @@ const renderPlayerRow = (p: BoxScorePlayer) => {
 };
 
 const TableHeader = ({ showTs = false }: { showTs?: boolean }) => (
-    <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
+    <thead className="text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90 sticky top-0 z-20 shadow-sm backdrop-blur-md border-b border-slate-700/50">
         <tr>
             <th className="px-1 py-3 sm:px-4 sticky left-0 z-30 bg-slate-900/95 backdrop-blur-sm shadow-[4px_0_8px_rgba(0,0,0,0.1)] border-r border-slate-800/30">Player</th>
             <th className="px-1 py-3 sm:px-4 text-center">MIN</th>
@@ -335,7 +335,7 @@ export function BoxScoreViewerContent() {
 
                 {/* Data indicator */}
                 {!isToday && (
-                    <span className={`flex items-center gap-1.5 text-xs ${hasData ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    <span className={`flex items-center gap-1.5 text-xs ${hasData ? 'text-emerald-500' : 'text-slate-500'}`}>
                         <span className={`w-2 h-2 rounded-full ${hasData ? 'bg-emerald-500' : 'bg-slate-600'}`} />
                         {hasData ? 'Saved data available' : 'No saved data'}
                     </span>
@@ -357,7 +357,7 @@ export function BoxScoreViewerContent() {
                                 key={d}
                                 onClick={() => setSelectedDate(d)}
                                 className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${selectedDate === d
-                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-500'
                                     : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-500'
                                     }`}
                             >
@@ -382,7 +382,7 @@ export function BoxScoreViewerContent() {
                         >
                             <div className="flex items-center gap-3 w-full justify-between px-1">
                                 <span className={`font-black text-sm ${selectedGame === (game.game_id || game.gameId) ? 'text-white' : ''}`}>{game.away || game.away_team}</span>
-                                <span className={`text-[10px] px-1.5 py-[1px] rounded font-bold uppercase tracking-wider ${game.status === 'LIVE' ? 'bg-red-500/20 text-red-400 animate-pulse' :
+                                <span className={`text-xs px-1.5 py-[1px] rounded font-bold uppercase tracking-wider ${game.status === 'LIVE' ? 'bg-red-500/20 text-red-400 animate-pulse' :
                                     game.status === 'FINAL' ? 'bg-slate-700/50 text-slate-400' :
                                         'bg-emerald-500/10 text-emerald-500'
                                     }`}>
@@ -391,9 +391,9 @@ export function BoxScoreViewerContent() {
                                 <span className={`font-black text-sm ${selectedGame === (game.game_id || game.gameId) ? 'text-white' : ''}`}>{game.home || game.home_team}</span>
                             </div>
                             <div className="flex items-center justify-between w-full px-2 mt-1">
-                                <span className={`font-mono text-sm ${game.away_score > game.home_score ? 'text-emerald-400 font-bold' : ''}`}>{game.away_score || '-'}</span>
-                                <span className="text-slate-600 text-[10px]">vs</span>
-                                <span className={`font-mono text-sm ${game.home_score > game.away_score ? 'text-emerald-400 font-bold' : ''}`}>{game.home_score || '-'}</span>
+                                <span className={`font-mono text-sm ${game.away_score > game.home_score ? 'text-emerald-500 font-bold' : ''}`}>{game.away_score || '-'}</span>
+                                <span className="text-slate-600 text-xs">vs</span>
+                                <span className={`font-mono text-sm ${game.home_score > game.away_score ? 'text-emerald-500 font-bold' : ''}`}>{game.home_score || '-'}</span>
                             </div>
                         </button>
                     ))}
@@ -414,13 +414,13 @@ export function BoxScoreViewerContent() {
                         >
                             <div className="flex items-center gap-3 w-full justify-between px-1">
                                 <span className={`font-black text-sm ${selectedHistGame === game.game_id ? 'text-white' : ''}`}>{game.away_team}</span>
-                                <span className="text-[10px] px-1.5 py-[1px] rounded font-bold uppercase tracking-wider bg-slate-700/50 text-slate-400">FNL</span>
+                                <span className="text-xs px-1.5 py-[1px] rounded font-bold uppercase tracking-wider bg-slate-700/50 text-slate-400">FNL</span>
                                 <span className={`font-black text-sm ${selectedHistGame === game.game_id ? 'text-white' : ''}`}>{game.home_team}</span>
                             </div>
                             <div className="flex items-center justify-between w-full px-2 mt-1">
-                                <span className={`font-mono text-sm ${game.winner === game.away_team ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>{game.away_score}</span>
-                                <span className="text-slate-600 text-[10px]">vs</span>
-                                <span className={`font-mono text-sm ${game.winner === game.home_team ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>{game.home_score}</span>
+                                <span className={`font-mono text-sm ${game.winner === game.away_team ? 'text-emerald-500 font-bold' : 'text-slate-400'}`}>{game.away_score}</span>
+                                <span className="text-slate-600 text-xs">vs</span>
+                                <span className={`font-mono text-sm ${game.winner === game.home_team ? 'text-emerald-500 font-bold' : 'text-slate-400'}`}>{game.home_score}</span>
                             </div>
                         </button>
                     ))}
@@ -444,7 +444,7 @@ export function BoxScoreViewerContent() {
                 {((isToday && loading) || (!isToday && histLoading)) && (
                     <div className="flex flex-col items-center justify-center p-12 bg-slate-900/30 border border-slate-800 rounded-2xl h-48">
                         <Activity className="w-8 h-8 text-indigo-400 animate-spin mb-4" />
-                        <div className="text-sm font-mono text-slate-400 tracking-widest uppercase">Hydrating Telemetry...</div>
+                        <div className="text-sm font-mono text-slate-400 tracking-wide uppercase">Hydrating Telemetry...</div>
                     </div>
                 )}
 
@@ -463,7 +463,7 @@ export function BoxScoreViewerContent() {
                         <p className="font-medium text-lg text-slate-400">No records for {selectedDate}</p>
                         <p className="text-sm mt-2 text-center max-w-xs">
                             {availableDates.length > 0
-                                ? <>Try <span className="text-emerald-400 font-mono">{availableDates[0]}</span> — the most recent date with saved data.</>
+                                ? <>Try <span className="text-emerald-500 font-mono">{availableDates[0]}</span> — the most recent date with saved data.</>
                                 : 'This may be an NBA off day or game data has not been saved yet.'}
                         </p>
                     </div>
@@ -477,29 +477,29 @@ export function BoxScoreViewerContent() {
                             {/* Scores */}
                             <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-6">
                                 <div className="text-center">
-                                    <div className={`text-2xl sm:text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.away_team ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                    <div className={`text-2xl sm:text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.away_team ? 'text-emerald-500' : 'text-slate-300'}`}>
                                         {selectedHistData.away_score}
                                     </div>
-                                    <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-widest">{selectedHistData.away_team}</div>
-                                    {selectedHistData.winner === selectedHistData.away_team && <div className="text-[9px] text-emerald-500 font-bold tracking-widest mt-0.5">WIN</div>}
+                                    <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-wide">{selectedHistData.away_team}</div>
+                                    {selectedHistData.winner === selectedHistData.away_team && <div className="text-xs text-emerald-500 font-bold tracking-wide mt-0.5">WIN</div>}
                                 </div>
                                 <div className="text-slate-600 font-mono text-lg">@</div>
                                 <div className="text-center">
-                                    <div className={`text-2xl sm:text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.home_team ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                    <div className={`text-2xl sm:text-3xl font-black font-mono ${selectedHistData.winner === selectedHistData.home_team ? 'text-emerald-500' : 'text-slate-300'}`}>
                                         {selectedHistData.home_score}
                                     </div>
-                                    <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-widest">{selectedHistData.home_team}</div>
-                                    {selectedHistData.winner === selectedHistData.home_team && <div className="text-[9px] text-emerald-500 font-bold tracking-widest mt-0.5">WIN</div>}
+                                    <div className="text-xs font-bold text-slate-400 mt-0.5 tracking-wide">{selectedHistData.home_team}</div>
+                                    {selectedHistData.winner === selectedHistData.home_team && <div className="text-xs text-emerald-500 font-bold tracking-wide mt-0.5">WIN</div>}
                                 </div>
                             </div>
                             {/* Status badges — centered on mobile, right on sm+ */}
                             <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
                                 {hist && !histIsFinal && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold uppercase tracking-wider">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold uppercase tracking-wider">
                                         THRU {hist.quarter_used}
                                     </span>
                                 )}
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${histIsFinal
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${histIsFinal
                                     ? 'bg-slate-700/60 text-slate-400'
                                     : 'bg-slate-800/60 text-slate-500'
                                     }`}>
@@ -522,8 +522,8 @@ export function BoxScoreViewerContent() {
                                 {/* AWAY */}
                                 <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
                                     <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
-                                        <h3 className="text-base font-black text-white tracking-widest">{hist.away_team}</h3>
-                                        <span className={`text-2xl font-mono font-bold ${selectedHistData.winner === hist.away_team ? 'text-emerald-400' : 'text-slate-400'
+                                        <h3 className="text-base font-black text-white tracking-wide">{hist.away_team}</h3>
+                                        <span className={`text-2xl font-mono font-bold ${selectedHistData.winner === hist.away_team ? 'text-emerald-500' : 'text-slate-400'
                                             }`}>{hist.away_score}</span>
                                     </div>
                                     <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
@@ -536,8 +536,8 @@ export function BoxScoreViewerContent() {
                                 {/* HOME */}
                                 <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
                                     <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
-                                        <h3 className="text-base font-black text-white tracking-widest">{hist.home_team}</h3>
-                                        <span className={`text-2xl font-mono font-bold ${selectedHistData.winner === hist.home_team ? 'text-emerald-400' : 'text-slate-400'
+                                        <h3 className="text-base font-black text-white tracking-wide">{hist.home_team}</h3>
+                                        <span className={`text-2xl font-mono font-bold ${selectedHistData.winner === hist.home_team ? 'text-emerald-500' : 'text-slate-400'
                                             }`}>{hist.home_score}</span>
                                     </div>
                                     <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
@@ -577,8 +577,8 @@ export function BoxScoreViewerContent() {
                         {/* AWAY */}
                         <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
                             <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
-                                <h3 className="text-base font-black text-white tracking-widest">{boxScores.game_info?.away_team || 'AWAY'}</h3>
-                                <span className="text-2xl font-mono text-emerald-400 font-bold">{boxScores.game_info?.away_score}</span>
+                                <h3 className="text-base font-black text-white tracking-wide">{boxScores.game_info?.away_team || 'AWAY'}</h3>
+                                <span className="text-2xl font-mono text-emerald-500 font-bold">{boxScores.game_info?.away_score}</span>
                             </div>
                             {/* overflow-x-auto lets the table scroll horizontally on mobile; auto height fills content */}
                             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
@@ -591,8 +591,8 @@ export function BoxScoreViewerContent() {
                         {/* HOME */}
                         <div className="flex flex-col bg-slate-900/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
                             <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 flex justify-between items-center">
-                                <h3 className="text-base font-black text-white tracking-widest">{boxScores.game_info?.home_team || 'HOME'}</h3>
-                                <span className="text-2xl font-mono text-emerald-400 font-bold">{boxScores.game_info?.home_score}</span>
+                                <h3 className="text-base font-black text-white tracking-wide">{boxScores.game_info?.home_team || 'HOME'}</h3>
+                                <span className="text-2xl font-mono text-emerald-500 font-bold">{boxScores.game_info?.home_score}</span>
                             </div>
                             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] xl:max-h-none scrollbar-thin scrollbar-thumb-slate-700 w-full">
                                 <table className="w-full min-w-full text-left">

@@ -130,7 +130,7 @@ function levelMeta(level: string) {
         case 'scan': return { color: 'text-cyan-400', prefix: '[ SCAN ]', bg: 'bg-cyan-400/10' };
         case 'incident': return { color: 'text-blue-300', prefix: '[ INC  ]', bg: 'bg-blue-400/10' };
         case 'analysis': return { color: 'text-purple-400', prefix: '[ AI   ]', bg: 'bg-purple-400/10' };
-        case 'patch': return { color: 'text-emerald-400', prefix: '[ FIX  ]', bg: 'bg-emerald-500/10' };
+        case 'patch': return { color: 'text-emerald-500', prefix: '[ FIX  ]', bg: 'bg-emerald-500/10' };
         case 'skip': return { color: 'text-amber-400', prefix: '[ SKIP ]', bg: 'bg-amber-400/10' };
         case 'chaos': return { color: 'text-violet-400', prefix: '[CHAOS ]', bg: 'bg-violet-500/10' };
         case 'error': return { color: 'text-red-400', prefix: '[ ERR  ]', bg: 'bg-red-500/10' };
@@ -178,7 +178,7 @@ function LiveConsole({
                     </div>
                     <span className="text-slate-500 text-xs font-mono ml-2">vanguard_vaccine ~ live</span>
                     {running && (
-                        <span className="ml-2 flex items-center gap-1.5 text-[10px] text-indigo-400 font-mono">
+                        <span className="ml-2 flex items-center gap-1.5 text-xs text-indigo-400 font-mono">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
                             RUNNING
                         </span>
@@ -186,11 +186,11 @@ function LiveConsole({
                 </div>
                 <div className="flex items-center gap-4">
                     {!autoScroll && (
-                        <button onClick={onJumpBottom} className="text-[10px] text-amber-400 hover:text-white flex items-center gap-1 transition-colors">
+                        <button onClick={onJumpBottom} className="text-xs text-amber-400 hover:text-white flex items-center gap-1 transition-colors">
                             <ChevronDown className="w-3 h-3" /> Jump to bottom
                         </button>
                     )}
-                    <button onClick={onClear} className="text-[10px] text-slate-600 hover:text-slate-300 flex items-center gap-1 transition-colors">
+                    <button onClick={onClear} className="text-xs text-slate-600 hover:text-slate-300 flex items-center gap-1 transition-colors">
                         <RotateCcw className="w-3 h-3" /> Clear
                     </button>
                 </div>
@@ -224,16 +224,16 @@ function LiveConsole({
                                 <span className="text-slate-300 leading-relaxed break-all">
                                     {entry.msg}
                                     {entry.fingerprint && (
-                                        <span className={`ml-2 text-[10px] ${color} opacity-60`}>[{entry.fingerprint.slice(0, 14)}…]</span>
+                                        <span className={`ml-2 text-xs ${color} opacity-60`}>[{entry.fingerprint.slice(0, 14)}…]</span>
                                     )}
                                     {entry.file && (
-                                        <span className="ml-2 text-slate-600 text-[10px]">→ {entry.file}</span>
+                                        <span className="ml-2 text-slate-600 text-xs">→ {entry.file}</span>
                                     )}
                                     {entry.confidence !== undefined && (
-                                        <span className="ml-2 text-emerald-400 font-bold">{entry.confidence.toFixed(0)}%</span>
+                                        <span className="ml-2 text-emerald-500 font-bold">{entry.confidence.toFixed(0)}%</span>
                                     )}
                                     {entry.detail && (
-                                        <span className="ml-2 text-slate-600 text-[10px] break-all" title={entry.detail}>
+                                        <span className="ml-2 text-slate-600 text-xs break-all" title={entry.detail}>
                                             {entry.detail.length > 100 ? entry.detail.slice(0, 100) + '…' : entry.detail}
                                         </span>
                                     )}
@@ -252,7 +252,7 @@ function SummaryBar({ s, label }: { s: RunSummary | RunHistoryEntry['summary']; 
     const items = [
         { label: 'Scanned', val: (s as any).incidents_scanned ?? 0, color: 'text-slate-300' },
         { label: 'Analyzed', val: (s as any).analyzed ?? 0, color: 'text-cyan-400' },
-        { label: 'Patched', val: (s as any).patched ?? 0, color: 'text-emerald-400' },
+        { label: 'Patched', val: (s as any).patched ?? 0, color: 'text-emerald-500' },
         { label: 'Skipped', val: (s as any).skipped ?? 0, color: 'text-amber-400' },
         { label: 'Errors', val: (s as any).errors ?? 0, color: 'text-red-400' },
         { label: 'Chaos', val: (s as any).chaos_fired ?? 0, color: 'text-violet-400' },
@@ -262,7 +262,7 @@ function SummaryBar({ s, label }: { s: RunSummary | RunHistoryEntry['summary']; 
             {items.map(item => (
                 <div key={item.label} className="text-center">
                     <div className={`text-2xl font-black ${item.color}`}>{item.val}</div>
-                    <div className="text-[9px] text-slate-600 uppercase tracking-widest mt-0.5">{item.label}</div>
+                    <div className="text-xs text-slate-600 uppercase tracking-wide mt-0.5">{item.label}</div>
                 </div>
             ))}
         </div>
@@ -310,7 +310,7 @@ function RunHistoryPanel() {
             return <p className="text-slate-300 text-sm">{String(ex)}</p>;
         };
         const actionColor = (a: string) => {
-            if (a === 'patched') return 'text-emerald-400 bg-emerald-500/10';
+            if (a === 'patched') return 'text-emerald-500 bg-emerald-500/10';
             if (a === 'skipped') return 'text-amber-400 bg-amber-500/10';
             if (a === 'error') return 'text-red-400 bg-red-500/10';
             return 'text-slate-400 bg-slate-500/10';
@@ -354,7 +354,7 @@ function RunHistoryPanel() {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 p-4 text-xs">
                                 {tb.ip && <div><span className="text-slate-600 block">IP Address</span><span className="text-slate-300 font-mono">{tb.ip}</span></div>}
-                                {tb.user_agent && <div className="sm:col-span-2"><span className="text-slate-600 block">User Agent</span><span className="text-slate-300 font-mono text-[10px] break-all">{tb.user_agent}</span></div>}
+                                {tb.user_agent && <div className="sm:col-span-2"><span className="text-slate-600 block">User Agent</span><span className="text-slate-300 font-mono text-xs break-all">{tb.user_agent}</span></div>}
                                 {tb.host && <div><span className="text-slate-600 block">Host</span><span className="text-slate-300 font-mono">{tb.host}</span></div>}
                                 {tb.origin && <div><span className="text-slate-600 block">Origin</span><span className="text-slate-300 font-mono">{tb.origin}</span></div>}
                                 {tb.referer && <div><span className="text-slate-600 block">Referer</span><span className="text-slate-300 font-mono">{tb.referer}</span></div>}
@@ -393,7 +393,7 @@ function RunHistoryPanel() {
                                                 <td className="px-4 py-2 text-slate-400">{inc.error_type}</td>
                                                 <td className="px-4 py-2 text-center text-slate-400">{inc.occurrence_count}</td>
                                                 <td className="px-4 py-2">
-                                                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${actionColor(inc.action_taken)}`}>
+                                                    <span className={`px-2 py-0.5 rounded font-bold text-xs ${actionColor(inc.action_taken)}`}>
                                                         {inc.action_taken.toUpperCase()}
                                                     </span>
                                                 </td>
@@ -412,7 +412,7 @@ function RunHistoryPanel() {
                     {selected.patches.length > 0 && (
                         <div className="space-y-3">
                             <h4 className="text-slate-300 font-bold text-sm flex items-center gap-2">
-                                <Code2 className="w-4 h-4 text-emerald-400" /> Generated Patches ({selected.patches.length})
+                                <Code2 className="w-4 h-4 text-emerald-500" /> Generated Patches ({selected.patches.length})
                             </h4>
                             {selected.patches.map((p, i) => (
                                 <div key={i} className="border border-emerald-500/20 rounded-xl overflow-hidden">
@@ -421,7 +421,7 @@ function RunHistoryPanel() {
                                         className="w-full flex items-center justify-between px-4 py-3 bg-emerald-900/10 hover:bg-emerald-900/20 transition-colors text-left"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                             <div>
                                                 <div className="text-emerald-300 font-bold text-sm">{p.file_path}<span className="text-slate-500">:{p.line_start}-{p.line_end}</span></div>
                                                 <div className="text-slate-500 text-xs mt-0.5">{p.title} • {p.confidence?.toFixed(0)}% confidence</div>
@@ -432,18 +432,18 @@ function RunHistoryPanel() {
                                     {expandedPatch === `${i}` && (
                                         <div className="divide-y divide-slate-800">
                                             <div className="p-4 bg-slate-900/50">
-                                                <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Explanation</div>
+                                                <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">Explanation</div>
                                                 {renderExplanation(p.explanation)}
                                             </div>
                                             <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800">
                                                 <div className="p-4">
-                                                    <div className="text-[10px] text-red-400 uppercase tracking-widest mb-2 font-bold">BEFORE (original)</div>
+                                                    <div className="text-xs text-red-400 uppercase tracking-wide mb-2 font-bold">BEFORE (original)</div>
                                                     <pre className="text-red-300/80 text-[11px] overflow-x-auto font-mono leading-relaxed bg-red-950/20 rounded p-3 max-h-64 overflow-y-auto whitespace-pre-wrap">
                                                         {p.original_code_full || '(no original code — new file or endpoint)'}
                                                     </pre>
                                                 </div>
                                                 <div className="p-4">
-                                                    <div className="text-[10px] text-emerald-400 uppercase tracking-widest mb-2 font-bold">AFTER (patched)</div>
+                                                    <div className="text-xs text-emerald-500 uppercase tracking-wide mb-2 font-bold">AFTER (patched)</div>
                                                     <pre className="text-emerald-300/80 text-[11px] overflow-x-auto font-mono leading-relaxed bg-emerald-950/20 rounded p-3 max-h-64 overflow-y-auto whitespace-pre-wrap">
                                                         {p.fixed_code_full || '(not captured)'}
                                                     </pre>
@@ -470,9 +470,9 @@ function RunHistoryPanel() {
                                         <span className={`flex-shrink-0 ${color} font-bold`}>{prefix}</span>
                                         <span className="text-slate-400 break-all">
                                             {e.msg}
-                                            {e.fingerprint && <span className={`ml-2 text-[10px] ${color} opacity-50`}>[{e.fingerprint.slice(0, 14)}…]</span>}
-                                            {e.file && <span className="ml-2 text-slate-600 text-[10px]">→ {e.file}</span>}
-                                            {e.confidence != null && <span className="ml-2 text-emerald-400 font-bold">{e.confidence.toFixed(0)}%</span>}
+                                            {e.fingerprint && <span className={`ml-2 text-xs ${color} opacity-50`}>[{e.fingerprint.slice(0, 14)}…]</span>}
+                                            {e.file && <span className="ml-2 text-slate-600 text-xs">→ {e.file}</span>}
+                                            {e.confidence != null && <span className="ml-2 text-emerald-500 font-bold">{e.confidence.toFixed(0)}%</span>}
                                         </span>
                                     </div>
                                 );
@@ -482,7 +482,7 @@ function RunHistoryPanel() {
 
                     {/* ── Environment ───────────────────────────────────── */}
                     {env && (
-                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-[10px] text-slate-600 border-t border-slate-800 pt-3">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600 border-t border-slate-800 pt-3">
                             {env.service && <span>Service: <span className="text-slate-400">{env.service}</span></span>}
                             {env.revision && <span>Revision: <span className="text-slate-400">{env.revision}</span></span>}
                             {env.region && <span>Region: <span className="text-slate-400">{env.region}</span></span>}
@@ -534,7 +534,7 @@ function RunHistoryPanel() {
                             <div className="flex items-center gap-5 text-right">
                                 <div className="hidden sm:block">
                                     <div className="text-xs text-slate-500 mb-0.5">Patches</div>
-                                    <div className={`text-sm font-black ${run.patch_count > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>{run.patch_count}</div>
+                                    <div className={`text-sm font-black ${run.patch_count > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>{run.patch_count}</div>
                                 </div>
                                 <div className="hidden sm:block">
                                     <div className="text-xs text-slate-500 mb-0.5">Duration</div>
@@ -817,7 +817,7 @@ export function VaccinePanelContent() {
                             <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-500/10 rounded-bl-full -mr-6 -mt-6 pointer-events-none" />
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-indigo-400 font-mono text-xs bg-black/40 px-2.5 py-1 rounded">VACCINE-001 (CORE)</span>
-                                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                             </div>
                             <h3 className="text-slate-200 font-bold mb-2">Shadow Service Protection</h3>
                             <p className="text-slate-400 text-sm leading-relaxed mb-4 min-h-[40px]">
@@ -825,13 +825,13 @@ export function VaccinePanelContent() {
                             </p>
                             <div className="grid grid-cols-2 gap-3 border-t border-slate-700/50 pt-4">
                                 <div>
-                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Target</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-wide font-bold mb-1">Target</div>
                                     <div className="text-xs text-slate-300 font-mono flex items-center gap-1">
-                                        <FileCode className="w-3 h-3 text-emerald-400" /> main.py
+                                        <FileCode className="w-3 h-3 text-emerald-500" /> main.py
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Total Blocks</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-wide font-bold mb-1">Total Blocks</div>
                                     <div className="text-sm text-white font-black">24,401</div>
                                 </div>
                             </div>
@@ -855,7 +855,7 @@ export function VaccinePanelContent() {
                                     <div className="absolute top-0 right-0 w-28 h-28 bg-slate-500/5 rounded-bl-full -mr-6 -mt-6 pointer-events-none" />
                                     <div className="flex justify-between items-start mb-4">
                                         <span className="text-slate-400 font-mono text-xs bg-black/40 px-2.5 py-1 rounded">{vac.id}</span>
-                                        {vac.status === 'ACTIVE' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                        {vac.status === 'ACTIVE' ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                             : vac.status === 'DRAFT' ? <ShieldCheck className="w-5 h-5 text-amber-400" />
                                                 : <XCircle className="w-5 h-5 text-red-400" />}
                                     </div>
@@ -863,14 +863,14 @@ export function VaccinePanelContent() {
                                     <p className="text-slate-400 text-sm leading-relaxed mb-4 flex-1">{vac.description}</p>
                                     <div className="grid grid-cols-2 gap-3 border-t border-slate-700/50 pt-4">
                                         <div>
-                                            <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Target</div>
+                                            <div className="text-xs text-slate-500 uppercase tracking-wide font-bold mb-1">Target</div>
                                             <div className="text-xs text-slate-300 font-mono flex items-center gap-1 overflow-hidden" title={vac.target_pattern}>
                                                 <FileCode className="w-3 h-3 flex-shrink-0 text-slate-400" />
                                                 <span className="truncate">{vac.target_pattern.split('/').pop() || vac.target_pattern}</span>
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Blocks</div>
+                                            <div className="text-xs text-slate-500 uppercase tracking-wide font-bold mb-1">Blocks</div>
                                             <div className="text-sm text-white font-black">{vac.hit_count.toLocaleString()}</div>
                                         </div>
                                     </div>
@@ -926,7 +926,7 @@ function KnowledgeBaseStatus() {
 
     const isStale = !kb || kb.stale !== false;
     const hasError = !!kb?.error;
-    const statusColor = hasError ? 'text-red-400' : isStale ? 'text-amber-400' : 'text-emerald-400';
+    const statusColor = hasError ? 'text-red-400' : isStale ? 'text-amber-400' : 'text-emerald-500';
     const borderColor = hasError ? 'border-red-500/20' : isStale ? 'border-amber-500/20' : 'border-emerald-500/20';
     const bgColor = hasError ? 'bg-red-900/10' : isStale ? 'bg-amber-900/10' : 'bg-emerald-900/10';
 
@@ -946,7 +946,7 @@ function KnowledgeBaseStatus() {
                 <div>
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-slate-200 font-bold text-sm">Codebase Knowledge Base</span>
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${hasError ? 'bg-red-500/20 text-red-300'
+                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${hasError ? 'bg-red-500/20 text-red-300'
                             : isStale ? 'bg-amber-500/20 text-amber-300'
                                 : 'bg-emerald-500/20 text-emerald-300'
                             }`}>
@@ -974,7 +974,7 @@ function KnowledgeBaseStatus() {
                             {loading ? 'Checking KB status...' : hasError ? kb?.error : 'KB not yet built — click Rebuild to index the codebase'}
                         </p>
                     )}
-                    <p className="text-slate-600 text-[10px] mt-1 max-w-lg">
+                    <p className="text-slate-600 text-xs mt-1 max-w-lg">
                         Injected into every Gemini patch prompt so the AI understands your architecture, routes, and dependencies. Rebuild after significant code changes.
                     </p>
                 </div>

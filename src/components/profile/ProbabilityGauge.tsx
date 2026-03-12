@@ -46,7 +46,7 @@ export default function ProbabilityGauge({ hitProbability, impliedOdds }: Probab
                                 className="absolute top-0 bottom-0 bg-emerald-500/30 border-l border-emerald-400 dashed"
                                 style={{ left: `${impliedOdds}%`, width: `${hitProbability - impliedOdds}%` }}
                             >
-                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-emerald-400 font-bold">
+                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-emerald-500 font-bold">
                                     +{(hitProbability - impliedOdds).toFixed(1)}% EDGE
                                 </span>
                             </div>

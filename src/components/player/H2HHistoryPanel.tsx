@@ -64,7 +64,7 @@ export function H2HHistoryPanelContent({ playerId, opponentId }: { playerId: str
         return (
             <div className="flex flex-col items-center justify-center py-12 space-y-4 border border-slate-800 rounded-xl bg-slate-900/30">
                 <Activity className="w-8 h-8 text-slate-500 animate-spin" />
-                <div className="text-sm text-slate-400 font-mono tracking-widest">LOADING HISTORICAL VECTORS...</div>
+                <div className="text-sm text-slate-400 font-mono tracking-wide">LOADING HISTORICAL VECTORS...</div>
             </div>
         );
     }
@@ -108,22 +108,22 @@ export function H2HHistoryPanelContent({ playerId, opponentId }: { playerId: str
             {/* Averages summary strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 text-center">
-                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Win Rate</div>
-                    <div className={`text-2xl font-black ${winRate >= 50 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1">Win Rate</div>
+                    <div className={`text-2xl font-black ${winRate >= 50 ? 'text-emerald-500' : 'text-red-400'}`}>
                         {winRate.toFixed(0)}%
                     </div>
                     <div className="text-xs text-slate-500 font-mono mt-0.5">{summary.wins}W - {summary.losses}L</div>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 text-center">
-                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">AVG PTS</div>
+                    <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1">AVG PTS</div>
                     <div className="text-2xl font-black text-white">{summary.avg_pts.toFixed(1)}</div>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 text-center">
-                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">AVG REB</div>
+                    <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1">AVG REB</div>
                     <div className="text-2xl font-black text-white">{summary.avg_reb.toFixed(1)}</div>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 text-center">
-                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">AVG AST</div>
+                    <div className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-1">AVG AST</div>
                     <div className="text-2xl font-black text-white">{summary.avg_ast.toFixed(1)}</div>
                 </div>
             </div>
@@ -148,17 +148,17 @@ export function H2HHistoryPanelContent({ playerId, opponentId }: { playerId: str
                                         <div className="text-slate-300">
                                             {new Date(rec.GAME_DATE).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                         </div>
-                                        <div className="text-[10px] text-slate-500">{rec.MATCHUP}</div>
+                                        <div className="text-xs text-slate-500">{rec.MATCHUP}</div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${rec.WL === 'W' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${rec.WL === 'W' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                                             {rec.WL}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-center text-white font-bold">{rec.PTS}</td>
                                     <td className="px-4 py-3 text-center text-slate-300">{rec.REB}</td>
                                     <td className="px-4 py-3 text-center text-slate-300">{rec.AST}</td>
-                                    <td className={`px-4 py-3 text-center font-bold ${rec.PLUS_MINUS > 0 ? 'text-emerald-400' : rec.PLUS_MINUS < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                                    <td className={`px-4 py-3 text-center font-bold ${rec.PLUS_MINUS > 0 ? 'text-emerald-500' : rec.PLUS_MINUS < 0 ? 'text-red-400' : 'text-slate-500'}`}>
                                         {rec.PLUS_MINUS > 0 ? `+${rec.PLUS_MINUS}` : rec.PLUS_MINUS}
                                     </td>
                                 </tr>

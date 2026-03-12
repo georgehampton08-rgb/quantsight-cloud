@@ -61,8 +61,8 @@ export default function Sparkline({
                 {/* We can calculate the last point easily */}
             </svg>
 
-            <div className={clsx("flex items-center text-[10px] font-bold gap-1",
-                isUp ? "text-emerald-400" : isFlat ? "text-slate-400" : "text-red-400"
+            <div className={clsx("flex items-center text-xs font-bold gap-1",
+                isUp ? "text-emerald-500" : isFlat ? "text-slate-400" : "text-red-400"
             )}>
                 {isUp ? <TrendingUp size={12} /> : isFlat ? <Minus size={12} /> : <TrendingDown size={12} />}
                 <span>{isUp ? '+' : ''}{end - start}</span>

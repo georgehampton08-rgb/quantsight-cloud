@@ -78,7 +78,7 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
 
     const StatBox = ({ label, value, loading, error }: { label: string, value: string | number, loading?: boolean, error?: boolean }) => (
         <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-700/50">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label}</div>
+            <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">{label}</div>
             {loading ? (
                 <div className="flex items-center gap-2 text-slate-600 animate-pulse">
                     <Loader2 size={12} className="animate-spin" />
@@ -128,7 +128,7 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
                     className="flex flex-col items-center justify-center p-3 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 transition-all group"
                 >
                     <Activity size={16} className="text-emerald-500 mb-1 group-hover:scale-110 transition-transform" />
-                    <span className="text-[10px] uppercase font-bold text-emerald-600">Update Tracking</span>
+                    <span className="text-xs uppercase font-bold text-emerald-600">Update Tracking</span>
                 </button>
             </div>
 
@@ -143,19 +143,19 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
                 {loadingTrace ? (
                     <div className="flex-1 flex flex-col items-center justify-center gap-4">
                         <Loader2 size={32} className="text-financial-accent animate-spin" />
-                        <span className="text-xs text-slate-500 uppercase tracking-widest">Querying Learning Ledger...</span>
+                        <span className="text-xs text-slate-500 uppercase tracking-wide">Querying Learning Ledger...</span>
                     </div>
                 ) : (
                     <div className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-3">
-                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Calculation Breakdown</div>
+                            <div className="text-xs uppercase tracking-wide text-slate-500 font-bold">Calculation Breakdown</div>
                             {trace?.logic_trace.primary_factors.map((f, i) => (
                                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
                                     <div>
                                         <div className="text-xs font-bold text-slate-200">{f.factor}</div>
-                                        <div className="text-[10px] text-slate-500">{f.impact}</div>
+                                        <div className="text-xs text-slate-500">{f.impact}</div>
                                     </div>
-                                    <div className={clsx("text-xs font-bold", f.is_positive ? "text-emerald-400" : "text-rose-400")}>
+                                    <div className={clsx("text-xs font-bold", f.is_positive ? "text-emerald-500" : "text-rose-400")}>
                                         {f.is_positive ? <ChevronRight size={14} /> : <div className="rotate-90"><ChevronRight size={14} /></div>}
                                     </div>
                                 </div>
@@ -164,18 +164,18 @@ export default function EnrichedPlayerCard({ playerId, playerName }: EnrichedPla
 
                         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
                             <div className="p-3 rounded-xl bg-slate-800/50">
-                                <div className="text-[10px] text-slate-500 mb-1">Model Agreement</div>
+                                <div className="text-xs text-slate-500 mb-1">Model Agreement</div>
                                 <div className="text-lg font-bold text-financial-accent">{(trace?.logic_trace.confidence_metrics.model_agreement ?? 0 * 100).toFixed(0)}%</div>
                             </div>
                             <div className="p-3 rounded-xl bg-slate-800/50">
-                                <div className="text-[10px] text-slate-500 mb-1">Historical Hit Rate</div>
-                                <div className="text-lg font-bold text-emerald-400">{(trace?.logic_trace.confidence_metrics.historical_accuracy ?? 0 * 100).toFixed(0)}%</div>
+                                <div className="text-xs text-slate-500 mb-1">Historical Hit Rate</div>
+                                <div className="text-lg font-bold text-emerald-500">{(trace?.logic_trace.confidence_metrics.historical_accuracy ?? 0 * 100).toFixed(0)}%</div>
                             </div>
                         </div>
                     </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-slate-700/50 text-[10px] text-slate-600 text-center italic">
+                <div className="mt-4 pt-4 border-t border-slate-700/50 text-xs text-slate-600 text-center italic">
                     Ledger ID: AX-90210 | Verified via Sovereign-Router
                 </div>
             </Modal>

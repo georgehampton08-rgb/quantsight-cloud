@@ -18,7 +18,7 @@ export default function ConfidenceRing({
 
     // Color Logic
     const getColor = (val: number) => {
-        if (val >= 70) return 'text-emerald-400';
+        if (val >= 70) return 'text-emerald-500';
         if (val >= 40) return 'text-yellow-400';
         return 'text-red-500';
     };

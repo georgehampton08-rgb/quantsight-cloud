@@ -35,7 +35,7 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
                 <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-                    <Shield className="w-8 h-8 text-emerald-400" />
+                    <Shield className="w-8 h-8 text-emerald-500" />
                 </div>
                 <div className="text-center max-w-sm">
                     <h3 className="text-white font-bold text-xl mb-2">Admin Access Required</h3>
@@ -74,7 +74,7 @@ export const AdminAuthBar: React.FC = () => {
 
     return (
         <div className="flex items-center gap-3 text-xs text-slate-400">
-            <Shield className="w-3 h-3 text-emerald-400" />
+            <Shield className="w-3 h-3 text-emerald-500" />
             <span>{user.email}</span>
             <button
                 onClick={() => signOutUser()}

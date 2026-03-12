@@ -22,23 +22,24 @@ export default {
                     red: '#ef4444',
                     purple: '#a78bfa',
                 },
-                // Terminal Cyber-Sports base tokens
-                cyber: {
-                    bg:      '#060910',   // void black — page background
-                    surface: '#0d1117',   // panel surface
-                    border:  '#1a2332',   // structural borders
-                    green:   '#00ff88',   // neon signal green — live state only
-                    gold:    '#ffd000',   // high-alert gold — close games, warnings
-                    red:     '#ff2d55',   // kill red — errors, disconnected
-                    blue:    '#00b4ff',   // electric blue — interactive highlights
-                    text:    '#c8d6e8',   // primary readable text
-                    muted:   '#4a6070',   // suppressed labels
+                // High-End Professional UI base tokens (Zinc based dark mode)
+                pro: {
+                    bg:      '#09090b',   // zinc-950
+                    surface: '#18181b',   // zinc-900
+                    border:  '#27272a',   // zinc-800
+                    primary: '#3b82f6',   // blue-500
+                    success: '#10b981',   // emerald-500
+                    warning: '#f59e0b',   // amber-500
+                    danger:  '#ef4444',   // red-500
+                    text:    '#fafafa',   // zinc-50
+                    muted:   '#a1a1aa',   // zinc-400
+                    highlight: '#3f3f46', // zinc-700
                 }
             },
             fontFamily: {
                 sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-                mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-                display: ['Rajdhani', 'Inter', 'system-ui', 'sans-serif'],
+                mono: ['JetBrains Mono', 'Fira Code', 'SFMono-Regular', 'monospace'],
+                display: ['Inter', 'system-ui', 'sans-serif'], // Dropping Rajdhani for professional Inter
             },
             keyframes: {
                 'scan-line': {

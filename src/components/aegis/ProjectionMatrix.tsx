@@ -30,8 +30,8 @@ interface ProjectionMatrixProps {
 
 // Grade colors
 const gradeColors: Record<string, string> = {
-    'A': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-    'B': 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+    'A': 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+    'B': 'text-blue-500 bg-blue-500/10 border-blue-500/30',
     'C': 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
     'D': 'text-orange-400 bg-orange-500/10 border-orange-500/30',
     'F': 'text-red-400 bg-red-500/10 border-red-500/30',
@@ -146,8 +146,8 @@ export default function ProjectionMatrix({ simulation, loading, onRefresh }: Pro
                 {/* Values below bar - properly spaced */}
                 <div className="flex items-center justify-between mt-2 text-xs font-mono">
                     <span className="text-red-400">{floor.toFixed(1)}</span>
-                    <span className="text-emerald-400 font-bold">{ev.toFixed(1)}</span>
-                    <span className="text-blue-400">{ceiling.toFixed(1)}</span>
+                    <span className="text-emerald-500 font-bold">{ev.toFixed(1)}</span>
+                    <span className="text-blue-500">{ceiling.toFixed(1)}</span>
                 </div>
             </div>
         );

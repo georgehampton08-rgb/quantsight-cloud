@@ -27,7 +27,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     render() {
         if (this.state.hasError) {
             return (
-                <div className="flex items-center justify-center h-screen bg-cyber-bg text-cyber-text font-sans">
+                <div className="flex items-center justify-center h-screen bg-pro-bg text-pro-text font-sans">
                     <div className="text-center p-8 max-w-md">
                         <h1 className="text-2xl font-bold mb-4 text-red-500">QuantSight Initialization Error</h1>
                         <p className="mb-4">The app encountered an error during startup.</p>
@@ -57,13 +57,10 @@ function App() {
                             <DisclaimerModal />
                             {/* Root layout: overflow-hidden on desktop to keep fixed panels,
                                 auto-scroll on mobile so content underneath can be reached */}
-                            <div className="flex h-screen w-screen bg-cyber-bg text-cyber-text font-sans cyber-root overflow-x-hidden overflow-y-hidden sm:overflow-hidden relative">
+                            <div className="flex h-screen w-screen bg-pro-bg text-pro-text font-sans overflow-x-hidden overflow-y-hidden sm:overflow-hidden relative">
                                 <ToastContainer />
 
-                                {/* IPC Verification / Dev Mode Tag */}
-                                <div className="fixed bottom-1 right-1 text-xs text-opacity-20 text-white pointer-events-none z-50">
-                                    QS-DASH-V1
-                                </div>
+                                {/* IPC Verification Removed */}
 
                                 <Sidebar />
 

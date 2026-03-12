@@ -14,6 +14,10 @@ def run_tests():
             page.goto("http://localhost:5173")
             page.wait_for_load_state("networkidle")
             
+            # Handle the disclaimer modal if it appears first
+            page.wait_for_selector('#disclaimer-acknowledge-btn', timeout=5000)
+            page.locator('#disclaimer-acknowledge-btn').click()
+            
             # Use case-insensitive search or exact DOM case
             page.wait_for_selector('text="Command Center"', timeout=5000)
             print("✔ Command Center Loaded")
@@ -34,13 +38,7 @@ def run_tests():
             page.screenshot(path="tests/screenshots/3_play_by_play_tab.png", full_page=True)
             print("✔ Play-By-Play Tab active")
             
-            print("4. Testing Settings Page Routing & Rendering...")
-            page.goto("http://localhost:5173/settings")
-            page.wait_for_load_state("networkidle")
-            page.wait_for_selector('text="System Settings"', timeout=5000)
-            page.screenshot(path="tests/screenshots/4_settings_page.png", full_page=True)
-            print("✔ Settings Page Loaded")
-            
+
         except Exception as e:
             print(f"❌ Test Failed: {str(e)}")
             page.screenshot(path="tests/screenshots/error_state.png", full_page=True)

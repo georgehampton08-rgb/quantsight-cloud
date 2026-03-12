@@ -21,7 +21,6 @@ import ProjectionMatrix from '../components/aegis/ProjectionMatrix';
 import PlayTypeEfficiency from '../components/aegis/PlayTypeEfficiency';
 import EnrichedPlayerCard from '../components/profile/EnrichedPlayerCard';
 import { useSimulation } from '../hooks/useSimulation';
-import CornerBrackets from '../components/common/CornerBrackets';
 
 export default function PlayerProfilePage() {
     const { id } = useParams<{ id: string }>();
@@ -184,23 +183,23 @@ export default function PlayerProfilePage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-cyber-green font-mono tracking-widest uppercase animate-[data-flicker_3s_ease-in-out_infinite]">Initializing Neural Link...</div>;
+    if (loading) return <div className="p-8 text-emerald-500 font-mono tracking-wide uppercase animate-[data-flicker_3s_ease-in-out_infinite]">Initializing Neural Link...</div>;
 
     // Empty State (No ID or No Player Found)
     if (!targetId || !selectedPlayer) return (
-        <div className="flex flex-col items-center justify-center p-12 space-y-6 relative bg-cyber-surface mt-8 max-w-2xl mx-auto" style={{ border: '1px solid #1a2332' }}>
-            <CornerBrackets />
+        <div className="flex flex-col items-center justify-center p-12 space-y-6 relative bg-pro-surface mt-8 max-w-2xl mx-auto" >
+            
             <div className="relative w-16 h-16 flex items-center justify-center">
-                <div className="absolute inset-0 border border-cyber-blue opacity-50 rotate-45" />
-                <span className="text-cyber-blue font-mono font-bold tracking-[0.2em] animate-pulse">404</span>
+                <div className="absolute inset-0 border border-blue-500 opacity-50 rotate-45" />
+                <span className="text-blue-500 font-mono font-bold tracking-wide animate-pulse">404</span>
             </div>
-            <div className="text-xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text">Search Protocol Initiated</div>
-            <div className="text-[10px] uppercase font-mono tracking-widest text-cyber-muted max-w-md text-center leading-relaxed">
+            <div className="text-xl font-medium font-bold tracking-normal uppercase text-pro-text">Search Protocol Initiated</div>
+            <div className="text-xs uppercase font-mono tracking-wide text-pro-muted max-w-md text-center leading-relaxed">
                 System is ready. Use the <strong>Search Bar</strong> above to locate any player to begin analysis.
             </div>
             <button
                 onClick={() => navigate('/')}
-                className="px-6 py-3 bg-cyber-surface hover:bg-white/[0.05] rounded-none text-[10px] font-display font-600 tracking-[0.2em] uppercase text-cyber-green border border-cyber-green hover:shadow-[0_0_10px_rgba(0,255,136,0.2)] transition-all duration-100"
+                className="px-6 py-3 bg-pro-surface hover:bg-white/[0.05] rounded-xl text-xs font-medium font-semibold tracking-wide uppercase text-emerald-500 border border-emerald-500 hover:shadow-[0_0_10px_rgba(0,255,136,0.2)] transition-all duration-100"
             >
                 Return to Command Center
             </button>
@@ -219,21 +218,21 @@ export default function PlayerProfilePage() {
     ] as const;
 
     return (
-        <div className="h-full overflow-y-auto flex flex-col bg-cyber-bg relative z-10 w-full">
+        <div className="h-full overflow-y-auto flex flex-col bg-pro-bg relative z-10 w-full">
             <div className="max-w-7xl mx-auto w-full pb-12 p-4 sm:p-6 flex-1 min-h-0 flex flex-col relative z-10">
                 <div className="flex-shrink-0">
                     <HeroSection player={profile} />
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex-shrink-0 flex gap-4 border-b border-cyber-border pb-2 mb-6 sm:mb-8 overflow-x-auto scrollbar-premium">
+                <div className="flex-shrink-0 flex gap-4 border-b border-pro-border pb-2 mb-6 sm:mb-8 overflow-x-auto scrollbar-premium">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 text-[10px] font-display font-600 tracking-[0.12em] uppercase py-2 border-b-2 transition-all duration-100 whitespace-nowrap shrink-0 ${activeTab === tab.id
-                                ? 'border-cyber-green text-cyber-green'
-                                : 'border-transparent text-cyber-muted hover:text-cyber-text'
+                            className={`flex items-center gap-2 text-xs font-medium font-semibold tracking-normal uppercase py-2 border-b-2 transition-all duration-100 whitespace-nowrap shrink-0 ${activeTab === tab.id
+                                ? 'border-emerald-500 text-emerald-500'
+                                : 'border-transparent text-pro-muted hover:text-pro-text'
                                 }`}
                         >
                             <span className="hidden sm:inline">{tab.label}</span>
@@ -270,14 +269,14 @@ export default function PlayerProfilePage() {
                             <GameLogsViewer playerId={targetId} />
 
                                 {/* H2H Viewer with context from Matchup/Projection (currentOpponent) */}
-                                <div className="relative bg-cyber-surface p-6" style={{ border: '1px solid #1a2332' }}>
-                                    <CornerBrackets />
-                                    <div className="flex items-center justify-between mb-4 relative z-10 border-b border-cyber-border/50 pb-3">
-                                        <h3 className="text-[10px] font-display font-600 tracking-[0.2em] uppercase text-cyber-muted">Target Opponent</h3>
+                                <div className="relative bg-pro-surface p-6" >
+                                    
+                                    <div className="flex items-center justify-between mb-4 relative z-10 border-b border-pro-border/50 pb-3">
+                                        <h3 className="text-xs font-medium font-semibold tracking-wide uppercase text-pro-muted">Target Opponent</h3>
                                         <select
                                             value={currentOpponent}
                                             onChange={(e) => setCurrentOpponent(e.target.value)}
-                                            className="bg-cyber-bg border border-cyber-border rounded-none px-3 py-1.5 text-cyber-text text-[10px] font-display tracking-widest uppercase focus:border-cyber-blue outline-none"
+                                            className="bg-pro-bg border border-pro-border rounded-xl px-3 py-1.5 text-pro-text text-xs font-medium tracking-wide uppercase focus:border-blue-500 outline-none"
                                         >
                                             {teams.map((team) => (
                                                 <option key={team.team_id} value={team.team_id}>
@@ -301,18 +300,18 @@ export default function PlayerProfilePage() {
                             />
 
                             <div className="space-y-4">
-                                <div className="relative bg-cyber-surface border border-cyber-border p-6 shadow-none" style={{ border: '1px solid #1a2332' }}>
-                                    <CornerBrackets />
-                                    <h3 className="text-[10px] font-display font-600 tracking-[0.2em] uppercase text-cyber-text mb-4 flex items-center gap-2 relative z-10 border-b border-cyber-border/50 pb-2">
-                                        <span className="w-1.5 h-1.5 bg-cyber-green animate-pulse" />
+                                <div className="relative bg-pro-surface border border-pro-border p-6 shadow-sm" >
+                                    
+                                    <h3 className="text-xs font-medium font-semibold tracking-wide uppercase text-pro-text mb-4 flex items-center gap-2 relative z-10 border-b border-pro-border/50 pb-2">
+                                        <span className="w-1.5 h-1.5 bg-emerald-500 animate-pulse" />
                                         Quick Sim
                                     </h3>
                                     <div className="space-y-3 relative z-10">
-                                        <label className="block text-[10px] font-display tracking-widest uppercase text-cyber-muted">Opponent Team</label>
+                                        <label className="block text-xs font-medium tracking-wide uppercase text-pro-muted">Opponent Team</label>
                                         <select
                                             value={currentOpponent}
                                             onChange={(e) => setCurrentOpponent(e.target.value)}
-                                            className="w-full bg-cyber-bg border border-cyber-border rounded-none p-3 text-cyber-text text-sm font-display tracking-wider focus:border-cyber-blue outline-none transition-colors"
+                                            className="w-full bg-pro-bg border border-pro-border rounded-xl p-3 text-pro-text text-sm font-medium tracking-wider focus:border-blue-500 outline-none transition-colors"
                                         >
                                             {teams.length > 0 ? (
                                                 teams.map((team) => (
@@ -333,7 +332,7 @@ export default function PlayerProfilePage() {
                                         <button
                                             onClick={() => runSimulation(currentOpponent)}
                                             disabled={simLoading}
-                                            className="w-full py-3 bg-cyber-green/10 hover:bg-cyber-green/20 border border-cyber-green text-cyber-green font-display font-600 tracking-[0.1em] uppercase rounded-none transition-all duration-100 disabled:opacity-50 disabled:bg-cyber-surface"
+                                            className="w-full py-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500 text-emerald-500 font-medium font-semibold tracking-wide uppercase rounded-xl transition-all duration-100 disabled:opacity-50 disabled:bg-pro-surface"
                                         >
                                             {simLoading ? 'EXECUTING...' : 'RUN 50,000 SIMULATIONS'}
                                         </button>
@@ -347,7 +346,7 @@ export default function PlayerProfilePage() {
                                             <div className="text-slate-400">Archetype:</div>
                                             <div className="text-white font-mono">{simulation.modifiers?.archetype || 'N/A'}</div>
                                             <div className="text-slate-400">Fatigue:</div>
-                                            <div className={(simulation.modifiers?.fatigue || 0) < 0 ? 'text-red-400' : 'text-emerald-400'}>
+                                            <div className={(simulation.modifiers?.fatigue || 0) < 0 ? 'text-red-400' : 'text-emerald-500'}>
                                                 {(simulation.modifiers?.fatigue || 0) !== 0 ? `${(simulation.modifiers?.fatigue || 0) > 0 ? '+' : ''}${((simulation.modifiers?.fatigue || 0) * 100).toFixed(0)}%` : 'None'}
                                             </div>
                                             <div className="text-slate-400">Usage Boost:</div>
@@ -361,7 +360,7 @@ export default function PlayerProfilePage() {
                                         {/* Refresh status indicator */}
                                         {refreshStatus && (
                                             <div className="mt-3 pt-3 border-t border-slate-700">
-                                                <div className="text-xs text-emerald-400">
+                                                <div className="text-xs text-emerald-500">
                                                     ✓ {refreshStatus.message}
                                                     {refreshStatus.gamesAdded > 0 && ` (+${refreshStatus.gamesAdded} games)`}
                                                 </div>
@@ -432,25 +431,25 @@ export default function PlayerProfilePage() {
                                 <MetricCard title="BPM" value="+6.8" subValue="Box Plus/Minus" />
                                 <MetricCard title="VORP" value="4.3" subValue="Value Over Replacement" />
 
-                                <div className="md:col-span-2 lg:col-span-3 relative bg-cyber-surface border border-cyber-border p-6 shadow-none" style={{ border: '1px solid #1a2332' }}>
-                                    <CornerBrackets />
-                                    <h3 className="text-[10px] font-display font-700 tracking-[0.2em] uppercase text-cyber-text mb-4 border-b border-cyber-border/50 pb-2 relative z-10">Advanced Metrics Breakdown</h3>
+                                <div className="md:col-span-2 lg:col-span-3 relative bg-pro-surface border border-pro-border p-6 shadow-sm" >
+                                    
+                                    <h3 className="text-xs font-medium font-bold tracking-wide uppercase text-pro-text mb-4 border-b border-pro-border/50 pb-2 relative z-10">Advanced Metrics Breakdown</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm relative z-10">
-                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
-                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">AST%</div>
-                                            <div className="text-lg font-mono tabular-nums text-cyber-blue animate-[data-flicker_4s_ease-in-out_infinite]">32.1%</div>
+                                        <div className="bg-white/[0.02] border border-pro-border/50 p-3">
+                                            <div className="text-xs text-pro-muted font-medium tracking-wide uppercase mb-1">AST%</div>
+                                            <div className="text-lg font-mono tabular-nums text-blue-500 animate-[data-flicker_4s_ease-in-out_infinite]">32.1%</div>
                                         </div>
-                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
-                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">REB%</div>
-                                            <div className="text-lg font-mono tabular-nums text-cyber-green">18.5%</div>
+                                        <div className="bg-white/[0.02] border border-pro-border/50 p-3">
+                                            <div className="text-xs text-pro-muted font-medium tracking-wide uppercase mb-1">REB%</div>
+                                            <div className="text-lg font-mono tabular-nums text-emerald-500">18.5%</div>
                                         </div>
-                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
-                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">STL%</div>
-                                            <div className="text-lg font-mono tabular-nums text-cyber-gold">2.3%</div>
+                                        <div className="bg-white/[0.02] border border-pro-border/50 p-3">
+                                            <div className="text-xs text-pro-muted font-medium tracking-wide uppercase mb-1">STL%</div>
+                                            <div className="text-lg font-mono tabular-nums text-amber-500">2.3%</div>
                                         </div>
-                                        <div className="bg-white/[0.02] border border-cyber-border/50 p-3">
-                                            <div className="text-[10px] text-cyber-muted font-display tracking-widest uppercase mb-1">BLK%</div>
-                                            <div className="text-lg font-mono tabular-nums text-cyber-red">1.8%</div>
+                                        <div className="bg-white/[0.02] border border-pro-border/50 p-3">
+                                            <div className="text-xs text-pro-muted font-medium tracking-wide uppercase mb-1">BLK%</div>
+                                            <div className="text-lg font-mono tabular-nums text-red-500">1.8%</div>
                                         </div>
                                     </div>
                                 </div>

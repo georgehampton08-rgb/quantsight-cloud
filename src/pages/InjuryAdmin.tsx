@@ -197,7 +197,7 @@ export default function InjuryAdmin() {
                 {/* Add Injury Form */}
                 <Card className="bg-slate-800/50 border-slate-700">
                     <CardHeader>
-                        <CardTitle className="text-blue-400">Add/Update Injury</CardTitle>
+                        <CardTitle className="text-blue-500">Add/Update Injury</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -224,7 +224,7 @@ export default function InjuryAdmin() {
                                                     onClick={() => handleSelectPlayer(player)}
                                                     className="px-4 py-2 hover:bg-slate-700 cursor-pointer flex items-center gap-2"
                                                 >
-                                                    <User className="w-4 h-4 text-blue-400" />
+                                                    <User className="w-4 h-4 text-blue-500" />
                                                     <span>{player?.name || 'Unknown'}</span>
                                                     <span className="text-xs text-slate-400">({player?.team || 'N/A'})</span>
                                                 </div>
@@ -320,7 +320,7 @@ export default function InjuryAdmin() {
                 {/* Current Injuries - Scrollable */}
                 <Card className="bg-slate-800/50 border-slate-700">
                     <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <CardTitle className="text-blue-400">Current Injuries</CardTitle>
+                        <CardTitle className="text-blue-500">Current Injuries</CardTitle>
                         <div className="flex items-center gap-2">
                             <Select
                                 value={filterTeam}

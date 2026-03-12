@@ -11,7 +11,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveStats, LiveGame } from '../hooks/useLiveStats';
 import { API_BASE } from '../config/apiConfig';
-import CornerBrackets from '../components/common/CornerBrackets';
 
 // Only accept YYYY-MM-DD strings — guards against game IDs returned by the API
 // when the backend Firestore parent docs don't exist as explicit documents.
@@ -43,7 +42,7 @@ const LiveGameCard: React.FC<{ game: LiveGame; index: number }> = ({ game, index
     const isClose = isLive && Math.abs(game.home_score - game.away_score) <= 5;
 
     return (
-        <div className={`relative bg-cyber-surface overflow-hidden opacity-0 animate-[stagger-reveal_0.2s_cubic-bezier(0.2,0,0,1)_forwards]`}
+        <div className={`relative bg-pro-surface overflow-hidden opacity-0 animate-[stagger-reveal_0.2s_cubic-bezier(0.2,0,0,1)_forwards]`}
              style={{
                border: `1px solid ${isLive ? 'rgba(0,255,136,0.4)' : '#1a2332'}`,
                clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
@@ -51,26 +50,26 @@ const LiveGameCard: React.FC<{ game: LiveGame; index: number }> = ({ game, index
              }}>
             {/* Live scan-line */}
             {isLive && (
-                <div className="absolute inset-x-0 w-full h-px bg-cyber-green opacity-20 animate-[scan-line_4s_linear_infinite]" />
+                <div className="absolute inset-x-0 w-full h-px bg-emerald-500 opacity-20 animate-[scan-line_4s_linear_infinite]" />
             )}
 
             {/* Status badge */}
-            <div className="flex justify-between items-center px-4 py-3 border-b border-cyber-border/50">
-                <span className="text-[10px] text-cyber-muted font-mono tracking-[0.2em] uppercase">{game.game_id || '—'}</span>
+            <div className="flex justify-between items-center px-4 py-3 border-b border-pro-border/50">
+                <span className="text-xs text-pro-muted font-mono tracking-wide uppercase">{game.game_id || '—'}</span>
                 {isLive && (
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-cyber-green/5 border border-cyber-green text-cyber-green text-[10px] font-display font-600 tracking-[0.2em] uppercase">
-                        <span className="w-1.5 h-1.5 bg-cyber-green shadow-[0_0_10px_rgba(0,255,136,0.8)] animate-[signal-pulse_2s_ease-in-out_infinite]" />
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/5 border border-emerald-500 text-emerald-500 text-xs font-medium font-semibold tracking-wide uppercase">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 shadow-[0_0_10px_rgba(0,255,136,0.8)] animate-[signal-pulse_2s_ease-in-out_infinite]" />
                         LIVE · Q{game.period} {game.clock}
                     </span>
                 )}
                 {game.status === 'HALFTIME' && (
-                    <span className="px-2.5 py-1 bg-cyber-gold/5 border border-cyber-gold text-cyber-gold text-[10px] font-display font-600 tracking-[0.2em] uppercase">HALFTIME</span>
+                    <span className="px-2.5 py-1 bg-amber-500/5 border border-amber-500 text-amber-500 text-xs font-medium font-semibold tracking-wide uppercase">HALFTIME</span>
                 )}
                 {isFinal && (
-                    <span className="px-2.5 py-1 bg-cyber-border border top-0 border-transparent text-cyber-muted text-[10px] font-display font-600 tracking-[0.2em] uppercase">FINAL</span>
+                    <span className="px-2.5 py-1 bg-pro-border border top-0 border-transparent text-pro-muted text-xs font-medium font-semibold tracking-wide uppercase">FINAL</span>
                 )}
                 {isUpcoming && (
-                    <span className="px-2.5 py-1 border border-cyber-border text-cyber-muted text-[10px] font-display font-600 tracking-[0.2em] uppercase">
+                    <span className="px-2.5 py-1 border border-pro-border text-pro-muted text-xs font-medium font-semibold tracking-wide uppercase">
                         {game.clock || 'UPCOMING'}
                     </span>
                 )}
@@ -80,20 +79,20 @@ const LiveGameCard: React.FC<{ game: LiveGame; index: number }> = ({ game, index
             <div className="flex items-center justify-between gap-4 p-5">
                 {/* Away team */}
                 <div className={`flex-1 text-center ${awayWon ? 'opacity-100' : isFinal ? 'opacity-50' : ''}`}>
-                    <div className={`text-4xl font-bold font-mono tabular-nums mb-1 ${awayWon ? 'text-cyber-green' : 'text-cyber-text'}`}>
+                    <div className={`text-4xl font-bold font-mono tabular-nums mb-1 ${awayWon ? 'text-emerald-500' : 'text-pro-text'}`}>
                         {isUpcoming ? '—' : game.away_score}
                     </div>
-                    <div className={`text-xl font-display font-700 tracking-[0.08em] uppercase ${awayWon ? 'text-cyber-green' : 'text-slate-300'}`}>
+                    <div className={`text-xl font-medium font-bold tracking-normal uppercase ${awayWon ? 'text-emerald-500' : 'text-slate-300'}`}>
                         {game.away_team}
                     </div>
-                    {awayWon && <div className="text-[10px] text-cyber-green mt-1 font-bold font-display uppercase tracking-widest">W</div>}
+                    {awayWon && <div className="text-xs text-emerald-500 mt-1 font-bold font-medium uppercase tracking-wide">W</div>}
                 </div>
 
                 {/* Score Diff / VS */}
                 <div className="flex flex-col items-center justify-center min-w-[3rem]">
-                    <span className="text-cyber-muted font-mono text-xs mb-1">VS</span>
+                    <span className="text-pro-muted font-mono text-xs mb-1">VS</span>
                     {isLive && (
-                        <div className={`font-mono text-[10px] tracking-widest tabular-nums text-center border px-2 py-0.5 ${isClose ? 'text-cyber-gold border-cyber-gold animate-[data-flicker_3s_ease-in-out_infinite]' : 'text-cyber-text border-cyber-border'}`}>
+                        <div className={`font-mono text-xs tracking-wide tabular-nums text-center border px-2 py-0.5 ${isClose ? 'text-amber-500 border-amber-500 animate-[data-flicker_3s_ease-in-out_infinite]' : 'text-pro-text border-pro-border'}`}>
                             {isClose ? 'CLOSE' : `+${Math.abs(game.home_score - game.away_score)}`}
                         </div>
                     )}
@@ -101,13 +100,13 @@ const LiveGameCard: React.FC<{ game: LiveGame; index: number }> = ({ game, index
 
                 {/* Home team */}
                 <div className={`flex-1 text-center ${homeWon ? 'opacity-100' : isFinal ? 'opacity-50' : ''}`}>
-                    <div className={`text-4xl font-bold font-mono tabular-nums mb-1 ${homeWon ? 'text-cyber-green' : 'text-cyber-text'}`}>
+                    <div className={`text-4xl font-bold font-mono tabular-nums mb-1 ${homeWon ? 'text-emerald-500' : 'text-pro-text'}`}>
                         {isUpcoming ? '—' : game.home_score}
                     </div>
-                    <div className={`text-xl font-display font-700 tracking-[0.08em] uppercase ${homeWon ? 'text-cyber-green' : 'text-slate-300'}`}>
+                    <div className={`text-xl font-medium font-bold tracking-normal uppercase ${homeWon ? 'text-emerald-500' : 'text-slate-300'}`}>
                         {game.home_team}
                     </div>
-                    {homeWon && <div className="text-[10px] text-cyber-green mt-1 font-bold font-display uppercase tracking-widest">W</div>}
+                    {homeWon && <div className="text-xs text-emerald-500 mt-1 font-bold font-medium uppercase tracking-wide">W</div>}
                 </div>
             </div>
         </div>
@@ -120,15 +119,15 @@ const HistoricalGameCard: React.FC<{ game: HistoricalGame; index: number }> = ({
     const awayWon = game.winner === game.away_team;
 
     return (
-        <div className="relative bg-cyber-surface opacity-0 animate-[stagger-reveal_0.2s_cubic-bezier(0.2,0,0,1)_forwards]"
+        <div className="relative bg-pro-surface opacity-0 animate-[stagger-reveal_0.2s_cubic-bezier(0.2,0,0,1)_forwards]"
              style={{ border: '1px solid #1a2332', animationDelay: `${index * 50}ms` }}>
-            <CornerBrackets />
+            
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent pointer-events-none" />
 
             {/* Header */}
-            <div className="flex justify-between items-center px-4 py-3 border-b border-cyber-border/50 relative z-10">
-                <span className="text-[10px] text-cyber-muted font-mono tracking-[0.2em] uppercase">{game.game_id}</span>
-                <span className="px-2.5 py-1 bg-cyber-border text-cyber-muted text-[10px] font-display font-600 tracking-[0.2em] uppercase">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-pro-border/50 relative z-10">
+                <span className="text-xs text-pro-muted font-mono tracking-wide uppercase">{game.game_id}</span>
+                <span className="px-2.5 py-1 bg-pro-border text-pro-muted text-xs font-medium font-semibold tracking-wide uppercase">
                     FINAL
                 </span>
             </div>
@@ -137,28 +136,28 @@ const HistoricalGameCard: React.FC<{ game: HistoricalGame; index: number }> = ({
             <div className="flex items-center justify-between gap-4 p-5 relative z-10">
                 {/* Away */}
                 <div className={`flex-1 text-center ${awayWon ? 'opacity-100' : 'opacity-50'}`}>
-                    <div className={`text-4xl font-bold font-mono mb-1 tabular-nums ${awayWon ? 'text-cyber-green' : 'text-cyber-text'}`}>
+                    <div className={`text-4xl font-bold font-mono mb-1 tabular-nums ${awayWon ? 'text-emerald-500' : 'text-pro-text'}`}>
                         {game.away_score}
                     </div>
-                    <div className={`text-xl font-display font-700 tracking-[0.08em] uppercase ${awayWon ? 'text-cyber-green' : 'text-slate-400'}`}>
+                    <div className={`text-xl font-medium font-bold tracking-normal uppercase ${awayWon ? 'text-emerald-500' : 'text-slate-400'}`}>
                         {game.away_team}
                     </div>
-                    {awayWon && <div className="text-[10px] text-cyber-green mt-1 font-bold font-display uppercase tracking-widest">W</div>}
+                    {awayWon && <div className="text-xs text-emerald-500 mt-1 font-bold font-medium uppercase tracking-wide">W</div>}
                 </div>
 
                 <div className="flex flex-col items-center justify-center min-w-[3rem]">
-                    <span className="text-cyber-muted font-mono text-xs">@</span>
+                    <span className="text-pro-muted font-mono text-xs">@</span>
                 </div>
 
                 {/* Home */}
                 <div className={`flex-1 text-center ${homeWon ? 'opacity-100' : 'opacity-50'}`}>
-                    <div className={`text-4xl font-bold font-mono mb-1 tabular-nums ${homeWon ? 'text-cyber-green' : 'text-cyber-text'}`}>
+                    <div className={`text-4xl font-bold font-mono mb-1 tabular-nums ${homeWon ? 'text-emerald-500' : 'text-pro-text'}`}>
                         {game.home_score}
                     </div>
-                    <div className={`text-xl font-display font-700 tracking-[0.08em] uppercase ${homeWon ? 'text-cyber-green' : 'text-slate-400'}`}>
+                    <div className={`text-xl font-medium font-bold tracking-normal uppercase ${homeWon ? 'text-emerald-500' : 'text-slate-400'}`}>
                         {game.home_team}
                     </div>
-                    {homeWon && <div className="text-[10px] text-cyber-green mt-1 font-bold font-display uppercase tracking-widest">W</div>}
+                    {homeWon && <div className="text-xs text-emerald-500 mt-1 font-bold font-medium uppercase tracking-wide">W</div>}
                 </div>
             </div>
         </div>
@@ -255,32 +254,28 @@ const BoxScoresPage: React.FC = () => {
 
     // ── Render ─────────────────────────────────────────────────────────────
     return (
-        <div className="h-full flex flex-col p-4 sm:p-6 bg-cyber-bg relative z-10 w-full">
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
-                 style={{
-                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
-                   backgroundSize: '32px 32px',
-                 }} />
+        <div className="h-full flex flex-col p-4 sm:p-6 bg-pro-bg relative z-10 w-full">
+            
 
             {/* ── Header ───────────────────────────────────────────────── */}
             <header className="mb-5 flex-shrink-0 relative z-10">
                 <div className="header-content">
                     <div className="header-title flex flex-wrap items-center gap-3">
-                        <h1 className="text-3xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text">Box Scores</h1>
+                        <h1 className="text-3xl font-medium font-bold tracking-normal uppercase text-pro-text">Box Scores</h1>
                         {activeTab === 'today' && (
-                            <span className={`px-2.5 py-1 text-[10px] font-display font-600 tracking-[0.2em] uppercase border whitespace-nowrap ${isConnected
-                                ? 'bg-cyber-green/5 text-cyber-green border-cyber-green'
+                            <span className={`px-2.5 py-1 text-xs font-medium font-semibold tracking-wide uppercase border whitespace-nowrap ${isConnected
+                                ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500'
                                 : isConnecting
-                                    ? 'bg-cyber-gold/5 text-cyber-gold border-cyber-gold'
-                                    : 'bg-cyber-red/5 text-cyber-red border-cyber-red'
+                                    ? 'bg-amber-500/5 text-amber-500 border-amber-500'
+                                    : 'bg-red-500/5 text-red-500 border-red-500'
                                 }`}>
-                                <span className={`inline-block w-1.5 h-1.5 rounded-none mr-1.5 ${isConnected ? 'bg-cyber-green' : isConnecting ? 'bg-cyber-gold animate-pulse' : 'bg-cyber-red'
+                                <span className={`inline-block w-1.5 h-1.5 rounded-xl mr-1.5 ${isConnected ? 'bg-emerald-500' : isConnecting ? 'bg-amber-500 animate-pulse' : 'bg-red-500'
                                     }`} />
                                 {isConnected ? 'LIVE FEED' : isConnecting ? 'CONNECTING…' : 'DISCONNECTED'}
                             </span>
                         )}
                         {activeTab === 'today' && lastUpdate && (
-                            <span className="text-[10px] font-mono tracking-widest uppercase text-cyber-muted ml-auto hidden sm:block">
+                            <span className="text-xs font-mono tracking-wide uppercase text-pro-muted ml-auto hidden sm:block">
                                 Updated {new Date(lastUpdate).toLocaleTimeString()}
                             </span>
                         )}
@@ -289,15 +284,15 @@ const BoxScoresPage: React.FC = () => {
             </header>
 
             {/* ── Tabs ─────────────────────────────────────────────────── */}
-            <div className="flex gap-4 mb-5 flex-shrink-0 border-b border-cyber-border relative z-10 w-full">
+            <div className="flex gap-4 mb-5 flex-shrink-0 border-b border-pro-border relative z-10 w-full">
                 {([['today', 'Today'], ['history', 'History']] as [TabId, string][]).map(([id, label]) => (
                     <button
                         key={id}
                         onClick={() => setActiveTab(id)}
-                        className={`py-2 px-1 text-xs font-display font-600 tracking-[0.12em] uppercase transition-all duration-100 border-b-2
+                        className={`py-2 px-1 text-xs font-medium font-semibold tracking-normal uppercase transition-all duration-100 border-b-2
                             ${activeTab === id
-                            ? 'border-cyber-green text-cyber-green'
-                            : 'border-transparent text-cyber-muted hover:text-cyber-text'
+                            ? 'border-emerald-500 text-emerald-500'
+                            : 'border-transparent text-pro-muted hover:text-pro-text'
                             }`}
                     >
                         {label}
@@ -316,14 +311,14 @@ const BoxScoresPage: React.FC = () => {
                             max={getTodayStr()}
                             onChange={e => setSelectedDate(e.target.value)}
                             style={{ colorScheme: 'dark' }}
-                            className="bg-cyber-surface border border-cyber-border text-cyber-text font-mono text-xs rounded-sm px-3 py-2 focus:outline-none focus:border-cyber-blue cursor-pointer"
+                            className="bg-pro-surface border border-pro-border text-pro-text font-mono text-xs rounded-sm px-3 py-2 focus:outline-none focus:border-blue-500 cursor-pointer"
                         />
                     </div>
 
                     {/* Dot indicator */}
                     {datesLoaded && (
-                        <span className={`flex items-center gap-1.5 text-[10px] font-display font-600 tracking-[0.1em] uppercase ${hasData ? 'text-cyber-green' : 'text-cyber-muted'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-none ${hasData ? 'bg-cyber-green' : 'bg-cyber-border'}`} />
+                        <span className={`flex items-center gap-1.5 text-xs font-medium font-semibold tracking-wide uppercase ${hasData ? 'text-emerald-500' : 'text-pro-muted'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-xl ${hasData ? 'bg-emerald-500' : 'bg-pro-border'}`} />
                             {hasData ? 'Game data saved' : 'No saved data'}
                         </span>
                     )}
@@ -335,9 +330,9 @@ const BoxScoresPage: React.FC = () => {
                                 <button
                                     key={d}
                                     onClick={() => setSelectedDate(d)}
-                                    className={`text-[10px] uppercase font-mono tracking-widest px-2.5 py-1 rounded-sm border transition-all duration-100 ${selectedDate === d
-                                        ? 'bg-cyber-green/10 border-cyber-green/40 text-cyber-green'
-                                        : 'bg-cyber-surface border-cyber-border text-cyber-muted hover:text-cyber-text hover:border-cyber-text'
+                                    className={`text-xs uppercase font-mono tracking-wide px-2.5 py-1 rounded-sm border transition-all duration-100 ${selectedDate === d
+                                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500'
+                                        : 'bg-pro-surface border-pro-border text-pro-muted hover:text-pro-text hover:border-pro-text'
                                         }`}
                                 >
                                     {d.slice(5)} {/* MM-DD */}
@@ -363,10 +358,10 @@ const BoxScoresPage: React.FC = () => {
                         ) : (
                             <div className="flex flex-col items-center justify-center h-56 gap-4">
                                 <div className="relative w-12 h-12 flex items-center justify-center">
-                                    <CornerBrackets color="#1a2332" size={14} />
-                                    <span className="font-mono text-[10px] text-cyber-muted tracking-[0.3em]">NULL</span>
+                                    
+                                    <span className="font-mono text-xs text-pro-muted tracking-[0.3em]">NULL</span>
                                 </div>
-                                <p className="font-display font-600 text-xs tracking-[0.15em] uppercase text-cyber-muted">
+                                <p className="font-medium font-semibold text-xs tracking-wide uppercase text-pro-muted">
                                     {isConnecting ? 'CONNECTING TO LIVE FEED' : 'NO GAMES SCHEDULED TODAY'}
                                 </p>
                             </div>
@@ -379,17 +374,17 @@ const BoxScoresPage: React.FC = () => {
                     <>
                         {histLoading && (
                             <div className="flex items-center gap-3">
-                                <span className="w-4 h-4 border border-cyber-green/30 border-t-cyber-green rounded-full animate-spin" />
-                                <span className="font-mono text-[10px] text-cyber-muted tracking-[0.2em] uppercase">Loading…</span>
+                                <span className="w-4 h-4 border border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                                <span className="font-mono text-xs text-pro-muted tracking-wide uppercase">Loading…</span>
                             </div>
                         )}
 
                         {histError && !histLoading && (
                             <div className="flex items-start gap-3 p-4" style={{ background: 'rgba(255,45,85,0.06)', border: '1px solid rgba(255,45,85,0.2)' }}>
-                                <span className="font-mono text-[#ff2d55] text-[10px] font-bold tracking-[0.2em] flex-shrink-0">ERR</span>
+                                <span className="font-mono text-[#ff2d55] text-xs font-bold tracking-wide flex-shrink-0">ERR</span>
                                 <div>
-                                    <p className="font-display font-600 text-xs tracking-[0.1em] uppercase text-[#ff2d55] mb-1">Failed to load box scores</p>
-                                    <p className="font-mono text-[10px] text-[#ff2d55]/60">{histError}</p>
+                                    <p className="font-medium font-semibold text-xs tracking-wide uppercase text-[#ff2d55] mb-1">Failed to load box scores</p>
+                                    <p className="font-mono text-xs text-[#ff2d55]/60">{histError}</p>
                                 </div>
                             </div>
                         )}
@@ -405,10 +400,10 @@ const BoxScoresPage: React.FC = () => {
                         {!histLoading && !histError && historicalGames.length === 0 && (
                             <div className="flex flex-col items-center justify-center h-56 gap-4">
                                 <div className="relative w-12 h-12 flex items-center justify-center">
-                                    <CornerBrackets color="#1a2332" size={14} />
-                                    <span className="font-mono text-[10px] text-cyber-muted tracking-[0.3em]">NULL</span>
+                                    
+                                    <span className="font-mono text-xs text-pro-muted tracking-[0.3em]">NULL</span>
                                 </div>
-                                <p className="font-display font-600 text-xs tracking-[0.15em] uppercase text-cyber-muted">No game records for {selectedDate}</p>
+                                <p className="font-medium font-semibold text-xs tracking-wide uppercase text-pro-muted">No game records for {selectedDate}</p>
                             </div>
                         )}
                     </>

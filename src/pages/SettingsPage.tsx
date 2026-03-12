@@ -6,7 +6,6 @@ import { PlayerApi } from '../services/playerApi';
 import { VanguardHealthWidget } from '../components/vanguard/VanguardHealthWidget';
 import { HealthDepsPanel } from '../components/settings/HealthDepsPanel';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import CornerBrackets from '../components/common/CornerBrackets';
 
 interface KeyStatus {
     gemini_configured: boolean;
@@ -62,26 +61,22 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="h-full w-full overflow-y-auto bg-cyber-bg border-x border-cyber-border flex flex-col items-center font-sans relative z-10">
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
-                 style={{
-                   backgroundImage: 'linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)',
-                   backgroundSize: '32px 32px',
-                 }} />
+        <div className="h-full w-full overflow-y-auto bg-pro-bg border-x border-pro-border flex flex-col items-center font-sans relative z-10">
+            
             <div className="w-full max-w-4xl p-4 sm:p-8 flex-none space-y-6 sm:space-y-8 relative z-10">
 
                 {/* Header row with badge */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6 sm:mb-8 mt-2">
                     <div>
-                        <h2 className="text-2xl font-display font-700 tracking-[0.08em] uppercase text-cyber-text mb-1 flex items-center gap-3">
-                            <Settings className="w-6 h-6 text-cyber-blue" />
+                        <h2 className="text-2xl font-medium font-bold tracking-normal uppercase text-pro-text mb-1 flex items-center gap-3">
+                            <Settings className="w-6 h-6 text-blue-500" />
                             Control Room
                         </h2>
-                        <p className="text-[10px] text-cyber-muted tracking-[0.2em] font-mono mt-2 uppercase">System configuration and cloud parameters.</p>
+                        <p className="text-xs text-pro-muted tracking-wide font-mono mt-2 uppercase">System configuration and cloud parameters.</p>
                     </div>
-                    <div className="self-start px-3 py-1.5 border border-cyber-green/50 rounded-none bg-cyber-green/5">
-                        <span className="text-cyber-green text-xs font-mono tracking-widest uppercase">
-                            CLOUD TWIN V4.1.2
+                    <div className="self-start px-3 py-1.5 border border-emerald-500/50 rounded-xl bg-emerald-500/5">
+                        <span className="text-emerald-500 text-xs font-mono tracking-wide uppercase">
+                            Version 4.1.2
                         </span>
                     </div>
                 </div>
@@ -93,39 +88,39 @@ export default function SettingsPage() {
                 <HealthDepsPanel />
 
                 {/* AI Configuration — Live status */}
-                <section className="p-6 rounded-none border border-cyber-border bg-cyber-surface relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
+                <section className="p-6 rounded-xl border border-pro-border bg-pro-surface relative shadow-sm" >
+                    
                     <div className="flex items-center justify-between mb-5 relative z-10">
-                        <h3 className="text-[10px] tracking-[0.2em] text-cyber-gold font-display font-700 uppercase">AI Configuration</h3>
+                        <h3 className="text-xs tracking-wide text-amber-500 font-medium font-bold uppercase">AI Configuration</h3>
                         <button
                             onClick={refreshKeyStatus}
                             disabled={keyStatusLoading}
-                            className="text-cyber-muted hover:text-cyber-text transition-colors disabled:opacity-40"
+                            className="text-pro-muted hover:text-pro-text transition-colors disabled:opacity-40"
                             title="Refresh key status"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${keyStatusLoading ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
-                    <div className="flex items-center gap-4 p-4 rounded-none bg-white/[0.02] border border-cyber-border/50 relative z-10">
-                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-none bg-cyber-gold/10 border border-cyber-gold/30">
-                            <Settings className="w-6 h-6 text-cyber-gold" />
+                    <div className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-pro-border/50 relative z-10">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30">
+                            <Settings className="w-6 h-6 text-amber-500" />
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-sm font-display font-600 tracking-widest uppercase text-cyber-text">Gemini AI</h4>
+                                <h4 className="text-sm font-medium font-semibold tracking-wide uppercase text-pro-text">Gemini AI</h4>
                                 {keyStatusLoading ? (
-                                    <span className="text-cyber-muted font-mono text-[9px] uppercase tracking-widest">Checking...</span>
+                                    <span className="text-pro-muted font-mono text-xs uppercase tracking-wide">Checking...</span>
                                 ) : keyStatus?.gemini_configured ? (
-                                    <span className="flex items-center gap-1 text-cyber-green text-[9px] font-mono uppercase tracking-widest">
+                                    <span className="flex items-center gap-1 text-emerald-500 text-xs font-mono uppercase tracking-wide">
                                         <CheckCircle className="w-3 h-3" /> Configured
                                     </span>
                                 ) : (
-                                    <span className="flex items-center gap-1 text-cyber-red text-[9px] font-mono uppercase tracking-widest">
+                                    <span className="flex items-center gap-1 text-red-500 text-xs font-mono uppercase tracking-wide">
                                         <XCircle className="w-3 h-3" /> Not configured
                                     </span>
                                 )}
                             </div>
-                            <p className="text-[10px] font-mono text-cyber-muted uppercase tracking-wider">
+                            <p className="text-xs font-mono text-pro-muted uppercase tracking-wider">
                                 Keys are server-managed via Cloud Run environment variables. Contact system owner to update.
                             </p>
                         </div>
@@ -133,21 +128,21 @@ export default function SettingsPage() {
                 </section>
 
                 {/* Data Integration — Accurate Kaggle status */}
-                <section className="p-6 rounded-none border border-cyber-border bg-cyber-surface relative shadow-none" style={{ border: '1px solid #1a2332' }}>
-                    <CornerBrackets />
-                    <h3 className="text-[10px] tracking-[0.2em] text-cyber-blue font-display font-700 mb-5 uppercase relative z-10">Data Integration</h3>
-                    <div className="flex items-center gap-4 p-4 rounded-none bg-white/[0.02] border border-cyber-border/50 relative z-10">
-                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-none bg-cyber-blue/10 border border-cyber-blue/30">
-                            <Info className="w-6 h-6 text-cyber-blue" />
+                <section className="p-6 rounded-xl border border-pro-border bg-pro-surface relative shadow-sm" >
+                    
+                    <h3 className="text-xs tracking-wide text-blue-500 font-medium font-bold mb-5 uppercase relative z-10">Data Integration</h3>
+                    <div className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-pro-border/50 relative z-10">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/30">
+                            <Info className="w-6 h-6 text-blue-500" />
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-sm font-display font-600 tracking-widest uppercase text-cyber-text">Kaggle</h4>
-                                <span className="px-2 py-0.5 rounded-none text-[9px] font-mono bg-cyber-blue/20 text-cyber-blue border border-cyber-blue/30 uppercase tracking-widest">
+                                <h4 className="text-sm font-medium font-semibold tracking-wide uppercase text-pro-text">Kaggle</h4>
+                                <span className="px-2 py-0.5 rounded-xl text-xs font-mono bg-blue-500/20 text-blue-500 border border-blue-500/30 uppercase tracking-wide">
                                     Server-Managed
                                 </span>
                             </div>
-                            <p className="text-[10px] font-mono text-cyber-muted uppercase tracking-wider">
+                            <p className="text-xs font-mono text-pro-muted uppercase tracking-wider">
                                 Kaggle datasets are processed server-side via Cloud Run. No client-side key entry required.
                                 Contact system owner for data sync requests.
                             </p>
@@ -157,26 +152,26 @@ export default function SettingsPage() {
 
                 {/* Danger Zone — only shown to signed-in users (backend still enforces admin role) */}
                 {user ? (
-                    <section className="p-6 rounded-none border border-cyber-red/30 bg-cyber-red/5 mt-10 relative">
-                        <CornerBrackets />
-                        <h3 className="text-[10px] uppercase tracking-[0.2em] text-cyber-red font-display font-700 mb-5 relative z-10">Danger Zone</h3>
+                    <section className="p-6 rounded-xl border border-red-500/30 bg-red-500/5 mt-10 relative">
+                        
+                        <h3 className="text-xs uppercase tracking-wide text-red-500 font-medium font-bold mb-5 relative z-10">Danger Zone</h3>
                         <div className="flex items-center justify-between relative z-10">
                             <div>
-                                <h4 className="text-sm font-display font-600 tracking-widest uppercase text-cyber-text mb-1">Reset Database Cache</h4>
-                                <p className="text-[10px] font-mono text-cyber-muted uppercase tracking-wider max-w-[200px] sm:max-w-none">Clears in-memory rate limiter and API caches. Does not affect Firestore data.</p>
+                                <h4 className="text-sm font-medium font-semibold tracking-wide uppercase text-pro-text mb-1">Reset Database Cache</h4>
+                                <p className="text-xs font-mono text-pro-muted uppercase tracking-wider max-w-[200px] sm:max-w-none">Clears in-memory rate limiter and API caches. Does not affect Firestore data.</p>
                             </div>
                             <button
                                 onClick={handlePurge}
-                                className="px-4 py-2 bg-cyber-red/10 border border-cyber-red hover:bg-cyber-red/20 text-cyber-red rounded-none transition-colors text-xs font-display font-600 uppercase tracking-widest whitespace-nowrap ml-4"
+                                className="px-4 py-2 bg-red-500/10 border border-red-500 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors text-xs font-medium font-semibold uppercase tracking-wide whitespace-nowrap ml-4"
                             >
                                 Purge Cache
                             </button>
                         </div>
                     </section>
                 ) : (
-                    <section className="p-6 rounded-none border border-cyber-border/50 bg-cyber-surface mt-10 flex items-center justify-center gap-3 text-cyber-muted relative">
+                    <section className="p-6 rounded-xl border border-pro-border/50 bg-pro-surface mt-10 flex items-center justify-center gap-3 text-pro-muted relative">
                         <Lock className="w-4 h-4 flex-shrink-0" />
-                        <p className="text-[10px] font-mono uppercase tracking-widest">Administrative controls are hidden. Sign in via the Vanguard page to access them.</p>
+                        <p className="text-xs font-mono uppercase tracking-wide">Administrative controls are hidden. Sign in via the Vanguard page to access them.</p>
                     </section>
                 )}
 

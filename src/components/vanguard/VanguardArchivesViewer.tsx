@@ -45,9 +45,9 @@ export function VanguardArchivesViewerContent() {
     };
 
     const getComponentIcon = (comp: string) => {
-        if (comp.includes('INQUISITOR')) return <ShieldAlert className="w-4 h-4 text-emerald-400" />;
+        if (comp.includes('INQUISITOR')) return <ShieldAlert className="w-4 h-4 text-emerald-500" />;
         if (comp.includes('SURGEON')) return <Cpu className="w-4 h-4 text-purple-400" />;
-        return <FileKey className="w-4 h-4 text-blue-400" />;
+        return <FileKey className="w-4 h-4 text-blue-500" />;
     };
 
     return (
@@ -56,7 +56,7 @@ export function VanguardArchivesViewerContent() {
                 <div className="flex items-center justify-between w-full sm:w-auto">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-                            <Archive className="w-4 h-4 text-blue-400" />
+                            <Archive className="w-4 h-4 text-blue-500" />
                         </div>
                         <div>
                             <h3 className="text-white font-bold text-base">Security & Audit Logs</h3>
@@ -78,7 +78,7 @@ export function VanguardArchivesViewerContent() {
                     </select>
                     <button
                         onClick={loadArchives}
-                        className="text-blue-400 hover:text-blue-300 text-xs font-bold px-3 py-1.5 transition-colors"
+                        className="text-blue-500 hover:text-blue-300 text-xs font-bold px-3 py-1.5 transition-colors"
                     >
                         REFRESH
                     </button>
@@ -104,7 +104,7 @@ export function VanguardArchivesViewerContent() {
                                     <span className="font-black text-sm text-slate-200 truncate">
                                         {log.description}
                                     </span>
-                                    <span className={`text-[9px] px-2 py-0.5 rounded border uppercase font-bold tracking-widest flex-shrink-0 ${getLevelColor(log.level)}`}>
+                                    <span className={`text-xs px-2 py-0.5 rounded border uppercase font-bold tracking-wide flex-shrink-0 ${getLevelColor(log.level)}`}>
                                         {log.level}
                                     </span>
                                 </div>
@@ -113,7 +113,7 @@ export function VanguardArchivesViewerContent() {
                                         {new Date(log.timestamp).toLocaleString()}
                                     </span>
                                     <span className="text-slate-600">•</span>
-                                    <span className="text-slate-400 font-mono tracking-widest">{log.component}</span>
+                                    <span className="text-slate-400 font-mono tracking-wide">{log.component}</span>
                                 </div>
 
                                 {log.metadata && Object.keys(log.metadata).length > 0 && (

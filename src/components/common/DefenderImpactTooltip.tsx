@@ -27,12 +27,12 @@ export default function DefenderImpactTooltip({
     let Icon = Shield;
 
     if (pctPlusminus <= -3) {
-        statusColor = 'text-emerald-400';
+        statusColor = 'text-emerald-500';
         statusBg = 'bg-emerald-500/10';
         label = 'Lockdown Defender';
         Icon = ShieldCheck;
     } else if (pctPlusminus < 0) {
-        statusColor = 'text-blue-400';
+        statusColor = 'text-blue-500';
         statusBg = 'bg-blue-500/10';
         label = 'Above Average';
         Icon = Shield;
@@ -82,7 +82,7 @@ export default function DefenderImpactTooltip({
                         </div>
                         <div className="flex justify-between items-center text-base font-mono bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
                             <span className="text-slate-400 text-sm font-sans font-medium">DFG% vs Avg</span>
-                            <span className={clsx("font-bold", pctPlusminus <= 0 ? "text-emerald-400" : "text-rose-400")}>
+                            <span className={clsx("font-bold", pctPlusminus <= 0 ? "text-emerald-500" : "text-rose-400")}>
                                 {pctPlusminus > 0 ? '+' : ''}{pctPlusminus.toFixed(1)}%
                             </span>
                         </div>

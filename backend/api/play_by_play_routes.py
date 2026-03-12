@@ -288,6 +288,14 @@ async def get_games_for_date_direct(date: str):
                 game_id = doc.id
                 if not game_id or game_id in seen:
                     continue
+                # Timezone check: did this game actually belong to yesterday?
+                # Let's check if it exists in game_id_map with a different date
+                mapped_doc = db.collection("game_id_map").document(game_id).get()
+                if mapped_doc.exists:
+                    mapped_date = mapped_doc.to_dict().get("date")
+                    if mapped_date and mapped_date != date:
+                        continue # Skip, this game belongs to another date
+
                 seen.add(game_id)
                 d = doc.to_dict()
                 home = d.get("home_team", d.get("homeTeam", ""))

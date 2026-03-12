@@ -37,7 +37,7 @@ export default function NarrativeBlock({ text }: NarrativeBlockProps) {
         <div className="relative p-6 rounded-xl border border-financial-accent/20 bg-gradient-to-b from-financial-accent/5 to-transparent backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-4">
                 <div className="w-2 h-2 bg-financial-accent rounded-full animate-pulse" />
-                <h3 className="text-xs font-bold text-financial-accent uppercase tracking-widest">Stratos Narrative Relay</h3>
+                <h3 className="text-xs font-bold text-financial-accent uppercase tracking-wide">Stratos Narrative Relay</h3>
             </div>
 
             <p className="font-mono text-sm leading-relaxed text-slate-300 min-h-[100px] whitespace-pre-wrap">

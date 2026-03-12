@@ -1,188 +1,65 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Rajdhani:wght@500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-financial-bg text-financial-text overflow-hidden;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-@layer utilities {
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .animate-fade-in-up {
-    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  
-  .bg-scanline {
-    background-image: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 229, 160, 0.02) 2px,
-      rgba(0, 229, 160, 0.02) 4px
-    );
-  }
-
-  .glitch-text {
-    position: relative;
-    display: inline-block;
-  }
-  
-  .glitch-text::before,
-  .glitch-text::after {
-    content: attr(data-text);
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: theme('colors.cyber.bg');
-  }
-  
-  .glitch-text::before {
-    left: 2px;
-    text-shadow: -1px 0 theme('colors.cyber.red');
-    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
-    animation: glitch-anim 3s infinite linear alternate-reverse;
-  }
-  
-  .glitch-text::after {
-    left: -2px;
-    text-shadow: -1px 0 theme('colors.cyber.blue');
-    clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
-    animation: glitch-anim 2.5s infinite linear alternate-reverse;
-  }
-
-  /* Hide scrollbar but keep scroll behavior */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  /* Scrollbar thin — custom for desktop */
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.3);
-    border-radius: 999px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.5);
+@layer base {
+  body {
+    background-color: theme('colors.pro.bg');
+    color: theme('colors.pro.text');
+    font-family: theme('fontFamily.sans');
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes glitch-anim {
-  0% { clip-path: inset(80% 0 10% 0); transform: translate(2px, 0); }
-  20% { clip-path: inset(20% 0 30% 0); transform: translate(-2px, 0); }
-  40% { clip-path: inset(50% 0 30% 0); transform: translate(1px, 0); }
-  60% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 0); }
-  80% { clip-path: inset(30% 0 20% 0); transform: translate(2px, 0); }
-  100% { clip-path: inset(0% 0 80% 0); transform: translate(-2px, 0); }
-}
-
-/* ── Mobile Sidebar (< 768px) ─────────────────────────────────────── */
-@media (max-width: 767px) {
-  .sidebar {
-    position: fixed;
-    left: -280px;
-    top: 0;
-    bottom: 0;
-    width: 280px;
-    z-index: 9999;
-    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: none;
-  }
-
-  .sidebar.open {
-    left: 0;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-  }
-}
-
-/* ── Desktop Sidebar (>= 768px) ───────────────────────────────────── */
-@media (min-width: 768px) {
-  .sidebar {
-    width: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    opacity: 0;
-    overflow: hidden;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, padding 0.3s ease;
-    border-right-width: 0 !important;
-  }
-
-  .sidebar.open {
-    width: 256px !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-    opacity: 1;
-    border-right-width: 1px !important;
-  }
-}
-
-/* ── Disclaimer Modal ────────────────────────────────────────────── */
-
-
-
-/* ── Premium Cyber Panel ──────────────────────────────────────────── */
 @layer components {
-  .cyber-panel {
-    @apply relative bg-cyber-surface border border-cyber-border;
+  .pro-card {
+    background-color: theme('colors.pro.surface');
+    border: 1px solid theme('colors.pro.border');
+    border-radius: 0.75rem; /* xl */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+  }
+  
+  .pro-input {
+    background-color: theme('colors.pro.bg');
+    border: 1px solid theme('colors.pro.border');
+    border-radius: 0.5rem; /* lg */
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: theme('colors.pro.text');
+    transition: all 0.15s ease;
+  }
+  
+  .pro-input:focus {
+    outline: none;
+    border-color: theme('colors.pro.primary');
+    box-shadow: 0 0 0 1px theme('colors.pro.primary');
   }
 
-  /* Premium scrollbar — dark mode */
-  .scrollbar-premium::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .scrollbar-premium::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-premium::-webkit-scrollbar-thumb {
-    @apply bg-slate-700/50 rounded-full;
-  }
-  .scrollbar-premium::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-600/80;
+  .pro-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: theme('colors.pro.muted');
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    display: block;
   }
 }
 
-.cyber-root {
-  cursor: crosshair;
+/* Scrollbar styling */
+.scrollbar-premium::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.cyber-root input, .cyber-root textarea {
-  cursor: text;
+.scrollbar-premium::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-premium::-webkit-scrollbar-thumb {
+  background: theme('colors.pro.border');
+  border-radius: 10px;
+}
+.scrollbar-premium::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.pro.highlight');
 }

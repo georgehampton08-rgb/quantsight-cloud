@@ -34,7 +34,7 @@ export default function StatusLed({ status, label, className }: StatusLedProps) 
     return (
         <div className={twMerge("flex items-center gap-1.5 sm:gap-2", className)} title={`System: ${label} is ${status}`}>
             <div className="hidden sm:flex flex-col items-end">
-                <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-slate-500 font-semibold">{label}</span>
+                <span className="font-mono text-xs tracking-wide uppercase text-slate-500 font-semibold">{label}</span>
             </div>
             <div className="relative flex h-2.5 w-2.5">
                 {/* Ping animation layer for critical */}

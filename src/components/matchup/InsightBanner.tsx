@@ -30,7 +30,7 @@ export default function InsightBanner({ text, type }: InsightBannerProps) {
         )}>
             <div className="shrink-0">{getIcon()}</div>
             <div className="text-sm font-medium tracking-wide">
-                <span className="opacity-70 text-xs uppercase mr-2 font-bold tracking-widest">Aegis Insight:</span>
+                <span className="opacity-70 text-xs uppercase mr-2 font-bold tracking-wide">Aegis Insight:</span>
                 {text}
             </div>
         </div>

@@ -36,7 +36,7 @@ const CategoryBar: React.FC<{
                 <div className={`flex-1 h-2 rounded-full ${winner === 'A' ? 'bg-emerald-500' : 'bg-slate-700'}`} />
                 <div className="w-8 text-center">
                     {winner === 'A' ? (
-                        <TrendingUp className="w-4 h-4 text-emerald-400 mx-auto" />
+                        <TrendingUp className="w-4 h-4 text-emerald-500 mx-auto" />
                     ) : winner === 'B' ? (
                         <TrendingDown className="w-4 h-4 text-red-400 mx-auto" />
                     ) : (
@@ -99,7 +99,7 @@ export default function VertexMatchupCard({ playerAId, playerBId, season = '2024
     }
 
     const advantageColor = matchup.advantage === 'A'
-        ? 'text-emerald-400'
+        ? 'text-emerald-500'
         : matchup.advantage === 'B'
             ? 'text-red-400'
             : 'text-yellow-400';
@@ -130,7 +130,7 @@ export default function VertexMatchupCard({ playerAId, playerBId, season = '2024
                 <div className="flex items-center justify-between">
                     <div className="flex-1 text-center">
                         <div className="text-2xl font-bold text-white">{matchup.player_a.name}</div>
-                        <div className="text-3xl font-bold text-emerald-400 mt-2">{matchup.player_a.score.toFixed(1)}</div>
+                        <div className="text-3xl font-bold text-emerald-500 mt-2">{matchup.player_a.score.toFixed(1)}</div>
                         <div className="text-xs text-slate-500 uppercase mt-1">Score</div>
                     </div>
 

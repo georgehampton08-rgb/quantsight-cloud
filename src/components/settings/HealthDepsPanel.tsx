@@ -27,9 +27,9 @@ const ServiceStatusRow = ({ name, status }: { name: string, status: string | obj
 
     const isHealthy = displayStatus === 'HEALTHY' || displayStatus === 'OK' || displayStatus === 'ACTIVE';
     return (
-        <div className="flex items-center justify-between py-2 border-b border-slate-700/30 last:border-0 text-sm">
-            <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
-            <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isHealthy ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+        <div className="flex items-center justify-between py-2 border-b border-pro-border/50 last:border-0 text-sm">
+            <span className="text-pro-text font-mono text-xs uppercase tracking-wide truncate pr-4">{name}</span>
+            <span className={`flex-shrink-0 px-2 py-0.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wide ${isHealthy ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30' : 'bg-red-500/10 text-red-500 border border-red-500/30'}`}>
                 {displayStatus}
             </span>
         </div>
@@ -37,12 +37,12 @@ const ServiceStatusRow = ({ name, status }: { name: string, status: string | obj
 };
 
 const BooleanStatusRow = ({ name, ok }: { name: string, ok: boolean }) => (
-    <div className="flex items-center justify-between py-2 border-b border-slate-700/30 last:border-0 text-sm">
-        <span className="text-slate-300 font-medium">{name}</span>
+    <div className="flex items-center justify-between py-2 border-b border-pro-border/50 last:border-0 text-sm">
+        <span className="text-pro-text font-mono text-xs uppercase tracking-wide">{name}</span>
         {ok ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
         ) : (
-            <XCircle className="w-4 h-4 text-red-400" />
+            <XCircle className="w-4 h-4 text-red-500" />
         )}
     </div>
 );
@@ -73,19 +73,21 @@ function HealthDepsPanelContent() {
 
     if (loading) {
         return (
-            <div className="p-6 rounded-xl border border-slate-700/50 bg-slate-800/20 animate-pulse text-center space-y-3">
-                <Activity className="w-6 h-6 text-slate-500 mx-auto animate-spin" />
-                <div className="text-slate-400 text-sm">Scanning System Dependencies...</div>
+            <div className="p-6 rounded-xl border border-pro-border bg-white/[0.02] animate-pulse text-center space-y-3 relative shadow-sm">
+                
+                <Activity className="w-6 h-6 text-pro-muted mx-auto animate-spin relative z-10" />
+                <div className="text-pro-muted font-mono text-xs uppercase tracking-wide relative z-10">Scanning System Dependencies...</div>
             </div>
         );
     }
 
     if (error || !data) {
         return (
-            <div className="p-6 rounded-xl border border-red-900/30 bg-red-900/10">
-                <div className="text-red-400 font-bold mb-2">Dependency Audit Failed</div>
-                <div className="text-sm text-slate-400 mb-4">{error}</div>
-                <button onClick={loadData} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded text-sm text-slate-300 transition-colors">
+            <div className="p-6 rounded-xl border border-red-500/30 bg-red-500/10 relative shadow-sm">
+                
+                <div className="text-red-500 font-medium font-bold uppercase tracking-wide mb-2 relative z-10">Dependency Audit Failed</div>
+                <div className="text-xs font-mono text-pro-muted mb-4 uppercase tracking-wide relative z-10">{error}</div>
+                <button onClick={loadData} className="px-4 py-2 bg-red-500/10 border border-red-500 hover:bg-red-500/20 rounded-xl text-xs font-mono font-bold text-red-500 uppercase tracking-wide transition-colors relative z-10">
                     Retry Scan
                 </button>
             </div>
@@ -93,22 +95,23 @@ function HealthDepsPanelContent() {
     }
 
     return (
-        <section className="p-6 rounded-xl border border-slate-700/50 bg-slate-900">
-            <div className="flex items-center justify-between mb-5">
-                <h3 className="text-xs tracking-widest text-[#2ad8a0] font-bold uppercase flex items-center gap-2">
-                    <Server className="w-4 h-4" />
+        <section className="p-6 rounded-xl border border-pro-border bg-pro-surface relative shadow-sm" >
+            
+            <div className="flex items-center justify-between mb-5 relative z-10">
+                <h3 className="text-xs tracking-wide text-emerald-500 font-medium font-bold uppercase flex items-center gap-2">
+                    <Server className="w-4 h-4 text-emerald-500" />
                     System Dependencies
                 </h3>
-                <button onClick={loadData} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                <button onClick={loadData} className="text-xs font-mono text-pro-muted uppercase tracking-wide hover:text-pro-text transition-colors">
                     Refresh
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                 {/* Core Infrastructure */}
-                <div className="bg-[#1a253a] border border-slate-700/30 rounded-lg p-4">
-                    <h4 className="text-xs text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Database className="w-3.5 h-3.5" />
+                <div className="bg-white/[0.02] border border-pro-border/50 rounded-xl p-4 relative shadow-sm">
+                    <h4 className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-3 flex items-center gap-2 border-b border-pro-border/50 pb-2">
+                        <Database className="w-3.5 h-3.5 text-pro-muted" />
                         Infrastructure
                     </h4>
                     <div className="space-y-1">
@@ -119,9 +122,9 @@ function HealthDepsPanelContent() {
                 </div>
 
                 {/* Microservices */}
-                <div className="bg-[#1a253a] border border-slate-700/30 rounded-lg p-4">
-                    <h4 className="text-xs text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <ActivityIcon className="w-3.5 h-3.5" />
+                <div className="bg-white/[0.02] border border-pro-border/50 rounded-xl p-4 relative shadow-sm">
+                    <h4 className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-3 flex items-center gap-2 border-b border-pro-border/50 pb-2">
+                        <ActivityIcon className="w-3.5 h-3.5 text-pro-muted" />
                         Microservices
                     </h4>
                     <div className="space-y-1">
@@ -132,23 +135,23 @@ function HealthDepsPanelContent() {
                 </div>
 
                 {/* Scale Monitors */}
-                <div className="bg-[#1a253a] border border-slate-700/30 rounded-lg p-4 md:col-span-2">
-                    <h4 className="text-xs text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <HardDrive className="w-3.5 h-3.5" />
+                <div className="bg-white/[0.02] border border-pro-border/50 rounded-xl p-4 md:col-span-2 relative shadow-sm">
+                    <h4 className="text-xs text-pro-muted font-medium font-semibold uppercase tracking-wide mb-3 flex items-center gap-2 border-b border-pro-border/50 pb-2">
+                        <HardDrive className="w-3.5 h-3.5 text-pro-muted" />
                         Scale Monitors & Routing
                     </h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Monitors</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        <div className="space-y-1 pr-4 border-r border-pro-border/30">
+                            <div className="text-xs font-mono text-pro-muted mb-2 uppercase tracking-wide">Monitors</div>
                             {Object.entries(data.scale_monitors || {}).map(([name, status]) => (
                                 <ServiceStatusRow key={name} name={name} status={status as string} />
                             ))}
                         </div>
 
-                        <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Routing Strategy</div>
-                            <div className="bg-slate-900/50 p-3 rounded border border-slate-700/30 text-emerald-400 font-mono text-sm">
+                        <div className="space-y-1 pl-2">
+                            <div className="text-xs font-mono text-pro-muted mb-2 uppercase tracking-wide">Routing Strategy</div>
+                            <div className="bg-[#0b1120] p-4 rounded-xl border border-pro-border/30 text-emerald-500 font-mono text-xs overflow-x-auto">
                                 {typeof data.routing_table === 'string'
                                     ? (data.routing_table || 'LOCAL_EXECUTION')
                                     : typeof data.routing_table === 'object' && data.routing_table !== null
