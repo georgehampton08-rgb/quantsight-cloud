@@ -57,13 +57,13 @@ Thumbs.db
 # Data directories
 data/
 backup/
+
 # Deployment docs with secrets
 DEPLOY_IN_CLOUD_SHELL.md
 VANGUARD_CLOUD_ENV.md
 VANGUARD_DEPLOYMENT.md
 setup_redis.sh
 setup_redis_cloudshell.sh
-
 
 # Local dev artifacts
 .venv/
@@ -76,3 +76,8 @@ database_url_*.txt
 .db_url_clean.bin
 
 node_modules/
+
+# Local requirements variants (local-only, not canonical)
+requirements.vanguard.txt
+requirements_minimal.txt
+requirements_minimal_working.txt

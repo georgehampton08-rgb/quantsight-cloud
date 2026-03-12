@@ -1,0 +1,27 @@
+﻿ M .firebase/hosting.ZGlzdA.cache
+ M .gitignore
+ M Dockerfile
+ M out.txt
+ M requirements.txt
+ D requirements.vanguard.txt
+ D requirements_minimal.txt
+ D requirements_minimal_working.txt
+ M src/services/playerApi.ts
+?? app/core/
+?? app/main.py
+?? backend/research_apis_temp.py
+?? backend/scripts/test_firebase_pbp.py
+?? backend/scripts/test_nba_pbp_service.py
+?? backend/scripts/test_pbp_poller.py
+?? backend/scripts/test_pbp_routes.py
+?? backend/test_nba_live_raw.py
+?? git_status_output.txt
+?? grant_admin.py
+?? logs.txt
+?? test_phase1.py
+?? test_phase2.py
+?? test_phase3.py
+?? test_phase4.py
+?? test_phase5.py
+?? test_phase6.py
+?? tmp_diff.txt

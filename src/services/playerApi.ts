@@ -111,12 +111,13 @@ export const PlayerApi = {
         return res;
     },
     purgeDb: async () => {
-        // Calls REST endpoint (auth-gated in Phase 3 via executeAdmin)
-        const res = await ApiContract.executeWeb<{ status: string; message: string; detail: string[] }>(
+        // Auth-gated: executeAdmin attaches Firebase Bearer token automatically
+        const res = await ApiContract.executeAdmin<{ status: string; message: string; detail: string[] }>(
             { path: 'admin/cache/purge', options: { method: 'POST' } }
         );
         return res;
     },
+
     forceRefresh: async (playerId: string, playerName: string, cachedLastGame: string) => {
         const res = await ApiContract.execute<any>('forceRefresh', {
             path: `players/${playerId}/refresh`,

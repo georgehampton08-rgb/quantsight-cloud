@@ -1,0 +1,67 @@
+﻿git : warning: in the 
+working copy of '.firebase/ho
+sting.ZGlzdA.cache', LF will 
+be replaced by CRLF the next 
+time Git touches it
+At line:1 char:1
++ git diff --name-only HEAD 
+2>&1 | Out-File -FilePath 
+tmp_diff.txt -Enc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo           
+   : NotSpecified: (warning  
+  : in the... Git touches    
+ it:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+.firebase/hosting.ZGlzdA.cache
+docs/PBP_ARCHITECTURE.md
+firestore.rules
+node_modules/.package-lock.json
+node_modules/.vite/deps/chunk-G3PMV62Z.js
+node_modules/.vite/deps/chunk-G3PMV62Z.js.map
+node_modules/.vite/deps/chunk-NMLHVZ76.js
+node_modules/.vite/deps/chunk-NMLHVZ76.js.map
+node_modules/.vite/deps/chunk-QRULMDK5.js
+node_modules/.vite/deps/chunk-QRULMDK5.js.map
+node_modules/.vite/deps/chunk-TDH2IRYZ.js
+node_modules/.vite/deps/chunk-TDH2IRYZ.js.map
+node_modules/.vite/deps/chunk-U7P2NEEE.js
+node_modules/.vite/deps/chunk-U7P2NEEE.js.map
+node_modules/.vite/deps/clsx.js
+node_modules/.vite/deps/clsx.js.map
+node_modules/.vite/deps/framer-motion.js
+node_modules/.vite/deps/framer-motion.js.map
+node_modules/.vite/deps/fuse__js.js
+node_modules/.vite/deps/fuse__js.js.map
+node_modules/.vite/deps/lucide-react.js
+node_modules/.vite/deps/lucide-react.js.map
+node_modules/.vite/deps/react-dom.js
+node_modules/.vite/deps/react-dom.js.map
+node_modules/.vite/deps/react-dom_client.js
+node_modules/.vite/deps/react-dom_client.js.map
+node_modules/.vite/deps/react-router-dom.js
+node_modules/.vite/deps/react-router-dom.js.map
+node_modules/.vite/deps/react.js
+node_modules/.vite/deps/react.js.map
+node_modules/.vite/deps/react_jsx-dev-runtime.js
+node_modules/.vite/deps/react_jsx-dev-runtime.js.map
+node_modules/.vite/deps/react_jsx-runtime.js
+node_modules/.vite/deps/react_jsx-runtime.js.map
+node_modules/.vite/deps/recharts.js
+node_modules/.vite/deps/recharts.js.map
+node_modules/.vite/deps/tailwind-merge.js
+node_modules/.vite/deps/tailwind-merge.js.map
+node_modules/.vite/deps/uuid.js
+node_modules/.vite/deps/uuid.js.map
+node_modules/.vite/deps/zod.js
+node_modules/.vite/deps/zod.js.map
+out.txt
+src/components/PlayByPlay/GameScoreHeader.tsx
+src/components/PlayByPlay/LiveGameSelector.tsx
+src/components/PlayByPlay/PlayByPlay.css
+src/components/PlayByPlay/PlayByPlayFeed.tsx
+src/services/playerApi.ts
