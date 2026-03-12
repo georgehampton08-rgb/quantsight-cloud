@@ -62,7 +62,7 @@ export function LiveGameSelector({ activeGameId, onSelectGame, onSelectGameFull,
         setLoading(true);
         setHistoricalGames([]);
         ApiContract.executeWeb<{ games: HistoricalGame[] }>({
-        path: `v1/games/by-date/${date}`
+        path: `v1/games/dates/${date}`
         }).then(res => {
             const all = res?.games ?? [];
             setHistoricalGames(all);

@@ -193,35 +193,76 @@ def _enrich_with_scores(db, date: str, nba_game_id: str, game: dict) -> dict:
 @router.get("/dates/{date}")
 async def get_games_for_date_direct(date: str):
     """
-    Direct game_id_map lookup by date. Guaranteed to return backfilled games.
-    Used as a reliable alternative to /by-date/{date}.
+    Game list for a date with two sources:
+      1. game_id_map  — backfilled games (always have ESPN ID + correct hasPbp)
+      2. calendar/    — recently live-tracked games written by the polling service
+                        (stored under ESPN IDs, also have pbp_events data)
+
+    Returns games with espn_id as gameId and hasPbp=True for both sources.
     """
     try:
         from firestore_db import get_firestore_db
         from google.cloud.firestore_v1.base_query import FieldFilter
         db = get_firestore_db()
-        map_docs = list(
-            db.collection("game_id_map")
-            .where(filter=FieldFilter("date", "==", date))
-            .stream()
-        )
+
+        seen: set = set()
         games = []
-        seen = set()
-        for doc in map_docs:
-            d = doc.to_dict()
-            espn_id = d.get("espn_id", "")
-            if not espn_id or espn_id in seen:
-                continue
-            seen.add(espn_id)
-            games.append({
-                "gameId":   espn_id,
-                "nbaId":    d.get("nba_id", ""),
-                "homeTeam": d.get("home_team", ""),
-                "awayTeam": d.get("away_team", ""),
-                "status":   "Final",
-                "hasPbp":   True,
-            })
+
+        # ── Source 1: game_id_map (backfilled, always reliable) ──────────────
+        try:
+            map_docs = list(
+                db.collection("game_id_map")
+                .where(filter=FieldFilter("date", "==", date))
+                .stream()
+            )
+            for doc in map_docs:
+                d = doc.to_dict()
+                espn_id = d.get("espn_id", "")
+                if not espn_id or espn_id in seen:
+                    continue
+                seen.add(espn_id)
+                games.append({
+                    "gameId":   espn_id,
+                    "nbaId":    d.get("nba_id", ""),
+                    "homeTeam": d.get("home_team", ""),
+                    "awayTeam": d.get("away_team", ""),
+                    "status":   "Final",
+                    "hasPbp":   True,
+                })
+        except Exception as e:
+            logger.warning(f"[dates] game_id_map source failed for {date}: {e}")
+
+        # ── Source 2: calendar/ (recently tracked live games not yet backfilled)
+        # The polling service writes ESPN game IDs to calendar/ + pbp_events/
+        # simultaneously, so any game here should have play data available.
+        try:
+            from services.firebase_game_service import FirebaseGameService
+            cal_games = FirebaseGameService.get_games_for_date(date)
+            for g in cal_games:
+                game_id = g.get("gameId", "")
+                if not game_id or game_id in seen:
+                    continue
+                seen.add(game_id)
+                home = g.get("homeTeam", "")
+                away = g.get("awayTeam", "")
+                # homeTeam/awayTeam may be a tricode string or dict
+                if isinstance(home, dict):
+                    home = home.get("tricode", "")
+                if isinstance(away, dict):
+                    away = away.get("tricode", "")
+                games.append({
+                    "gameId":   game_id,
+                    "nbaId":    "",
+                    "homeTeam": home,
+                    "awayTeam": away,
+                    "status":   g.get("status", "Final"),
+                    "hasPbp":   True,  # poller writes calendar + pbp_events together
+                })
+        except Exception as e:
+            logger.warning(f"[dates] calendar source failed for {date}: {e}")
+
         return {"status": "success", "date": date, "count": len(games), "games": games}
+
     except Exception as e:
         logger.error(f"[dates-direct] {date}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
