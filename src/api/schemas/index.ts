@@ -96,7 +96,7 @@ export const SimulationResultSchema = z.object({
 export const MatchupResultSchema = z.object({
     defense_matrix: z.object({
         paoa: z.number().optional(),
-        rebound_resistance: z.string().optional(),
+        rebound_resistance: z.union([z.string(), z.number()]).optional(),
         profile: z.record(z.string(), z.number()).optional()
     }).optional(),
     nemesis_vector: z.object({
@@ -107,7 +107,7 @@ export const MatchupResultSchema = z.object({
     }).optional(),
     pace_friction: z.object({
         multiplier: z.number().optional(),
-        projected_pace: z.string().optional()
+        projected_pace: z.union([z.string(), z.number()]).optional()
     }).optional(),
     insight: z.object({
         text: z.string().optional(),
