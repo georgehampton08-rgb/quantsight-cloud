@@ -474,7 +474,13 @@ class FirebasePBPService:
         doc_ref.set(metadata, merge=True)
 
     @staticmethod
-    def save_plays_batch(game_id: str, plays: List[PlayEvent]):
+    def save_plays_batch(
+        game_id: str,
+        plays: List[PlayEvent],
+        game_date: str = "",
+        home_team: str = "",
+        away_team: str = "",
+    ):
         """
         [LEGACY] Idempotent batch write to OLD path: live_games/{gameId}/plays/{playId}.
 
@@ -482,7 +488,8 @@ class FirebasePBPService:
         are not broken during transition.
 
         Also calls save_plays_batch_v2() so data is written to BOTH paths
-        during the transition window.
+        during the transition window.  game_date / home_team / away_team are
+        forwarded so shot docs receive correct matchup metadata.
         """
         if not plays:
             return
@@ -507,7 +514,10 @@ class FirebasePBPService:
         )
 
         # Dual-write: also write to new schema during transition
-        FirebasePBPService.save_plays_batch_v2(game_id, plays)
+        # Forward metadata so shot docs are enriched correctly.
+        FirebasePBPService.save_plays_batch_v2(
+            game_id, plays, game_date, home_team, away_team
+        )
 
     @staticmethod
     def get_cached_plays(game_id: str, limit: int = 1500) -> List[Dict[str, Any]]:

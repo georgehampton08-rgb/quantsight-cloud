@@ -3,8 +3,9 @@
  * Fetches from GET /v1/games/injuries/team/{tricode}
  * Shows stacked pills: status badge + player name + injury label.
  * Silently hides itself if fetch fails or no injuries exist.
+ * Auto-refreshes every 5 minutes; manual ⟳ button available.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { API_BASE } from '../../config/apiConfig';
 
 interface InjuryRecord {
@@ -30,11 +31,11 @@ interface Props {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-    Out:         'bg-red-500/20 text-red-400 border-red-500/30',
-    Questionable:'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    Doubtful:    'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    'Day-To-Day':'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
-    Probable:    'bg-emerald-500/15 text-emerald-500 border-emerald-500/25',
+    Out:          'bg-red-500/20 text-red-400 border-red-500/30',
+    Questionable: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    Doubtful:     'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    'Day-To-Day': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
+    Probable:     'bg-emerald-500/15 text-emerald-500 border-emerald-500/25',
 };
 
 const statusStyle = (s: string) =>
@@ -50,18 +51,30 @@ function todayET(): string {
     }).format(new Date());
 }
 
-async function fetchTeamInjuries(tricode: string): Promise<InjuryRecord[]> {
+/** Format ISO timestamp to a concise local time string, e.g. "10:32 PM" */
+function fmtTime(iso: string): string {
+    try {
+        return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return '';
+    }
+}
+
+const REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+
+async function fetchTeamInjuries(tricode: string): Promise<{ injuries: InjuryRecord[]; updatedAt?: string }> {
     try {
         const res = await fetch(`${API_BASE}/v1/games/injuries/team/${tricode}`);
-        if (!res.ok) return [];
+        if (!res.ok) return { injuries: [] };
         const d = await res.json();
-        // Guard: if the stored injury data is not from today (ET), treat it
-        // as stale — don't show yesterday's report for today's match. The
-        // panel self-hides when both teams return empty arrays.
-        if (d.date && d.date !== todayET()) return [];
-        return (d.injuries as InjuryRecord[]) ?? [];
+        // Guard against stale data from a different day (ET)
+        if (d.date && d.date !== todayET()) return { injuries: [] };
+        return {
+            injuries: (d.injuries as InjuryRecord[]) ?? [],
+            updatedAt: d.updatedAt,
+        };
     } catch {
-        return [];
+        return { injuries: [] };
     }
 }
 
@@ -119,22 +132,57 @@ function TeamInjuryList({ team }: { team: TeamInjuries }) {
 export function InjuryPanel({ homeTeam, awayTeam }: Props) {
     const [home, setHome] = useState<TeamInjuries | null>(null);
     const [away, setAway] = useState<TeamInjuries | null>(null);
+    const [lastRefresh, setLastRefresh] = useState<string>('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // Keep latest tricode values accessible inside the interval callback
+    const homeRef = useRef(homeTeam);
+    const awayRef = useRef(awayTeam);
+    homeRef.current = homeTeam;
+    awayRef.current = awayTeam;
+
+    const refresh = useCallback(async (showSpinner = false) => {
+        if (!homeRef.current || !awayRef.current) return;
+        if (showSpinner) setIsRefreshing(true);
+
+        const [homeData, awayData] = await Promise.all([
+            fetchTeamInjuries(homeRef.current),
+            fetchTeamInjuries(awayRef.current),
+        ]);
+
+        setHome(homeData.injuries.length
+            ? { tricode: homeRef.current, injuries: homeData.injuries, updatedAt: homeData.updatedAt }
+            : null
+        );
+        setAway(awayData.injuries.length
+            ? { tricode: awayRef.current, injuries: awayData.injuries, updatedAt: awayData.updatedAt }
+            : null
+        );
+        setLastRefresh(new Date().toISOString());
+        if (showSpinner) setIsRefreshing(false);
+    }, []);
+
+    // Initial load + re-load when teams change
     useEffect(() => {
         if (!homeTeam || !awayTeam) return;
         setHome(null);
         setAway(null);
+        setLastRefresh('');
+        refresh();
+    }, [homeTeam, awayTeam, refresh]);
 
-        fetchTeamInjuries(homeTeam).then(inj => {
-            if (inj.length) setHome({ tricode: homeTeam, injuries: inj });
-        });
-        fetchTeamInjuries(awayTeam).then(inj => {
-            if (inj.length) setAway({ tricode: awayTeam, injuries: inj });
-        });
-    }, [homeTeam, awayTeam]);
+    // Auto-refresh every 5 minutes
+    useEffect(() => {
+        if (!homeTeam || !awayTeam) return;
+        const id = setInterval(() => refresh(), REFRESH_MS);
+        return () => clearInterval(id);
+    }, [homeTeam, awayTeam, refresh]);
 
     // Only render if there's at least one injury
     if (!home && !away) return null;
+
+    // Pick the most recent updatedAt from either team for the header
+    const serverUpdatedAt = home?.updatedAt ?? away?.updatedAt ?? '';
 
     return (
         <div className="px-3 py-3 bg-slate-900/40 border border-slate-800/60 rounded-xl">
@@ -144,7 +192,35 @@ export function InjuryPanel({ homeTeam, awayTeam }: Props) {
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
                     Injury Report
                 </span>
-                <span className="text-xs text-slate-600 ml-auto">via ESPN</span>
+                {/* Refresh button */}
+                <button
+                    onClick={() => refresh(true)}
+                    title="Refresh injury data"
+                    disabled={isRefreshing}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: isRefreshing ? 'default' : 'pointer',
+                        padding: '0 2px',
+                        lineHeight: 1,
+                        opacity: isRefreshing ? 0.4 : 0.7,
+                        transition: 'opacity 0.2s',
+                    }}
+                >
+                    <span
+                        style={{
+                            display: 'inline-block',
+                            fontSize: '13px',
+                            color: '#94a3b8',
+                            animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                        }}
+                    >
+                        ⟳
+                    </span>
+                </button>
+                <span className="text-xs text-slate-600 ml-auto" title={serverUpdatedAt ? `ESPN updated: ${serverUpdatedAt}` : undefined}>
+                    {lastRefresh ? `Updated ${fmtTime(lastRefresh)}` : 'via ESPN'}
+                </span>
             </div>
 
             {/* Two-column or single-column list */}

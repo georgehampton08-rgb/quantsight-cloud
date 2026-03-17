@@ -1,14 +1,17 @@
-import { Users, Shield, AlertTriangle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Users, Shield, AlertTriangle, RefreshCw } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPlayerAvatarUrl } from '../utils/avatarUtils'
 import { ApiContract } from '../api/client'
 
 interface Injury {
     player_name: string;
+    playerName?: string;
     team: string;
+    teamTricode?: string;
     status: string;
     injury_type: string;
+    injuryType?: string;
 }
 
 export default function TeamCentralPage() {
@@ -20,21 +23,38 @@ export default function TeamCentralPage() {
     const [loadingRoster, setLoadingRoster] = useState(false);
     const navigate = useNavigate();
 
+    const REFRESH_MS = 5 * 60 * 1000;
+    const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [injuryRefreshing, setInjuryRefreshing] = useState(false);
+    const [injuryLastUpdated, setInjuryLastUpdated] = useState<string>('');
+
+    const fetchInjuries = useCallback(async (showSpinner = false) => {
+        if (showSpinner) setInjuryRefreshing(true);
+        try {
+            // Use the live ESPN injury route (same source as InjuryPanel)
+            const res = await ApiContract.executeWeb<any>({ path: 'v1/games/injuries/today' });
+            const flat: Injury[] = (res?.injuries ?? []).map((inj: any) => ({
+                player_name: inj.playerName ?? inj.player_name ?? '',
+                team: inj.teamTricode ?? inj.team ?? '',
+                status: inj.status ?? '',
+                injury_type: inj.injuryType ?? inj.injury_type ?? '',
+            }));
+            setInjuries(flat);
+            setInjuryLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        } catch (err) {
+            console.error('Failed to load injuries:', err);
+        } finally {
+            if (showSpinner) setInjuryRefreshing(false);
+        }
+    }, []);
+
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                // Load Injuries
-                const resInjuries = await ApiContract.execute<any>('getInjuries', { path: 'injuries' });
-                const injuryData = resInjuries.data;
-
-                if (injuryData?.injuries) setInjuries(injuryData.injuries);
-
                 // Load Teams
                 const resTeams = await ApiContract.execute<any>('getTeams', { path: 'teams' });
                 const teamData = resTeams.data;
-
                 if (teamData?.teams) setTeams(teamData.teams);
-
             } catch (error) {
                 console.error('Failed to load team data:', error);
             } finally {
@@ -42,7 +62,16 @@ export default function TeamCentralPage() {
             }
         };
         loadInitialData();
-    }, []);
+
+        // Injuries: initial load
+        fetchInjuries();
+
+        // Injuries: auto-refresh every 5 min
+        refreshTimerRef.current = setInterval(() => fetchInjuries(), REFRESH_MS);
+        return () => {
+            if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+        };
+    }, [fetchInjuries]);
 
     useEffect(() => {
         if (!selectedTeam) return;
@@ -181,6 +210,19 @@ export default function TeamCentralPage() {
                             <h3 className="text-lg font-medium font-bold tracking-normal uppercase text-pro-text mb-4 flex items-center gap-2 flex-shrink-0 relative z-10">
                                 <AlertTriangle className="w-5 h-5 text-amber-500" />
                                 Injury Report
+                                <button
+                                    onClick={() => fetchInjuries(true)}
+                                    disabled={injuryRefreshing}
+                                    title="Refresh injuries"
+                                    className="ml-1 p-0.5 rounded hover:bg-white/10 transition-colors disabled:opacity-40"
+                                >
+                                    <RefreshCw className={`w-3 h-3 text-slate-400 ${injuryRefreshing ? 'animate-spin' : ''}`} />
+                                </button>
+                                {injuryLastUpdated && (
+                                    <span className="text-[10px] text-slate-600 font-normal normal-case tracking-normal ml-auto">
+                                        {injuryLastUpdated}
+                                    </span>
+                                )}
                             </h3>
                             <div className="space-y-2 overflow-y-auto pr-2 scrollbar-premium flex-1 min-h-0 relative z-10">
                                 {loading ? (
